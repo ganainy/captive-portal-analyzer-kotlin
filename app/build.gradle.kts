@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.example.captive_portal_analyzer_kotlin"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.captive_portal_analyzer_kotlin"
@@ -37,11 +37,28 @@ android {
 
 dependencies {
 
+    // ViewModel
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    // ViewModel utilities for Compose
+    implementation (libs.androidx.lifecycle.viewmodel.compose)
+    // okhttp3
+    implementation (libs.squareup.okhttp)
+    implementation (libs.logging.interceptor)
+    //navigation
+    implementation (libs.androidx.navigation.compose.v272)
+
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.runtime.android)
+    implementation(libs.androidx.navigation.runtime.ktx)
+    implementation(libs.androidx.material3.android)
+    implementation(libs.firebase.common.ktx)
+    implementation(libs.androidx.ui.tooling.preview.android)
+    implementation(libs.androidx.navigation.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
