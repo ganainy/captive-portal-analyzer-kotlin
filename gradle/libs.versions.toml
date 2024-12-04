@@ -1,19 +1,22 @@
 [versions]
-agp = "8.7.3"
+agp = "8.5.1"
+androidxCoreKtx = "1.12.0"
+androidxLifecycleViewmodelKtx = "2.6.2"
 androidxNavigationCompose = "2.8.4"
+gson = "2.8.9"
 kotlin = "1.9.10"
-coreKtx = "1.15.0"
+coreKtx = "1.13.1"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 appcompat = "1.7.0"
 lifecycleViewmodelCompose = "2.8.7"
-lifecycleViewmodelKtx = "2.8.7"
+lifecycleViewmodelKtx = "2.8.4"
 material = "1.12.0"
 activity = "1.9.3"
 constraintlayout = "2.2.0"
 runtimeAndroid = "1.7.5"
-navigationRuntimeKtx = "2.8.4"
+navigationRuntimeKtx = "2.7.7"
 material3Android = "1.3.1"
 squareupOkhttp = "4.11.0"
 firebaseCommonKtx = "21.0.0"
@@ -22,9 +25,13 @@ navigationCompose = "2.8.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-ktx-v1120 = { module = "androidx.core:core-ktx", version.ref = "androidxCoreKtx" }
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleViewmodelCompose" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
 androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
+androidx-lifecycle-viewmodel-ktx-v262 = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidxLifecycleViewmodelKtx" }
 androidx-navigation-compose-v272 = { module = "androidx.navigation:navigation-compose", version.ref = "androidxNavigationCompose" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

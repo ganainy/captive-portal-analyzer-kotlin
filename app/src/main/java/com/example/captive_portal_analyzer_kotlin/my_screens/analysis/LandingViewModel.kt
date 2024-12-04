@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.screens
+package com.example.captive_portal_analyzer_kotlin.my_screens.analysis
 
 import android.annotation.SuppressLint
 import android.app.Application
@@ -12,10 +12,9 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.captive_portal_analyzer_kotlin.repository.IDataRepository
+import com.example.captive_portal_analyzer_kotlin.R
+import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +25,7 @@ import kotlinx.coroutines.launch
 sealed class LandingUiState {
     object Loading : LandingUiState()
     object Initial : LandingUiState()
+    object ConnectionSuccess : LandingUiState()
     data class Error(val messageStringResource: Int) : LandingUiState()
 }
 
@@ -36,20 +36,12 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
     val uiState: StateFlow<LandingUiState> = _uiState.asStateFlow()
 
     private val wifiManager = application.getSystemService(Context.WIFI_SERVICE) as WifiManager
-    private val _wifiNetworks = MutableStateFlow<List<ScanResult>>(emptyList())
-    val wifiNetworks: StateFlow<List<ScanResult>> = _wifiNetworks
+
+    private val _wifiNetworks = MutableStateFlow<List<NetworkItem>>(emptyList())
+    val wifiNetworks: StateFlow<List<NetworkItem>> = _wifiNetworks.asStateFlow()
 
     private val connectivityManager =
         application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
-    @SuppressLint("MissingPermission")
-    fun scanWifiNetworks() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val results = wifiManager.scanResults
-            val openNetworks = results.filter { it.capabilities.contains("[ESS]") } // Open networks
-            _wifiNetworks.value = openNetworks
-        }
-    }
 
     @RequiresApi(Build.VERSION_CODES.Q)
     fun connectToNetwork(ssid: String) {
@@ -67,16 +59,70 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
                 override fun onAvailable(network: Network) {
                     super.onAvailable(network)
                     connectivityManager.bindProcessToNetwork(network) // Bind to the Wi-Fi network
+
+                    // Notify UI of successful connection
+                    viewModelScope.launch(Dispatchers.Main) {
+                        _uiState.value = LandingUiState.ConnectionSuccess
+                    }
                 }
 
                 override fun onUnavailable() {
                     super.onUnavailable()
+                    _uiState.value = LandingUiState.Error(R.string.error_connecting_to_wifi)
                     // Handle connection failure
                 }
             })
         }
     }
 
+
+
+    @SuppressLint("MissingPermission")
+    fun scanWifiNetworks() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val results = wifiManager.scanResults
+
+            // Remove duplicates by SSID and select the strongest signal
+            val uniqueNetworks = results
+                .filter { it.SSID.isNotEmpty() }
+                .groupBy { it.SSID }
+                .map { (_, networkGroup) ->
+                    networkGroup.maxByOrNull { it.level }
+                }
+                .filterNotNull()
+
+            // Map to NetworkInfo with security status
+            val networkInfoList = uniqueNetworks.map { scanResult ->
+                NetworkItem(
+                    scanResult = scanResult,
+                    isSecured = isNetworkSecured(scanResult),
+                    securityIcon = getSecurityIcon(scanResult)
+                )
+            }
+
+            _wifiNetworks.value = networkInfoList
+        }
+    }
+
+    private fun isNetworkSecured(scanResult: ScanResult): Boolean {
+        return scanResult.capabilities.let { capabilities ->
+            capabilities.contains("WPA") ||
+                    capabilities.contains("WPA2") ||
+                    capabilities.contains("WPA3") ||
+                    capabilities.contains("RSN") ||
+                    capabilities.contains("WEP") ||
+                    capabilities.contains("PSK")
+        }
+    }
+
+    private fun getSecurityIcon(scanResult: ScanResult): Int {
+        return if (isNetworkSecured(scanResult)) {
+            R.drawable.lock // Your locked network icon
+        } else {
+            R.drawable.unlock // Your open network icon
+        }
+
+}
 }
 
 

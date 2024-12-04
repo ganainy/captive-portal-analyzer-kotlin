@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">captive-portal-analyzer-kotlin</string>
+    <string name="app_name">Captive portal analyzer</string>
+    <string name="error_connecting_to_wifi">Please make sure the device WIFI and GPS services are on</string>
 </resources>

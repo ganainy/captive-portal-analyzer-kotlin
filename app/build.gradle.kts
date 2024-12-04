@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.example.captive_portal_analyzer_kotlin"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.captive_portal_analyzer_kotlin"
@@ -32,7 +32,16 @@ android {
     }
     kotlinOptions {
         jvmTarget = "11"
+        freeCompilerArgs += "-Xjvm-default=all"
     }
+
+    buildFeatures {
+        compose = true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.3"
+    }
+
 }
 
 dependencies {
@@ -41,6 +50,13 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     // ViewModel utilities for Compose
     implementation (libs.androidx.lifecycle.viewmodel.compose)
+    //lifecycle
+    implementation (libs.androidx.lifecycle.runtime.ktx)
+    implementation (libs.androidx.lifecycle.viewmodel.ktx.v262)
+    //gson
+    implementation (libs.gson)
+
+
     // okhttp3
     implementation (libs.squareup.okhttp)
     implementation (libs.logging.interceptor)
