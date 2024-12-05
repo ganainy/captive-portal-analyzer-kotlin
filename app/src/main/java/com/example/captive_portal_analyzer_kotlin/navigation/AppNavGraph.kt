@@ -20,8 +20,6 @@ sealed class Screen(val route: String) {
     object Landing : Screen("landing")
     object Analysis : Screen("analysis")
     object Report : Screen("report")
-
-
 }
 
 @RequiresApi(Build.VERSION_CODES.Q)
@@ -40,34 +38,17 @@ fun AppNavGraph(navController: NavHostController) {
         composable(route = Screen.Analysis.route) {
             AnalysisScreen(
                 dataRepository = dataRepository,
-                navigateToReport = { reportData ->
-                    val jsonData = Gson().toJson(reportData)  // Serialize the object to JSON string
-                    navController.navigate("${Screen.Report.route}?reportData=$jsonData")
-                },
+                navigateToReport = actions.navigateToReportScreen,
                 navigateBack = actions.navigateBack
             )
         }
         composable(
-            route = Screen.Report.route + "?reportData={reportData}",
-            arguments = listOf(
-                navArgument("reportData") {
-                    type = NavType.StringType
-                    nullable = true
-                }
-            )
-        ) { backStackEntry ->
-            val reportDataJson = backStackEntry.arguments?.getString("reportData")
-            val captivePortalReport = reportDataJson?.let {
-                Gson().fromJson(it, CaptivePortalReport::class.java)
-            }
-
-            captivePortalReport?.let {
+            route = Screen.Report.route,
+        ) {
                 ReportScreen(
-                    captivePortalReport = it,
                     dataRepository = dataRepository,
                     navigateBack = actions.navigateBack
                 )
-            }
         }
 
     }
@@ -83,10 +64,9 @@ class NavigationActions(private val navController: NavHostController) {
         navController.navigate(Screen.Analysis.route)
     }
 
-   /* val navigateToReportScreen: (CaptivePortalReport) -> Unit = { reportData ->
-        val jsonData = Gson().toJson(reportData)
-        navController.navigate("${Screen.Report.route}?reportData=$jsonData")
-    }*/
+    val navigateToReportScreen: () -> Unit = {
+        navController.navigate(Screen.Report.route)
+    }
 
     val navigateBack: () -> Unit = {
         navController.popBackStack()

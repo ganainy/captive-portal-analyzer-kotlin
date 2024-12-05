@@ -38,6 +38,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
 import com.example.captive_portal_analyzer_kotlin.components.CustomSnackBar
 import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
@@ -102,7 +103,7 @@ fun LandingScreen(
                     scope.launch {
                         drawerState.open() // Open the drawer when menu icon is clicked
                     }
-                }
+                }, title = stringResource(id = R.string.landing_screen_title)
             )
         },
     ) { paddingValues ->
@@ -112,17 +113,6 @@ fun LandingScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Add a text item as a header
-            item {
-                Text(
-                    text = "Please connect to the network that might have a captive portal:",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth()
-                )
-            }
-
             // Display the list of Wi-Fi networks
             items(wifiNetworks) { networkInformation ->
                 WifiItem(networkInformation, onClick = {

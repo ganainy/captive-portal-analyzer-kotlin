@@ -22,7 +22,7 @@ import com.example.captive_portal_analyzer_kotlin.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ToolbarWithMenu(openMenu: () -> Unit) {
+fun ToolbarWithMenu(openMenu: () -> Unit,title:String?) {
 
     Column {
         // Toolbar
@@ -40,8 +40,8 @@ fun ToolbarWithMenu(openMenu: () -> Unit) {
                             .padding(end = 8.dp) // Space between icon and text
                     )*/
                     Text(
-                        text = stringResource(id = R.string.app_name),
-                        style = MaterialTheme.typography.headlineSmall.copy(
+                        text = title ?: stringResource(id = R.string.app_name),
+                        style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold, // Make the title bold
                             //color = MaterialTheme.colorScheme.primary // Use theme's primary color
                         )

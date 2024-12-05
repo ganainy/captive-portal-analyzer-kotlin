@@ -4,14 +4,13 @@ import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.DhcpInfo
+import android.net.Uri
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.text.format.Formatter.formatIpAddress
 import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.mutableStateOf
@@ -23,7 +22,6 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.CaptivePortalRepor
 import com.example.captive_portal_analyzer_kotlin.dataclasses.Credential
 import com.example.captive_portal_analyzer_kotlin.dataclasses.DefaultCredentialResult
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkInformation
-import com.example.captive_portal_analyzer_kotlin.dataclasses.SecurityHeadersAnalysis
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionTokenAnalysis
 import com.example.captive_portal_analyzer_kotlin.dataclasses.TLSAnalysis
 import com.example.captive_portal_analyzer_kotlin.utils.CaptivePortalDetector.detectPortalURL
@@ -47,7 +45,13 @@ import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLSocketFactory
 import kotlin.math.log2
 import androidx.compose.runtime.State
+import com.example.captive_portal_analyzer_kotlin.dataclasses.JavaScriptAnalysisReport
+import com.example.captive_portal_analyzer_kotlin.utils.JavaScriptInterface
 import kotlinx.coroutines.flow.update
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+import javax.net.ssl.HostnameVerifier
 
 sealed class AnalysisUiState {
     object Loading : AnalysisUiState()
@@ -69,7 +73,7 @@ class AnalysisViewModel(application: Application) : AndroidViewModel(application
     private val headers: MutableMap<String, String> = HashMap()
     private val formFields: List<String> = ArrayList()
     private val javascriptAnalysis = StringBuilder()
-    var report: CaptivePortalReport = CaptivePortalReport()
+    var portalReport: CaptivePortalReport = CaptivePortalReport()
 
     private val _portalUrl = mutableStateOf("") // Default URL
     val portalUrl: State<String> get() = _portalUrl
@@ -81,32 +85,38 @@ class AnalysisViewModel(application: Application) : AndroidViewModel(application
         getCaptivePortalAddress()
     }
 
-        fun getCaptivePortalAddress(testUrl: String = "http://connectivitycheck.gstatic.com:80/generate_204") {
-            viewModelScope.launch(Dispatchers.IO) { // IO dispatcher for background work
-                try {
-                    val portalUrl = detectPortalURL(testUrl)
-                    updateUrl(portalUrl)
+    fun getCaptivePortalAddress(testUrl: String = "http://connectivitycheck.gstatic.com:80/generate_204") {
+        viewModelScope.launch(Dispatchers.IO) { // IO dispatcher for background work
+            try {
+                val portalUrl = detectPortalURL(testUrl)
+                portalReport.portalUrl = portalUrl
+                portalReport = initializePortalAnalysis(portalUrl) // do initial analysis on homepage of captive portal
+                updateUrl(portalUrl) //pass url to ui to load in the webview
 
-                    // Switch back to the Main thread to update the UI
-                    withContext(Dispatchers.Main) {
+                // Switch back to the Main thread to update the UI
+                withContext(Dispatchers.Main) {
 
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace() // Handle exceptions appropriately
                 }
+            } catch (e: Exception) {
+                e.printStackTrace() // Handle exceptions appropriately
             }
         }
+    }
 
     //update the url which will be passed to ui to show in the webview
     fun updateUrl(newUrl: String) {
         _portalUrl.value = newUrl
     }
 
-    fun onWebViewPageFinished(url: String) {
+    fun onWebViewPageFinished(pageUrl: String, userAgentString: String) {
         viewModelScope.launch {
             try {
-                val analysisResult = analyzeCaptivePortal(url)
-                _uiState.value = AnalysisUiState.Analyzed(analysisResult)
+
+                    val pageAnalysis = analyzeWebpage(
+                        agentString =userAgentString,
+                        currentUrl = pageUrl
+                    )
+                    portalReport.addPageAnalysis(pageAnalysis)
 
             } catch (e: Exception) {
                 // Handle errors
@@ -122,27 +132,221 @@ class AnalysisViewModel(application: Application) : AndroidViewModel(application
         // Update state or perform analysis
     }
 
-    suspend fun analyzeCaptivePortal(portalUrl: String?): CaptivePortalReport {
+    fun onAnalysisComplete(captivePortalReport: CaptivePortalReport) {
+        // Update the UI with the analyzed report
+        _uiState.update { AnalysisUiState.Analyzed(captivePortalReport) }
+    }
+
+
+    suspend fun initializePortalAnalysis(portalUrl: String?): CaptivePortalReport {
+
+        //make sure only initial page of the captive portal is analyzed
+        if (portalUrl != portalReport.portalUrl) {
+            return portalReport
+        }
+
         return withContext(Dispatchers.IO) {
-            // Perform analysis logic here and return the report
-            report.portalUrl = portalUrl
-            report.redirectChain = redirectChain
-            report.headers = headers
-            report.formFields = formFields
-            if (portalUrl != null) {
-                report.usesHttps = portalUrl.startsWith("https")
+            val report = CaptivePortalReport()
+
+            // One-time portal-level analysis
+            report.apply {
+                this.portalUrl = portalUrl
+
+                // Network-level information (collected once)
+                networkInformation = collectNetworkInfo(getApplication<Application>())
+
+                // Security configuration analysis
+                if (portalUrl != null) {
+                    usesHttps = portalUrl.startsWith("https")
+                    tlsAnalysis = analyzeTLSConfiguration(portalUrl)
+                    defaultCredentials = checkDefaultCredentials(portalUrl)
+                }
+
+                // Portal-wide security checks
+                bypassVulnerabilities = checkBypassVulnerabilities()
             }
-            report.javascriptAnalysis = javascriptAnalysis.toString()
-            report.cookiesFound = analyzeCookies(portalUrl)
-            report.potentialVulnerabilities = analyzeVulnerabilities(portalUrl)
-            report.tlsAnalysis = portalUrl?.let { analyzeTLSConfiguration(it) }
-            report.defaultCredentials = portalUrl?.let { checkDefaultCredentials(it) }
-            report.sessionTokens = analyzeSessionTokens(portalUrl)
-            report.bypassVulnerabilities = checkBypassVulnerabilities()
-            report.networkInformation = collectNetworkInfo(getApplication<Application>())
 
             report
         }
+    }
+
+    suspend fun analyzeWebpage(agentString: String,currentUrl: String): CaptivePortalReport.PageAnalysis {
+        return withContext(Dispatchers.IO) {
+            val pageAnalysis = CaptivePortalReport.PageAnalysis().apply {
+                pageUrl = currentUrl
+
+                // Page-specific analysis
+                headers = collectHeaders(
+                    userAgentString = agentString,
+                    url = currentUrl
+                )
+                //todo execute both functions without passing the webView directly
+                //formFields = extractFormFields()
+               // javascriptAnalysis = analyzeJavaScript().toString()
+                cookiesFound = analyzeCookies(currentUrl)
+                potentialVulnerabilities = analyzeVulnerabilities(currentUrl)
+                sessionTokens = analyzeSessionTokens(currentUrl)
+            }
+            pageAnalysis
+        }
+    }
+
+
+    /**
+     * Collects and analyzes HTTP headers from the current web page.
+     *
+     * @param webView The WebView from which to extract headers
+     * @return A map of collected HTTP headers with their values
+     */
+    fun collectHeaders(userAgentString: String, url: String): Map<String, String> {
+        val headers = mutableMapOf<String, String>()
+
+        try {
+            // Add basic headers
+            headers["User-Agent"] = userAgentString
+            // Add any additional static headers you might want to include
+            headers["Host"] = Uri.parse(url).host ?: ""
+
+            // If you want to add more headers, you can do so statically
+            headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            headers["Accept-Language"] = "en-US,en;q=0.5"
+
+        } catch (e: Exception) {
+            // Log header collection errors
+            Log.e("HeaderCollection", "Error collecting headers", e)
+        }
+
+        return headers
+    }
+
+    /**
+     * Extracts form fields from the current web page using JavaScript injection.
+     *
+     * @param webView The WebView to analyze
+     * @return A list of form field descriptions
+     */
+    fun extractFormFields(webView: WebView): List<String> {
+        val formFields = mutableListOf<String>()
+
+        webView.evaluateJavascript(
+            """
+        (function() {
+            var forms = document.getElementsByTagName('form');
+            var fieldData = [];
+            
+            for (var i = 0; i < forms.length; i++) {
+                var form = forms[i];
+                var inputs = form.getElementsByTagName('input');
+                
+                for (var j = 0; j < inputs.length; j++) {
+                    var input = inputs[j];
+                    fieldData.push(JSON.stringify({
+                        type: input.type || 'unknown',
+                        name: input.name || '',
+                        id: input.id || '',
+                        placeholder: input.placeholder || '',
+                        required: input.required || false,
+                        autocomplete: input.autocomplete || 'off'
+                    }));
+                }
+            }
+            
+            return JSON.stringify(fieldData);
+        })()
+        """.trimIndent()
+        ) { result ->
+            try {
+                // Parse the returned JSON result
+                val parsedFields = JSONArray(result)
+                for (k in 0 until parsedFields.length()) {
+                    formFields.add(parsedFields.getString(k))
+                }
+            } catch (e: JSONException) {
+                Log.e("FormFieldExtraction", "Error parsing form fields", e)
+            }
+        }
+
+        return formFields
+    }
+
+    /**
+     * Performs comprehensive JavaScript analysis on the current web page.
+     *
+     * @param webView The WebView to analyze
+     * @return A detailed JavaScript analysis report
+     */
+    fun analyzeJavaScript(webView: WebView): JavaScriptAnalysisReport {
+        val report = JavaScriptAnalysisReport()
+
+        // Collect basic JavaScript information
+        webView.evaluateJavascript(
+            """
+        (function() {
+            var result = {
+                scriptCount: document.scripts.length,
+                inlineScripts: [],
+                externalScripts: [],
+                eventHandlers: [],
+                windowProperties: []
+            };
+            
+            // Collect inline scripts
+            document.querySelectorAll('script:not([src])').forEach(function(script) {
+                result.inlineScripts.push(script.textContent.substring(0, 100)); // Limit to first 100 chars
+            });
+            
+            // Collect external scripts
+            document.querySelectorAll('script[src]').forEach(function(script) {
+                result.externalScripts.push(script.src);
+            });
+            
+            // Detect event listeners
+            ['click', 'submit', 'load', 'change'].forEach(function(event) {
+                var elements = document.querySelectorAll('[on' + event + ']');
+                elements.forEach(function(el) {
+                    result.eventHandlers.push({
+                        type: event,
+                        element: el.tagName
+                    });
+                });
+            });
+            
+            // Check for potentially suspicious global properties
+            ['eval', 'Function', 'setTimeout', 'setInterval'].forEach(function(prop) {
+                if (window[prop]) {
+                    result.windowProperties.push(prop);
+                }
+            });
+            
+            return JSON.stringify(result);
+        })()
+        """.trimIndent()
+        ) { result ->
+            try {
+                val analysisData = JSONObject(result)
+
+                report.apply {
+                    scriptCount = analysisData.getInt("scriptCount")
+                    inlineScripts = analysisData.getJSONArray("inlineScripts")
+                        .let { array -> (0 until array.length()).map { array.getString(it) } }
+                    externalScripts = analysisData.getJSONArray("externalScripts")
+                        .let { array -> (0 until array.length()).map { array.getString(it) } }
+
+                    // Analyze potential security risks
+                    securityRisks = mutableListOf<String>().apply {
+                        if (inlineScripts.any { it.contains("eval(") })
+                            add("Potential eval() injection risk")
+
+                        if (externalScripts.any { it.contains("untrusted") })
+                            add("Suspicious external script source")
+                    }
+                }
+            } catch (e: JSONException) {
+                Log.e("JavaScriptAnalysis", "Error parsing JavaScript analysis", e)
+            }
+        }
+
+        return report
     }
 
     private fun analyzeCookies(portalUrl: String?): Map<String, String> {
@@ -183,7 +387,8 @@ class AnalysisViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun collectNetworkInfo(context: Context): NetworkInformation? {
-        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val wifiManager =
+            context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val wifiInfo: WifiInfo? = wifiManager.connectionInfo
 
         if (wifiInfo == null || wifiInfo.ssid == WifiManager.UNKNOWN_SSID) {
@@ -210,7 +415,8 @@ class AnalysisViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun checkBypassVulnerabilities(): List<BypassVulnerability> {
-        val vulnerabilities:MutableList<BypassVulnerability> = java.util.ArrayList<BypassVulnerability>()
+        val vulnerabilities: MutableList<BypassVulnerability> =
+            java.util.ArrayList<BypassVulnerability>()
 
         // Check DNS tunnel susceptibility
         checkDNSTunnelBypass(vulnerabilities)
@@ -475,7 +681,8 @@ class AnalysisViewModel(application: Application) : AndroidViewModel(application
             connection = (targetUrl.openConnection() as HttpsURLConnection).apply {
                 connectTimeout = 5000
                 readTimeout = 5000
-                hostnameVerifier = javax.net.ssl.HostnameVerifier { hostname, session -> hostname == targetUrl.host }
+                hostnameVerifier =
+                    HostnameVerifier { hostname, session -> hostname == targetUrl.host }
                 connect()
             }
 
@@ -490,7 +697,8 @@ class AnalysisViewModel(application: Application) : AndroidViewModel(application
                     certificateExpiry = cert.notAfter
 
                     // Check if certificate is about to expire
-                    val daysToExpiry = ((cert.notAfter.time - System.currentTimeMillis()) / (1000 * 60 * 60 * 24))
+                    val daysToExpiry =
+                        ((cert.notAfter.time - System.currentTimeMillis()) / (1000 * 60 * 60 * 24))
                     if (daysToExpiry < 30) {
                         vulnerabilities.add("Certificate expires in $daysToExpiry days")
                     }
@@ -498,7 +706,8 @@ class AnalysisViewModel(application: Application) : AndroidViewModel(application
             }
 
             // Analyze TLS version and cipher suites
-            socket = (SSLSocketFactory.getDefault().createSocket(targetUrl.host, 443) as SSLSocket).apply {
+            socket = (SSLSocketFactory.getDefault()
+                .createSocket(targetUrl.host, 443) as SSLSocket).apply {
                 startHandshake() // Ensure the handshake is performed
             }
 

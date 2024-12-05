@@ -1,4 +1,11 @@
 <resources>
     <string name="app_name">Captive portal analyzer</string>
     <string name="error_connecting_to_wifi">Please make sure the device WIFI and GPS services are on</string>
+    <string name="end_analysis">End Analysis</string>
+    <string name="report_screen_title">Security Report of the Captive Portal</string>
+    <string name="analysis_screen_title">Interact with the Captive Portal</string>
+    <string name="landing_screen_title">Select Network with Captive Portal</string>
+    <string name="no_bypass_vulnerabilities_found">No Bypass Vulnerabilities Found</string>
+    <string name="no_default_credentials_found">No Default Credentials Found</string>
+    <string name="see_more">See More</string>
 </resources>

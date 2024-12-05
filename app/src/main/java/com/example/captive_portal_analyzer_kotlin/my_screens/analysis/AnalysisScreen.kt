@@ -5,8 +5,13 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -15,9 +20,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
 import com.example.captive_portal_analyzer_kotlin.components.CustomSnackBar
 import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
@@ -31,7 +40,7 @@ import kotlinx.coroutines.runBlocking
 @Composable
 fun AnalysisScreen(
     dataRepository: IDataRepository,
-    navigateToReport: (Any?) -> Unit,
+    navigateToReport: () -> Unit,
     navigateBack: () -> Unit
 ) {
     val viewModel: AnalysisViewModel = viewModel()
@@ -49,10 +58,10 @@ fun AnalysisScreen(
                     scope.launch {
                         drawerState.open() // Open the drawer when menu icon is clicked
                     }
-                }
+                }, title = stringResource(id = R.string.analysis_screen_title)
             )
         },
-    ) { paddingValues ->
+    ) { _ ->
         val portalUrl = viewModel.portalUrl.value // Observe the URL from ViewModel
         // AndroidView allows you to integrate the WebView with Compose
         var webView by remember { mutableStateOf<WebView?>(null) }
@@ -65,70 +74,86 @@ fun AnalysisScreen(
             }
         }
 
-        AndroidView(
-            factory = { context ->
-                WebView(context).apply {
-                    settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                    }
-
-                    // Create JavaScript interface that calls ViewModel methods
-                    addJavascriptInterface(
-                        object {
-                            @JavascriptInterface
-                            fun analyzeFormFields(formDataJson: String) {
-                                viewModel.analyzeFormFields(formDataJson)
-                            }
-                        },
-                        "AndroidAnalyzer"
-                    )
-
-                    webViewClient = object : WebViewClient() {
-                        // Detect when a new URL has completely finished loading
-                        override fun onPageFinished(view: WebView, url: String) {
-                            // Analyze forms using JavaScript
-                            view.loadUrl(
-                                "javascript:(function() {" +
-                                        "var forms = document.getElementsByTagName('form');" +
-                                        "var formData = [];" +
-                                        "for(var i = 0; i < forms.length; i++) {" +
-                                        "  var inputs = forms[i].getElementsByTagName('input');" +
-                                        "  for(var j = 0; j < inputs.length; j++) {" +
-                                        "    formData.push({" +
-                                        "      'name': inputs[j].name," +
-                                        "      'type': inputs[j].type," +
-                                        "      'id': inputs[j].id" +
-                                        "    });" +
-                                        "  }" +
-                                        "}" +
-                                        "AndroidAnalyzer.analyzeFormFields(JSON.stringify(formData));" +
-                                        "})();"
-                            )
-
-                            // Notify ViewModel about page finish
-                            viewModel.onWebViewPageFinished(url)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            // AndroidView fills the screen
+            AndroidView(
+                factory = { context ->
+                    WebView(context).apply {
+                        settings.apply {
+                            javaScriptEnabled = true
+                            domStorageEnabled = true
                         }
 
+                        // Create JavaScript interface that calls ViewModel methods
+                        addJavascriptInterface(
+                            object {
+                                @JavascriptInterface
+                                fun analyzeFormFields(formDataJson: String) {
+                                    viewModel.analyzeFormFields(formDataJson)
+                                }
+                            },
+                            "AndroidAnalyzer"
+                        )
 
+                        webViewClient = object : WebViewClient() {
+                            // Detect when a new URL has completely finished loading
+                            override fun onPageFinished(view: WebView, url: String) {
+                                // Analyze forms using JavaScript
+                                view.loadUrl(
+                                    "javascript:(function() {" +
+                                            "var forms = document.getElementsByTagName('form');" +
+                                            "var formData = [];" +
+                                            "for(var i = 0; i < forms.length; i++) {" +
+                                            "  var inputs = forms[i].getElementsByTagName('input');" +
+                                            "  for(var j = 0; j < inputs.length; j++) {" +
+                                            "    formData.push({" +
+                                            "      'name': inputs[j].name," +
+                                            "      'type': inputs[j].type," +
+                                            "      'id': inputs[j].id" +
+                                            "    });" +
+                                            "  }" +
+                                            "}" +
+                                            "AndroidAnalyzer.analyzeFormFields(JSON.stringify(formData));" +
+                                            "})();"
+                                )
+
+                                // Notify ViewModel about page finish
+                                viewModel.onWebViewPageFinished(url,view.settings.userAgentString)
+                            }
+
+
+                        }
+
+                        // Store reference to WebView if needed
+                        webView = this
                     }
+                },
+                update = { view ->
+                    // Any updates to the WebView can be handled here
+                    if(portalUrl != ""){
+                        view.loadUrl(portalUrl)
+                        println("Updating WebView with URL: ${view.url}")
+                    }
+                }
+            )
 
-                    // Store reference to WebView if needed
-                    webView = this
-                }
-            },
-            update = { view ->
-                // Any updates to the WebView can be handled here
-                if(portalUrl != ""){
-                    view.loadUrl(portalUrl)
-                    println("Updating WebView with URL: ${view.url}")
-                }
+            // Button at the bottom center
+            Button(
+                onClick = {
+                    dataRepository.portalReport = viewModel.portalReport
+                     navigateToReport()
+                          },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+            ) {
+                Text(text = stringResource(R.string.end_analysis))
             }
-        )
-
+        }
     }
-
-
 
     when (uiState) {
         is AnalysisUiState.Initial -> {
@@ -148,8 +173,7 @@ fun AnalysisScreen(
 
         is AnalysisUiState.Analyzed -> {
             // Show analysis result
-            // val analysisResult = (uiState as AnalysisUiState.Analyzed).captivePortalReport
-            // navigateToReport(analysisResult)
+
         }
     }
 
