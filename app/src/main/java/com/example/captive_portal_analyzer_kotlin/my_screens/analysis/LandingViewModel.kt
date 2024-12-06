@@ -24,7 +24,8 @@ import kotlinx.coroutines.launch
 
 sealed class LandingUiState {
     object Loading : LandingUiState()
-    object Initial : LandingUiState()
+    object LoadNetworkSuccess : LandingUiState()
+    object LoadNetworkError : LandingUiState()
     object ConnectionSuccess : LandingUiState()
     data class Error(val messageStringResource: Int) : LandingUiState()
 }
@@ -32,13 +33,13 @@ sealed class LandingUiState {
 
 class LandingViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _uiState = MutableStateFlow<LandingUiState>(LandingUiState.Initial)
+    private val _uiState = MutableStateFlow<LandingUiState>(LandingUiState.Loading)
     val uiState: StateFlow<LandingUiState> = _uiState.asStateFlow()
 
     private val wifiManager = application.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
-    private val _wifiNetworks = MutableStateFlow<List<NetworkItem>>(emptyList())
-    val wifiNetworks: StateFlow<List<NetworkItem>> = _wifiNetworks.asStateFlow()
+    private val _openWifiNetworks = MutableStateFlow<List<NetworkItem>>(emptyList())
+    val openWifiNetworks: StateFlow<List<NetworkItem>> = _openWifiNetworks.asStateFlow()
 
     private val connectivityManager =
         application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -78,7 +79,7 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
 
 
     @SuppressLint("MissingPermission")
-    fun scanWifiNetworks() {
+    fun scanOpenWifiNetworks() {
         viewModelScope.launch(Dispatchers.IO) {
             val results = wifiManager.scanResults
 
@@ -91,8 +92,12 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
                 }
                 .filterNotNull()
 
+            //extract unique open networks with no password since its common for captive portal not
+            //to have a password
+            val  uniqueOpenNetworks = uniqueNetworks.filter { !isNetworkSecured(it) }
+
             // Map to NetworkInfo with security status
-            val networkInfoList = uniqueNetworks.map { scanResult ->
+            val openNetworkInfoList = uniqueOpenNetworks.map { scanResult ->
                 NetworkItem(
                     scanResult = scanResult,
                     isSecured = isNetworkSecured(scanResult),
@@ -100,7 +105,12 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
                 )
             }
 
-            _wifiNetworks.value = networkInfoList
+            if (openNetworkInfoList.isNotEmpty()) {
+                _openWifiNetworks.value = openNetworkInfoList
+                _uiState.value = LandingUiState.LoadNetworkSuccess
+            }else{
+                _uiState.value = LandingUiState.LoadNetworkError
+            }
         }
     }
 

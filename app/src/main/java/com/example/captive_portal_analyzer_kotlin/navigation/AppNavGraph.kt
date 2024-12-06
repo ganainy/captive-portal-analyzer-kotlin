@@ -1,22 +1,20 @@
 package com.example.captive_portal_analyzer_kotlin.navigation
 
+import HomeScreen
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import com.example.captive_portal_analyzer_kotlin.repository.DataRepository
 import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.LandingScreen
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
-import com.example.captive_portal_analyzer_kotlin.dataclasses.CaptivePortalReport
 import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.AnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.ReportScreen
-import com.google.gson.Gson
 
 sealed class Screen(val route: String) {
+    object ManualConnect : Screen("manual_connect")
     object Landing : Screen("landing")
     object Analysis : Screen("analysis")
     object Report : Screen("report")
@@ -28,11 +26,18 @@ fun AppNavGraph(navController: NavHostController) {
     val dataRepository = DataRepository()
     val actions = remember(navController) { NavigationActions(navController) }
     NavHost(navController = navController, startDestination = Screen.Landing.route) {
+        composable(route = Screen.ManualConnect.route) {
+            HomeScreen(
+                dataRepository,
+                actions.navigateToAnalysisScreen,
+                actions.navigateToLandingScreen
+            )
+        }
         composable(route = Screen.Landing.route) {
             LandingScreen(
                 dataRepository,
                 actions.navigateToAnalysisScreen,
-                actions.navigateBack
+                actions.navigateToManualConnectScreen
             )
         }
         composable(route = Screen.Analysis.route) {
@@ -60,6 +65,13 @@ class NavigationActions(private val navController: NavHostController) {
             popUpTo(Screen.SignUp.route) { inclusive = true }
         }
     }*/
+    val navigateToLandingScreen: () -> Unit = {
+        navController.navigate(Screen.Landing.route)
+    }
+    val navigateToManualConnectScreen: () -> Unit = {
+        navController.navigate(Screen.ManualConnect.route)
+    }
+
     val navigateToAnalysisScreen: () -> Unit = {
         navController.navigate(Screen.Analysis.route)
     }

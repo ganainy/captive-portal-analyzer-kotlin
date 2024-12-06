@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Captive portal analyzer</string>
+    <string name="app_name">Captive Portal Analyzer</string>
     <string name="error_connecting_to_wifi">Please make sure the device WIFI and GPS services are on</string>
     <string name="end_analysis">End Analysis</string>
     <string name="report_screen_title">Security Report of the Captive Portal</string>
@@ -8,4 +8,17 @@
     <string name="no_bypass_vulnerabilities_found">No Bypass Vulnerabilities Found</string>
     <string name="no_default_credentials_found">No Default Credentials Found</string>
     <string name="see_more">See More</string>
+    <string name="error_connecting_to_captive_portal">Error: Not Connected to a network, please connect the continue</string>
+    <string name="please_turn_on_wifi">Please turn on the device wifi on to be able to connect to the captive portal network</string>
+    <string name="turn_on_wifi">Go to wifi settings</string>
+    <string name="connect_to_network">Select Network</string>
+    <string name="continuee">Continue</string>
+    <string name="please_connect_to_a_wifi_captive_disable_mobile_data_then_press_continue"><![CDATA[Please connect to a WiFi captive Portal & Disable Mobile Data then Press Continue.]]></string>
+    <string name="we_couldn_t_find_any_networks_with_no_password_which_is_usually_the">"We couldn't find any networks with no password which is usually the "</string>
+    <string name="case_with_captive_portals_please_connect_manually_to_network">case with captive portals. Please connect manually to Network.</string>
+    <string name="empty_string" />
+    <string name="wifi_is_on">Device WiFi is turned on</string>
+    <string name="cellular_is_off">Device Cellular data is turned off</string>
+    <string name="wifi_network_is_connected">Connected to a WiFi network</string>
+    <string name="hint1">Once all the three steps are completed, the app should automatically go to the login page of the captive portal</string>
 </resources>
