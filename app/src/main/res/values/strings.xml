@@ -21,4 +21,8 @@
     <string name="cellular_is_off">Device Cellular data is turned off</string>
     <string name="wifi_network_is_connected">Connected to a WiFi network</string>
     <string name="hint1">Once all the three steps are completed, the app should automatically go to the login page of the captive portal</string>
+    <string name="no_captive_portal_detected">Couldn\'t detect captive portal Url</string>
+    <string name="detecting_captive_portal_page">Trying to detect captive portal login page</string>
+    <string name="hint">Hint</string>
+    <string name="login_to_captive_then_click_end_analysis">Please complete the login steps to the captive portal then click end analysis.</string>
 </resources>

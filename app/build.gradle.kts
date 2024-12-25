@@ -64,6 +64,18 @@ dependencies {
     //navigation
     implementation (libs.androidx.navigation.compose.v272)
 
+    // https://github.com/acsbendi/Android-Request-Inspector-WebView
+    implementation ("com.github.acsbendi:Android-Request-Inspector-WebView:1.0.12")
+
+    //pull to refresh
+    implementation ("androidx.compose.foundation:foundation:1.6.0")
+
+    //detect network state
+    implementation ("com.github.fabricethilaw:sonarnet:1.0.0")
+
+    //keep state of some variables across restarts
+    implementation ("androidx.datastore:datastore-preferences:1.0.0")
+
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

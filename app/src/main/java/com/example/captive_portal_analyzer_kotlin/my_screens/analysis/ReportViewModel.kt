@@ -23,31 +23,11 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.CaptivePortalRepor
 import com.example.captive_portal_analyzer_kotlin.dataclasses.Credential
 import com.example.captive_portal_analyzer_kotlin.dataclasses.DefaultCredentialResult
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkInformation
-import com.example.captive_portal_analyzer_kotlin.dataclasses.SecurityHeadersAnalysis
-import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionTokenAnalysis
-import com.example.captive_portal_analyzer_kotlin.dataclasses.TLSAnalysis
-import com.example.captive_portal_analyzer_kotlin.utils.CaptivePortalDetector.detectPortalURL
-import com.example.captive_portal_analyzer_kotlin.utils.Utils
-import com.example.captive_portal_analyzer_kotlin.utils.Utils.Companion.calculateChannel
-import com.example.captive_portal_analyzer_kotlin.utils.Utils.Companion.getDnsServers
-import com.example.captive_portal_analyzer_kotlin.utils.Utils.Companion.getSecurityType
-import com.example.captive_portal_analyzer_kotlin.utils.Utils.Companion.isNetworkSecure
-import kotlinx.coroutines.Dispatchers
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
-import java.security.cert.X509Certificate
-import java.util.Arrays
-import javax.net.ssl.HttpsURLConnection
-import javax.net.ssl.SSLSocket
-import javax.net.ssl.SSLSocketFactory
-import kotlin.math.log2
-import androidx.compose.runtime.State
-import kotlinx.coroutines.flow.update
+
 
 sealed class ReportUiState {
     object Loading : ReportUiState()

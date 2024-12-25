@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 sealed class LandingUiState {
     object Loading : LandingUiState()
     object LoadNetworkSuccess : LandingUiState()
-    object LoadNetworkError : LandingUiState()
+    object NoOpenNetworks : LandingUiState()
     object ConnectionSuccess : LandingUiState()
     data class Error(val messageStringResource: Int) : LandingUiState()
 }
@@ -43,6 +43,12 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
 
     private val connectivityManager =
         application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+    private val context: Context get() = getApplication<Application>().applicationContext
+
+    init {
+
+    }
 
     @RequiresApi(Build.VERSION_CODES.Q)
     fun connectToNetwork(ssid: String) {
@@ -109,7 +115,7 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
                 _openWifiNetworks.value = openNetworkInfoList
                 _uiState.value = LandingUiState.LoadNetworkSuccess
             }else{
-                _uiState.value = LandingUiState.LoadNetworkError
+                _uiState.value = LandingUiState.NoOpenNetworks
             }
         }
     }
@@ -133,6 +139,10 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
         }
 
 }
+
+
+
+
 }
 
 

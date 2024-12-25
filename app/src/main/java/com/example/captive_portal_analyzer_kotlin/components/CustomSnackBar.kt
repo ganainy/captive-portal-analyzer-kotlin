@@ -17,7 +17,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
 
 @Composable
 fun CustomSnackBar(
@@ -26,6 +28,9 @@ fun CustomSnackBar(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var showSnackbar by remember { mutableStateOf(true) }
+
+    // Get navigation bars padding
+    val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues()
 
     LaunchedEffect(message, showSnackbar) {
         if (showSnackbar) {
@@ -45,7 +50,10 @@ fun CustomSnackBar(
     ) {
         SnackbarHost(
             hostState = snackbarHostState,
-            modifier = Modifier.padding(bottom = 16.dp),
+            // Add navigation bar padding to the bottom
+            modifier = Modifier.padding(
+                bottom = navigationBarsPadding.calculateBottomPadding() + 16.dp
+            ),
             snackbar = { snackbarData ->
                 Snackbar(
                     action = {
