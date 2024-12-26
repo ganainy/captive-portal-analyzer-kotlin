@@ -25,4 +25,7 @@
     <string name="detecting_captive_portal_page">Trying to detect captive portal login page</string>
     <string name="hint">Hint</string>
     <string name="login_to_captive_then_click_end_analysis">Please complete the login steps to the captive portal then click end analysis.</string>
+    <string name="back_button_description">go back</string>
+    <string name="forward_button_description">go forward</string>
+    <string name="refresh_button_description">refresh</string>
 </resources>

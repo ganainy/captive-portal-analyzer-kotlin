@@ -24,7 +24,7 @@ import kotlinx.coroutines.delay
 
 
 @Composable
-fun CustomProgressIndicator(message: String? = null) {
+fun CustomProgressIndicator(message: String? = null,modifier: Modifier=Modifier) {
     var loadingMessage by remember { mutableStateOf("${message}.") }
     val scope = rememberCoroutineScope()
 

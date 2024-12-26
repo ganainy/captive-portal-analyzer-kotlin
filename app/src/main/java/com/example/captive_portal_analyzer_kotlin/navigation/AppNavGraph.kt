@@ -12,6 +12,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.AnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.ReportScreen
+import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
+import com.example.captive_portal_analyzer_kotlin.room.CustomWebViewRequestDao
+import com.example.captive_portal_analyzer_kotlin.room.OfflineCustomWebViewRequestsRepository
 
 sealed class Screen(val route: String) {
     object ManualConnect : Screen("manual_connect")
@@ -25,6 +28,12 @@ sealed class Screen(val route: String) {
 fun AppNavGraph(navController: NavHostController) {
     val dataRepository = DataRepository()
     val actions = remember(navController) { NavigationActions(navController) }
+
+     val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository by lazy {
+        OfflineCustomWebViewRequestsRepository(AppDatabase.getDatabase(navController.context).customWebViewRequestDao())
+    }
+
+
     NavHost(navController = navController, startDestination = Screen.Landing.route) {
         composable(route = Screen.ManualConnect.route) {
             HomeScreen(
@@ -42,7 +51,7 @@ fun AppNavGraph(navController: NavHostController) {
         }
         composable(route = Screen.Analysis.route) {
             AnalysisScreen(
-                dataRepository = dataRepository,
+                offlineCustomWebViewRequestsRepository = offlineCustomWebViewRequestsRepository,
                 navigateToReport = actions.navigateToReportScreen,
                 navigateBack = actions.navigateBack
             )
