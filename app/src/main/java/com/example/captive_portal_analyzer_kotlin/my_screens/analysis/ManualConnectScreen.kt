@@ -66,11 +66,7 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             ToolbarWithMenu(
-                openMenu = {
-                    scope.launch {
-                        drawerState.open() // Open the drawer when menu icon is clicked
-                    }
-                }, title = stringResource(id = R.string.app_name)
+                    title = stringResource(id = R.string.app_name),
             )
         },
     ) { paddingValues ->

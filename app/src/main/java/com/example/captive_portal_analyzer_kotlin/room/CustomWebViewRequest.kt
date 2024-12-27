@@ -5,6 +5,8 @@ import androidx.room.Ignore
 import androidx.room.PrimaryKey
 import com.acsbendi.requestinspectorwebview.WebViewRequest
 import com.acsbendi.requestinspectorwebview.WebViewRequestType
+import java.net.URI
+
 @Entity(tableName = "custom_webview_request")
 data class CustomWebViewRequest(
     @PrimaryKey(autoGenerate = true)
@@ -13,7 +15,8 @@ data class CustomWebViewRequest(
     val url: String,
     val method: String,
     val body: String,
-    val trace: String
+    val domain: String,
+    val bssid: String,
 ) {
     @Ignore
     var formParameters: Map<String, String> = emptyMap()
@@ -33,32 +36,21 @@ data class CustomWebViewRequest(
     @Ignore
     var hasGesture: Boolean = false
 
+    @Ignore
+    var trace: String = ""
+
+
 }
 
 
-fun CustomWebViewRequest.toWebViewRequest(): WebViewRequest {
-    return WebViewRequest(
-        type = this.type,
-        url = this.url,
-        method = this.method,
-        body = this.body,
-        trace = this.trace,
-        formParameters = this.formParameters,
-        headers = this.headers,
-        enctype = this.enctype,
-        isForMainFrame = this.isForMainFrame,
-        isRedirect = this.isRedirect,
-        hasGesture = this.hasGesture
-    )
-}
-
-fun WebViewRequest.toCustomWebViewRequest(): CustomWebViewRequest {
+fun WebViewRequest.toCustomWebViewRequest(bssid: String): CustomWebViewRequest {
     return CustomWebViewRequest(
         type = this.type,
         url = this.url,
         method = this.method,
         body = this.body,
-        trace = this.trace
+        domain = extractDomain(this.url),
+        bssid = bssid
     ).apply {
         formParameters = this@toCustomWebViewRequest.formParameters
         headers = this@toCustomWebViewRequest.headers
@@ -66,5 +58,12 @@ fun WebViewRequest.toCustomWebViewRequest(): CustomWebViewRequest {
         isForMainFrame = this@toCustomWebViewRequest.isForMainFrame
         isRedirect = this@toCustomWebViewRequest.isRedirect
         hasGesture = this@toCustomWebViewRequest.hasGesture
+        trace = this@toCustomWebViewRequest.trace
     }
+}
+
+fun extractDomain(url: String): String {
+    val uri = URI(url)
+    val host = uri.host ?: ""
+    return host
 }

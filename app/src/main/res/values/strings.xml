@@ -28,4 +28,6 @@
     <string name="back_button_description">go back</string>
     <string name="forward_button_description">go forward</string>
     <string name="refresh_button_description">refresh</string>
+    <string name="about">About application</string>
+    <string name="stop_analysis">End analysis</string>
 </resources>

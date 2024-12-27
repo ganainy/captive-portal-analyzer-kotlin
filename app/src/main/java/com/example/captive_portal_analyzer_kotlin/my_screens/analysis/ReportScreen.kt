@@ -63,11 +63,7 @@ fun ReportScreen(
     Scaffold(
         topBar = {
             ToolbarWithMenu(
-                openMenu = {
-                    scope.launch {
-                        drawerState.open() // Open the drawer when menu icon is clicked
-                    }
-                }, title = stringResource(id = R.string.report_screen_title)
+               title = stringResource(id = R.string.report_screen_title)
             )
         },
     ) { paddingValues ->

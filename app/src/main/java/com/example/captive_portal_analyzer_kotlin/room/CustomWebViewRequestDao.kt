@@ -24,6 +24,9 @@ interface CustomWebViewRequestDao {
     @Query("SELECT * from custom_webview_request WHERE id = :id")
     fun getCustomWebViewRequest(id: Int): Flow<CustomWebViewRequest>
 
+    @Query("SELECT * from custom_webview_request  WHERE bssid = :bssid ORDER BY id ASC")
+    fun getAllDomainCustomWebViewRequest(bssid: String): Flow<List<CustomWebViewRequest>>
+
     @Query("SELECT * from custom_webview_request ORDER BY id ASC")
     fun getAllCustomWebViewRequest(): Flow<List<CustomWebViewRequest>>
 }

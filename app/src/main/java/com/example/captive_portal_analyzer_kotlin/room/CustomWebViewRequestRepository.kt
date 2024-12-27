@@ -10,6 +10,10 @@ interface CustomWebViewRequestsRepository {
      * Retrieve all the items from the the given data source.
      */
     fun getAllItemsStream(): Flow<List<CustomWebViewRequest>>
+    /**
+     * Retrieve all the items from the the given data source that matches with the [bssid].
+     */
+    fun getAllDomainCustomWebViewRequest(bssid:String): Flow<List<CustomWebViewRequest>>
 
     /**
      * Retrieve an item from the given data source that matches with the [id].

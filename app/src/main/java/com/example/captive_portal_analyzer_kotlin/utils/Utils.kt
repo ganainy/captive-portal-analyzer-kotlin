@@ -13,6 +13,16 @@ import android.net.wifi.WifiConfiguration
 class Utils {
 
     companion object {
+
+        fun convertBSSIDToFileName(bssid: String): String {
+            return bssid.replace(":", "_") // Replacing colons with underscores
+        }
+
+        fun convertFileNameToBSSID(fileName: String): String {
+            return fileName.replace("_", ":") // Reverting underscores back to colons
+        }
+
+
         // Static-like method to hash a password
         @JvmStatic
         fun hashPassword(password: String): String {
