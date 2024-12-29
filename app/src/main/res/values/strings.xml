@@ -20,7 +20,7 @@
     <string name="wifi_is_on">Device WiFi is turned on</string>
     <string name="cellular_is_off">Device Cellular data is turned off</string>
     <string name="wifi_network_is_connected">Connected to a WiFi network</string>
-    <string name="hint1">Once all the three steps are completed, the app should automatically go to the login page of the captive portal</string>
+    <string name="hint1">Once all the three steps are completed, please click the continue button.</string>
     <string name="no_captive_portal_detected">Couldn\'t detect captive portal Url</string>
     <string name="detecting_captive_portal_page">Trying to detect captive portal login page</string>
     <string name="hint">Hint</string>
@@ -30,4 +30,29 @@
     <string name="refresh_button_description">refresh</string>
     <string name="about">About application</string>
     <string name="stop_analysis">End analysis</string>
+    <string name="reload">Reload Webpage</string>
+    <string name="about_app_text">This app was created to study the behavior of captive portals, analyze their vulnerabilities, and evaluate whether they respect user privacy. It also examines depth of information they require from users.</string>
+    <string name="copyright_text">© 2024 Captive Portal Analyzer. All rights reserved.</string>
+    <string name="no_open_networks_found">App couldn\'t find any open networks with no password, please connect to network manually.</string>
+    <string name="connect_manually">Connect manually</string>
+    <string name="connected_to_wifi">Successfully connected to netwrok</string>
+    <string name="please_proceed_to_next_step">Please proceed to next step to start the analysis.\n</string>
+    <string name="next">Next</string>
+    <string name="location_and_other_permissions_are_required_to_scan_wi_fi_networks">Location and networks permissions are required to analyze captive networks.</string>
+    <string name="location_and_other_permissions_are_required_for_analyzing_captive_networks">Location and networks permissions are required to analyze captive networks. App needs to know your location to detect nearby Wi-Fi networks and to check the network\'s status.</string>
+    <string name="access_fine_location_required_to_detect_wi_fi_networks_accurately">Access Fine Location - Required to detect Wi-Fi networks accurately.</string>
+    <string name="access_coarse_location_required_to_detect_nearby_wi_fi_networks">Access Coarse Location - Required to detect nearby Wi-Fi networks.</string>
+    <string name="access_network_state_required_to_check_the_network_s_status">Access Network State - Required to check the network\'s status.</string>
+    <string name="access_wi_fi_state_required_to_monitor_the_wi_fi_network_s_status">Access Wi-Fi State - Required to monitor the Wi-Fi network\'s status.</string>
+    <string name="change_wi_fi_state_required_to_manage_wi_fi_connections">Change Wi-Fi State - Required to manage Wi-Fi connections.</string>
+    <string name="internet_access_required_to_connect_to_the_internet">Internet Access - Required to connect to the internet.</string>
+    <string name="change_network_state_required_to_manage_network_configurations">Change Network State - Required to manage network configurations.</string>
+    <string name="the_following_permissions_are_required_for_the_app_to_function_properly">The following permissions are required for the app to function properly:</string>
+    <string name="please_grant_these_permissions_to_continue">Please grant these permissions to continue.</string>
+    <string name="permissions_required">Permissions Required</string>
+    <string name="retry">Retry</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="welcome_to_app">Welcome to captive portal analyzer</string>
+    <string name="grant_permissions">Grant permissions</string>
+
 </resources>

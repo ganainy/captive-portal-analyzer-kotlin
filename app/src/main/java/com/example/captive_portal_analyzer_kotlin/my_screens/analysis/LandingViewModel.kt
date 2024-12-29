@@ -11,6 +11,9 @@ import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.captive_portal_analyzer_kotlin.R
@@ -19,16 +22,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 
 sealed class LandingUiState {
     object Loading : LandingUiState()
+    object AskPermissions : LandingUiState()
     object LoadNetworkSuccess : LandingUiState()
     object NoOpenNetworks : LandingUiState()
     object ConnectionSuccess : LandingUiState()
     data class Error(val messageStringResource: Int) : LandingUiState()
 }
+
+// Extension for DataStore
+val Context.dataStore by preferencesDataStore(name = "app_preferences")
 
 
 class LandingViewModel(application: Application) : AndroidViewModel(application) {
@@ -46,8 +54,38 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
 
     private val context: Context get() = getApplication<Application>().applicationContext
 
-    init {
+    private val dataStore = context.dataStore
 
+    // Key for storing the welcome screen preference
+    private val SHOW_WELCOME_SCREEN_KEY = booleanPreferencesKey("show_welcome_screen")
+
+
+    init {
+        loadShowWelcomeScreen()
+    }
+
+    private fun loadShowWelcomeScreen() {
+        viewModelScope.launch {
+            val showWelcomeScreen = dataStore.data.first()[SHOW_WELCOME_SCREEN_KEY] ?: true
+            if (!showWelcomeScreen) {
+                scanOpenWifiNetworks()
+            } else {
+                _uiState.value = LandingUiState.AskPermissions
+            }
+        }
+    }
+
+    fun updateShowWelcomeScreen(showWelcomeScreen: Boolean) {
+        viewModelScope.launch {
+            dataStore.edit { preferences ->
+                preferences[SHOW_WELCOME_SCREEN_KEY] = showWelcomeScreen
+            }
+            if (showWelcomeScreen){
+                _uiState.value = LandingUiState.AskPermissions
+            }else{
+                scanOpenWifiNetworks()
+            }
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -62,26 +100,27 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
                 .setNetworkSpecifier(networkSpecifier)
                 .build()
 
-            connectivityManager.requestNetwork(networkRequest, object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) {
-                    super.onAvailable(network)
-                    connectivityManager.bindProcessToNetwork(network) // Bind to the Wi-Fi network
+            connectivityManager.requestNetwork(
+                networkRequest,
+                object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        super.onAvailable(network)
+                        connectivityManager.bindProcessToNetwork(network) // Bind to the Wi-Fi network
 
-                    // Notify UI of successful connection
-                    viewModelScope.launch(Dispatchers.Main) {
-                        _uiState.value = LandingUiState.ConnectionSuccess
+                        // Notify UI of successful connection
+                        viewModelScope.launch(Dispatchers.Main) {
+                            _uiState.value = LandingUiState.ConnectionSuccess
+                        }
                     }
-                }
 
-                override fun onUnavailable() {
-                    super.onUnavailable()
-                    _uiState.value = LandingUiState.Error(R.string.error_connecting_to_wifi)
-                    // Handle connection failure
-                }
-            })
+                    override fun onUnavailable() {
+                        super.onUnavailable()
+                        _uiState.value = LandingUiState.Error(R.string.error_connecting_to_wifi)
+                        // Handle connection failure
+                    }
+                })
         }
     }
-
 
 
     @SuppressLint("MissingPermission")
@@ -100,7 +139,7 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
 
             //extract unique open networks with no password since its common for captive portal not
             //to have a password
-            val  uniqueOpenNetworks = uniqueNetworks.filter { !isNetworkSecured(it) }
+            val uniqueOpenNetworks = uniqueNetworks.filter { !isNetworkSecured(it) }
 
             // Map to NetworkInfo with security status
             val openNetworkInfoList = uniqueOpenNetworks.map { scanResult ->
@@ -114,7 +153,7 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
             if (openNetworkInfoList.isNotEmpty()) {
                 _openWifiNetworks.value = openNetworkInfoList
                 _uiState.value = LandingUiState.LoadNetworkSuccess
-            }else{
+            } else {
                 _uiState.value = LandingUiState.NoOpenNetworks
             }
         }
@@ -138,9 +177,7 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
             R.drawable.unlock // Your open network icon
         }
 
-}
-
-
+    }
 
 
 }

@@ -1,6 +1,5 @@
 package com.example.captive_portal_analyzer_kotlin.my_screens.analysis
 
-import android.annotation.SuppressLint
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -11,7 +10,6 @@ import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.captive_portal_analyzer_kotlin.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,23 +18,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.net.HttpURLConnection
-import java.net.URL
 
-sealed class ManualConnectUiState {
-
-    object Default: ManualConnectUiState()
-    object Success : ManualConnectUiState()
-
-}
 
 
 class ManualConnectViewModel(application: Application) : AndroidViewModel(application) {
 
     val context=application.applicationContext
-
-    private val _uiState = MutableStateFlow<ManualConnectUiState>(ManualConnectUiState.Default)
-    val uiState: StateFlow<ManualConnectUiState> = _uiState.asStateFlow()
 
     private val _isWifiOn = MutableStateFlow<Boolean>(false)
     val isWifiOn: StateFlow<Boolean> = _isWifiOn.asStateFlow()
@@ -47,6 +34,8 @@ class ManualConnectViewModel(application: Application) : AndroidViewModel(applic
     private val _isConnectedToWifiNetwork = MutableStateFlow<Boolean>(false)
     val isConnectedToWifiNetwork: StateFlow<Boolean> = _isConnectedToWifiNetwork.asStateFlow()
 
+    private val _areAllRequirementsFulfilled = MutableStateFlow<Boolean>(false)
+    val areAllRequirementsFulfilled: StateFlow<Boolean> = _areAllRequirementsFulfilled.asStateFlow()
 
     private val connectivityManager =
         application.getSystemService(ConnectivityManager::class.java)
@@ -87,9 +76,7 @@ class ManualConnectViewModel(application: Application) : AndroidViewModel(applic
             ) { wifiOn, cellularOn, connectedToWifi ->
                 wifiOn && !cellularOn && connectedToWifi
             }.collect { allTrue ->
-                if (allTrue) {
-                    _uiState.value = ManualConnectUiState.Success
-                }
+                    _areAllRequirementsFulfilled.value = allTrue
             }
         }
 

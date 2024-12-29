@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.util.Log
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -11,6 +13,8 @@ import androidx.lifecycle.viewModelScope
 import com.acsbendi.requestinspectorwebview.WebViewRequest
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.room.OfflineCustomWebViewRequestsRepository
+import com.example.captive_portal_analyzer_kotlin.room.OfflineWebpageContentRepository
+import com.example.captive_portal_analyzer_kotlin.room.WebpageContent
 import com.example.captive_portal_analyzer_kotlin.room.toCustomWebViewRequest
 import detectCaptivePortal
 import kotlinx.coroutines.Dispatchers
@@ -18,8 +22,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 
 sealed class AnalysisUiState {
@@ -28,7 +30,11 @@ sealed class AnalysisUiState {
     data class Error(val messageStringResource: Int) : AnalysisUiState()
 }
 
-class AnalysisViewModel(application: Application,val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository)
+class AnalysisViewModel(
+    application: Application,
+    val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
+    val offlineWebpageContentRepository: OfflineWebpageContentRepository
+)
     : AndroidViewModel(application) {
     private val context: Context get() = getApplication<Application>().applicationContext
 
@@ -41,51 +47,23 @@ class AnalysisViewModel(application: Application,val offlineCustomWebViewRequest
     private var logcatProcess: Process? = null
     private var isReading = true
 
-    private val _logEntries = MutableStateFlow<List<LogEntry>>(emptyList())
-    val logEntries = _logEntries.asStateFlow()
+    private val _shouldShowNormalWebView = MutableStateFlow<Boolean>(false)
+    val shouldShowNormalWebView = _shouldShowNormalWebView.asStateFlow()
 
 
-    data class LogEntry(
-        val request: String
-    )
 
 
     init {
-        startLogCapture()
+
         getCaptivePortalAddress()
-        // viewModelScope.launch { showDbContent() }
+
+       /* //testing
+         _uiState.value = AnalysisUiState.CaptiveUrlDetected("http://captive.ganainy.online")
+        updateUrl("http://captive.ganainy.online")
+         viewModelScope.launch { showDbContent() }*/
     }
 
-    private fun startLogCapture() {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                // Clear existing logs first
-                Runtime.getRuntime().exec("logcat -c")
 
-                // Start continuous log monitoring
-                logcatProcess = Runtime.getRuntime().exec("logcat")
-                val reader = BufferedReader(InputStreamReader(logcatProcess?.inputStream))
-
-                val logPattern = ".*RequestInspectorWebView.*Sending request from WebView: (.*)".toRegex()
-
-                while (isReading) {
-                    val line = reader.readLine()
-                    if (line != null) {
-                        logPattern.find(line)?.let { matchResult ->
-                            val request = matchResult.groupValues[1]
-                            val newEntry = LogEntry(request)
-
-                            val currentList = _logEntries.value.toMutableList()
-                            currentList.add(newEntry)
-                            _logEntries.value = currentList
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("AnalysisViewModel", "Error while reading logs", e)
-            }
-        }
-    }
 
 
     private suspend fun showDbContent() {
@@ -116,16 +94,22 @@ class AnalysisViewModel(application: Application,val offlineCustomWebViewRequest
 
     // Update the URL, which will be passed to the UI to show in the WebView
     fun updateUrl(newUrl: String) {
-        if (newUrl != _portalUrl.value) {
             _portalUrl.value = newUrl
-        }
     }
 
-    //save the request body to local db
-    suspend fun saveRequest(request: WebViewRequest) {
+    //save the request including body to local db
+    suspend fun saveWebViewRequest(request: WebViewRequest) {
         val bssid = getCurrentNetworkUniqueIdentifier()
 
         offlineCustomWebViewRequestsRepository.insertItem(request.toCustomWebViewRequest(bssid))
+    }
+
+    //save the request with no body to local db
+    suspend fun saveWebResourceRequest(request: WebResourceRequest?) {
+        if (request != null) {
+            val bssid = getCurrentNetworkUniqueIdentifier()
+            offlineCustomWebViewRequestsRepository.insertItem(request.toCustomWebViewRequest(bssid))
+        }
     }
 
     fun getCurrentNetworkUniqueIdentifier(): String {
@@ -136,17 +120,72 @@ class AnalysisViewModel(application: Application,val offlineCustomWebViewRequest
         val bssid = wifiInfo.bssid
         return bssid
     }
+
+    fun showNormalWebView(shouldShowNormalWebView: Boolean) {
+        _shouldShowNormalWebView.value=shouldShowNormalWebView
+    }
+
+    fun saveWebpageContent(webView: WebView,url: String) {
+        // Capture HTML content
+        webView.evaluateJavascript(
+            "(function() { return document.documentElement.outerHTML; })();",
+        ) { html ->
+            // Capture JavaScript content
+            webView.evaluateJavascript(
+                """
+                (function() {
+                    var scripts = document.getElementsByTagName('script');
+                    var jsContent = '';
+                    for(var i = 0; i < scripts.length; i++) {
+                        if(scripts[i].src) {
+                            jsContent += '// External Script: ' + scripts[i].src + '\n';
+                        } else {
+                            jsContent += scripts[i].innerHTML + '\n';
+                        }
+                    }
+                    return jsContent;
+                })();
+                """.trimIndent()
+            ) { javascript ->
+                // Save to database
+                viewModelScope.launch(Dispatchers.IO) {
+                    val content = WebpageContent(
+                        url = url,
+                        html = html.unescapeJsonString(),
+                        javascript = javascript.unescapeJsonString()
+                    )
+                    offlineWebpageContentRepository.insertContent(content)
+                }
+            }
+        }
+
+    }
+
+}
+
+private fun String.unescapeJsonString(): String {
+    return if (this.startsWith("\"") && this.endsWith("\"")) {
+        this.substring(1, this.length - 1)
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
+            .replace("\\n", "\n")
+            .replace("\\r", "\r")
+            .replace("\\t", "\t")
+    } else {
+        this
+    }
 }
 
 
 class AnalysisViewModelFactory(
     private val application: Application,
-    private val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository
+    private val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
+    private val offlineWebpageContentRepository: OfflineWebpageContentRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AnalysisViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return AnalysisViewModel(application,offlineCustomWebViewRequestsRepository) as T
+            return AnalysisViewModel(application,offlineCustomWebViewRequestsRepository,offlineWebpageContentRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -1,7 +1,4 @@
-import android.content.Intent
-import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,20 +12,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -38,29 +30,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
-import com.example.captive_portal_analyzer_kotlin.components.CustomSnackBar
 import com.example.captive_portal_analyzer_kotlin.components.HintText
 import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
-import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.LandingUiState
-import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.ManualConnectUiState
 import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.ManualConnectViewModel
-import com.example.captive_portal_analyzer_kotlin.repository.IDataRepository
-import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
-    dataRepository: IDataRepository,
     navigateToAnalysis: () -> Unit,
     navigateToLanding: () -> Unit,
 ) {
 
     val viewModel: ManualConnectViewModel = viewModel()
-    val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
+    val areAllRequirementsFulfilled by viewModel.areAllRequirementsFulfilled.collectAsState()
 
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
 
 
     Scaffold(
@@ -72,39 +54,6 @@ fun HomeScreen(
     ) { paddingValues ->
 
 
-        when (uiState) {
-
-
-            ManualConnectUiState.Success -> {
-                // Successfully connected to captive portal, navigate to analysis screen
-                navigateToAnalysis()
-            }
-
-            /*        ManualConnectUiState.Default -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.please_turn_on_wifi),
-                                style = MaterialTheme.typography.bodyLarge,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = {
-                                val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
-                                context.startActivity(intent)
-                            }) {
-                                Text(text = stringResource(id = R.string.turn_on_wifi))
-                            }
-                        }
-                    }*/
-
-
-            ManualConnectUiState.Default -> {
                 //device has wifi connection ask user to connect to captive portal
                 Column(
                     modifier = Modifier
@@ -146,23 +95,18 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     HintText(stringResource(R.string.hint1))
                     Spacer(modifier = Modifier.height(16.dp))
+
+
+                    Button(
+                        onClick = { navigateToAnalysis() },
+                        enabled = areAllRequirementsFulfilled
+                    ) {
+                        Text(stringResource(R.string.continuee))
+                    }
                 }
             }
 
-            /*
-              Button(onClick = {
-                        val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
-                        context.startActivity(intent)
-                    }) {
-                        Text(text = stringResource(id = R.string.connect_to_network))
-                    }
-                    * */
 
-
-        }
-
-
-    }
 
 }
 

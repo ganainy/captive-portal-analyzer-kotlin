@@ -6,11 +6,11 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Build
 import android.util.Log
-import android.webkit.URLUtil
+import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
-import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebView.setWebContentsDebuggingEnabled
+import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,26 +43,27 @@ import com.example.captive_portal_analyzer_kotlin.components.InfoBoxState
 import com.example.captive_portal_analyzer_kotlin.components.MenuItem
 import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
 import com.example.captive_portal_analyzer_kotlin.room.OfflineCustomWebViewRequestsRepository
+import com.example.captive_portal_analyzer_kotlin.room.OfflineWebpageContentRepository
 import com.example.captive_portal_analyzer_kotlin.utils.Utils.Companion.convertBSSIDToFileName
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun AnalysisScreen(
     offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
     navigateToReport: () -> Unit,
-    navigateBack: () -> Unit
+    navigateBack: () -> Unit,
+    navigateToAbout: () -> Unit,
+    offlineWebpageContentRepository: OfflineWebpageContentRepository
 ) {
     val viewModel: AnalysisViewModel = viewModel(
         factory = AnalysisViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
-            offlineCustomWebViewRequestsRepository = offlineCustomWebViewRequestsRepository
+            offlineCustomWebViewRequestsRepository = offlineCustomWebViewRequestsRepository,
+            offlineWebpageContentRepository = offlineWebpageContentRepository
         )
     )
 
@@ -71,6 +72,7 @@ fun AnalysisScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val portalUrl by viewModel.portalUrl.collectAsState()
+    val shouldShowNormalWebView by viewModel.shouldShowNormalWebView.collectAsState()
 
     val webView = remember {
         WebView(context)
@@ -91,14 +93,21 @@ fun AnalysisScreen(
                         iconPath = R.drawable.stop,
                         itemName = stringResource(id = R.string.stop_analysis),
                         onClick = {
-                            // TODO: Handle Stop Analysis click
+                                navigateToReport()
+                        }
+                    ),
+                    MenuItem(
+                        iconPath = R.drawable.reload,
+                        itemName = stringResource(id = R.string.reload),
+                        onClick = {
+                            viewModel.showNormalWebView(true)
                         }
                     ),
                     MenuItem(
                         iconPath = R.drawable.about,
                         itemName = stringResource(id = R.string.about),
                         onClick = {
-                            // TODO: Handle About click
+                            navigateToAbout()
                         }
                     ),
 
@@ -114,15 +123,31 @@ fun AnalysisScreen(
                 )
             }
             is AnalysisUiState.CaptiveUrlDetected -> {
-                MainContent(
-                    portalUrl = portalUrl,
-                    webView = webView,
-                    saveWebRequest = { request -> coroutineScope.launch {viewModel.saveRequest(request) }},
-                    bssid = viewModel.getCurrentNetworkUniqueIdentifier(),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(contentPadding),
-                )
+                if (shouldShowNormalWebView){
+                    NormalWebView(
+                        portalUrl = portalUrl,
+                        webView = webView,
+                        saveWebRequest = { request -> coroutineScope.launch {viewModel.saveWebResourceRequest(request) }},
+                        bssid = viewModel.getCurrentNetworkUniqueIdentifier(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(contentPadding),
+                        captureAndSaveContent = { webView,content -> coroutineScope.launch {viewModel.saveWebpageContent(webView,content)} }
+                    )
+
+                }else{
+                    CustomWebView(
+                        portalUrl = portalUrl,
+                        webView = webView,
+                        saveWebRequest = { request -> coroutineScope.launch {viewModel.saveWebViewRequest(request) }},
+                        bssid = viewModel.getCurrentNetworkUniqueIdentifier(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(contentPadding),
+                        captureAndSaveContent = { webView,content -> coroutineScope.launch {viewModel.saveWebpageContent(webView,content)} }
+                    )
+                }
+
             }
             is AnalysisUiState.Error -> {
                 Box(
@@ -142,12 +167,65 @@ fun AnalysisScreen(
     }
 }
 
-
+/*WebView that intercepts request body using JS injection*/
 @Composable
-private fun MainContent(
+private fun NormalWebView(
+    portalUrl: String,
+    webView: WebView,
+    bssid: String,
+    saveWebRequest: (WebResourceRequest?) -> Unit,
+    captureAndSaveContent: (WebView,String) -> Unit,
+    modifier: Modifier
+) {
+
+    Box(modifier = modifier) {
+        AndroidView(
+            factory = { webView.apply {
+                webViewClient = object : WebViewClient() {
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): WebResourceResponse? {
+                        saveWebRequest(request)
+                        return super.shouldInterceptRequest(view, request)
+                    }
+
+                    // Called when a page finishes loading
+                    override fun onPageFinished(view: WebView, url: String) {
+                        super.onPageFinished(view, url)
+                        takeScreenshot(view,url,bssid) // Capture screenshot when a new page finishes loading
+                        captureAndSaveContent(view,url) //capture and save webpage content (HTML + JS)
+                    }
+                }
+
+                settings.apply {
+                    javaScriptEnabled = true
+                    loadWithOverviewMode = true
+                    domStorageEnabled = true
+                    loadsImagesAutomatically = true
+
+                }
+                setWebContentsDebuggingEnabled(true)
+                webView
+            }}
+            ,
+            modifier = Modifier.fillMaxSize(),
+            update = { view ->
+                view.loadUrl(portalUrl)
+            }
+        )
+
+    }
+}
+
+
+/*WebView that intercepts request body using JS injection*/
+@Composable
+private fun CustomWebView(
     portalUrl: String,
     webView: WebView,
     saveWebRequest: (WebViewRequest) -> Unit,
+    captureAndSaveContent: (WebView,String) -> Unit,
     bssid: String,
     modifier: Modifier
 ) {
@@ -162,6 +240,7 @@ private fun MainContent(
                 saveWebRequest = saveWebRequest,
                 bssid = bssid,
                 modifier = Modifier.fillMaxSize(),
+                captureAndSaveContent = captureAndSaveContent
             )
 
         HintInfoBox(
@@ -199,6 +278,7 @@ private fun WebViewWithCustomClient(
     portalUrl: String,
     webView: WebView,
     saveWebRequest: (WebViewRequest) -> Unit,
+    captureAndSaveContent: (WebView,String) -> Unit,
     bssid: String,
     modifier: Modifier
 ) {
@@ -212,9 +292,8 @@ private fun WebViewWithCustomClient(
                                         override fun onPageFinished(view: WebView, url: String) {
                                             super.onPageFinished(view, url)
                                             takeScreenshot(view,url,bssid) // Capture screenshot when a new page finishes loading
+                                            captureAndSaveContent(view,url) //capture and save webpage content (HTML + JS)
                                         }
-
-
 
                                         override fun shouldInterceptRequest(
                                             view: WebView,
@@ -225,32 +304,13 @@ private fun WebViewWithCustomClient(
                                             return null
                                         }
 
-
-
-
-
-                    /*             override fun shouldOverrideUrlLoading(
-                        view: WebView,
-                        request: WebResourceRequest
-                    ): Boolean {
-                        view.loadUrl(request.url.toString())
-                        return true
-                    }*/
                 }
 
                 settings.apply {
                     javaScriptEnabled = true
                     loadWithOverviewMode = true
-                    useWideViewPort = true
-                    builtInZoomControls = true
-                    displayZoomControls = false
                     domStorageEnabled = true
-                    allowFileAccess = false
-                    allowContentAccess = false
-                    allowFileAccessFromFileURLs = false
-                    allowUniversalAccessFromFileURLs = false
-                    cacheMode = WebSettings.LOAD_DEFAULT
-                    mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                    loadsImagesAutomatically = true
                 }
 
 

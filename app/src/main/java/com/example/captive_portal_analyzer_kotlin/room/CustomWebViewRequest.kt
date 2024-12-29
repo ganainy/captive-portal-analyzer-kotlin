@@ -1,5 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.room
 
+import android.webkit.WebResourceRequest
 import androidx.room.Entity
 import androidx.room.Ignore
 import androidx.room.PrimaryKey
@@ -11,7 +12,7 @@ import java.net.URI
 data class CustomWebViewRequest(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-    val type: WebViewRequestType,
+    val type: String,
     val url: String,
     val method: String,
     val body: String,
@@ -45,7 +46,7 @@ data class CustomWebViewRequest(
 
 fun WebViewRequest.toCustomWebViewRequest(bssid: String): CustomWebViewRequest {
     return CustomWebViewRequest(
-        type = this.type,
+        type = this.type.name,
         url = this.url,
         method = this.method,
         body = this.body,
@@ -61,6 +62,26 @@ fun WebViewRequest.toCustomWebViewRequest(bssid: String): CustomWebViewRequest {
         trace = this@toCustomWebViewRequest.trace
     }
 }
+
+
+fun WebResourceRequest.toCustomWebViewRequest(bssid: String): CustomWebViewRequest {
+    return CustomWebViewRequest(
+        url = this.url.toString(),
+        method = this.method,
+        domain = extractDomain(this.url.toString()),
+        bssid = bssid,
+        type = "",
+        body = "",
+    ).apply {
+        isForMainFrame = this@toCustomWebViewRequest.isForMainFrame
+        isRedirect = this@toCustomWebViewRequest.isRedirect
+        headers = this@toCustomWebViewRequest.requestHeaders
+    }
+}
+
+
+
+
 
 fun extractDomain(url: String): String {
     val uri = URI(url)

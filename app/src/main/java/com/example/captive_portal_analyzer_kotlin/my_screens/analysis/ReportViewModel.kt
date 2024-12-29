@@ -1,28 +1,11 @@
 package com.example.captive_portal_analyzer_kotlin.my_screens.analysis
 
 import android.app.Application
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.DhcpInfo
-import android.net.wifi.WifiInfo
-import android.net.wifi.WifiManager
-import android.text.format.Formatter.formatIpAddress
-import android.util.Log
-import android.webkit.CookieManager
-import android.webkit.JavascriptInterface
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.viewModelScope
-import com.example.captive_portal_analyzer_kotlin.dataclasses.BypassVulnerability
-import com.example.captive_portal_analyzer_kotlin.dataclasses.CaptivePortalReport
-import com.example.captive_portal_analyzer_kotlin.dataclasses.Credential
-import com.example.captive_portal_analyzer_kotlin.dataclasses.DefaultCredentialResult
-import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkInformation
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.example.captive_portal_analyzer_kotlin.room.OfflineCustomWebViewRequestsRepository
+import com.example.captive_portal_analyzer_kotlin.room.OfflineWebpageContentRepository
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,14 +14,17 @@ import kotlinx.coroutines.flow.asStateFlow
 
 sealed class ReportUiState {
     object Loading : ReportUiState()
-    object Initial : ReportUiState()
     data class Error(val messageStringResource: Int) : ReportUiState()
 }
 
 
-class ReportViewModel(application: Application) : AndroidViewModel(application) {
+class ReportViewModel(
+    application: Application,
+    val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
+    val offlineWebpageContentRepository: OfflineWebpageContentRepository
+) : AndroidViewModel(application) {
 
-    private val _uiState = MutableStateFlow<ReportUiState>(ReportUiState.Initial)
+    private val _uiState = MutableStateFlow<ReportUiState>(ReportUiState.Loading)
     val uiState: StateFlow<ReportUiState> = _uiState.asStateFlow()
 
 
@@ -52,13 +38,16 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
 }
 
 
-/*
-class FeedViewModelFactory(private val repository: IDataRepository) : ViewModelProvider.Factory {
+class ReportViewModelFactory(
+    private val application: Application,
+    private val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
+    private val offlineWebpageContentRepository: OfflineWebpageContentRepository
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(LandingViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(ReportViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return LandingViewModel(repository) as T
+            return ReportViewModel(application,offlineCustomWebViewRequestsRepository,offlineWebpageContentRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
-}*/
+}
