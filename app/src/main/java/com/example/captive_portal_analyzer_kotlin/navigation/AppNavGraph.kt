@@ -10,9 +10,11 @@ import androidx.navigation.compose.composable
 import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.AboutScreen
 import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.AnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.ReportScreen
+import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
-import com.example.captive_portal_analyzer_kotlin.room.OfflineCustomWebViewRequestsRepository
-import com.example.captive_portal_analyzer_kotlin.room.OfflineWebpageContentRepository
+import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
+import com.example.captive_portal_analyzer_kotlin.room.screenshots.OfflineScreenshotRepository
+import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 
 sealed class Screen(val route: String) {
@@ -27,7 +29,8 @@ sealed class Screen(val route: String) {
 fun AppNavGraph(
     navController: NavHostController,
     sessionManager: NetworkSessionManager,
-    showToast: (Boolean, String?) -> Unit
+    showToast: (Boolean, String?) -> Unit,
+    sharedViewModel: SharedViewModel ,
 ) {
     val actions = remember(navController) { NavigationActions(navController) }
 
@@ -37,6 +40,10 @@ fun AppNavGraph(
 
     val offlineWebpageContentRepository: OfflineWebpageContentRepository by lazy {
         OfflineWebpageContentRepository(AppDatabase.getDatabase(navController.context).webpageContentDao())
+    }
+
+    val screenshotRepository: OfflineScreenshotRepository by lazy {
+        OfflineScreenshotRepository(AppDatabase.getDatabase(navController.context).screenshotDao())
     }
 
 
@@ -59,11 +66,13 @@ fun AppNavGraph(
             AnalysisScreen(
                 offlineCustomWebViewRequestsRepository = offlineCustomWebViewRequestsRepository,
                 offlineWebpageContentRepository = offlineWebpageContentRepository,
+                screenshotRepository = screenshotRepository,
                 navigateToReport = actions.navigateToReportScreen,
                 navigateBack = actions.navigateBack,
                 navigateToAbout = actions.navigateToAbout,
                 sessionManager = sessionManager,
                 showToast = showToast,
+                sharedViewModel = sharedViewModel,
             )
         }
         composable(

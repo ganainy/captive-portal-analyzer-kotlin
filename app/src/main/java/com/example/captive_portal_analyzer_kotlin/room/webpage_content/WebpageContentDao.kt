@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.room
+package com.example.captive_portal_analyzer_kotlin.room.webpage_content
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -11,19 +11,19 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface WebpageContentDao {
     @Query("SELECT * FROM webpage_content")
-    fun getAllContentStream(): Flow<List<WebpageContent>>
+    fun getAllContentStream(): Flow<List<WebpageContentEntity>>
 
     @Query("SELECT * FROM webpage_content WHERE url = :url")
-    fun getContentForUrlStream(url: String): Flow<WebpageContent?>
+    fun getContentForUrlStream(url: String): Flow<WebpageContentEntity?>
 
     @Query("SELECT * FROM webpage_content ORDER BY timestamp DESC")
-    fun getLatestContentStream(): Flow<List<WebpageContent>>
+    fun getLatestContentStream(): Flow<List<WebpageContentEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(content: WebpageContent)
+    suspend fun insert(content: WebpageContentEntity)
 
     @Delete
-    suspend fun delete(content: WebpageContent)
+    suspend fun delete(content: WebpageContentEntity)
 
     @Query("DELETE FROM webpage_content WHERE url = :url")
     suspend fun deleteByUrl(url: String)

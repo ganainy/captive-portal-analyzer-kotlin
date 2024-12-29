@@ -42,7 +42,7 @@ object AlertDialogState {
 }
 
 @Composable
-fun AlertDialogInfo(
+fun NeverSeeAgainAlertDialog(
     title: String,
     message: String,
     preferenceKey: String,

@@ -4,20 +4,26 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.res.ResourcesCompat
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
+import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialog
+import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.navigation.AppNavGraph
+import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
+import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNetworkSessionRepository
 import com.example.captive_portal_analyzer_kotlin.theme.CaptivePortalAnalyzerComposeTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import com.google.firebase.FirebaseApp
-import kotlinx.coroutines.launch
 import www.sanju.motiontoast.MotionToast
 import www.sanju.motiontoast.MotionToastStyle
-import java.util.Date
 
 class MainActivity : ComponentActivity() {
 
@@ -27,32 +33,31 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        sessionManager = NetworkSessionManager(this)
+
+        val offlineNetworkSessionRepository: OfflineNetworkSessionRepository by lazy {
+            OfflineNetworkSessionRepository(AppDatabase.getDatabase(this).networkSessionDao())
+        }
+
+        sessionManager = NetworkSessionManager(this,offlineNetworkSessionRepository)
 
         // Start monitoring network changes
         sessionManager.startMonitoring()
 
-        //for Debugging : Observe session changes
-        lifecycleScope.launch {
-            sessionManager.getSessionInfo().collect { sessionInfo ->
-                sessionInfo?.let {
-                    println("Current Session ID: ${it.sessionId}")
-                    println("Network SSID: ${it.ssid}")
-                    println("Connected at: ${Date(it.timestamp)}")
-                }
-            }
-        }
+
 
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
         setContent {
+            val sharedViewModel: SharedViewModel = viewModel()
+            val actionAlertDialogData by sharedViewModel.actionAlertDialogData.collectAsState()
             CaptivePortalAnalyzerComposeTheme {
-                Surface() {
+                Surface(modifier = Modifier.fillMaxSize()) {
                     val navController = rememberNavController()
                     AppNavGraph(navController = navController,sessionManager = sessionManager,
                         showToast = { isSuccess: Boolean, message: String? ->
                             showToast(isSuccess, message)
-                        },)
+                        },sharedViewModel = sharedViewModel)
+                    actionAlertDialogData?.let { ActionAlertDialog(it) }
                 }
             }
         }
@@ -68,7 +73,7 @@ private fun showToast(
         else -> this.getString(R.string.operation_failed)
     }
 
-    val title = if (isSuccess) "Success" else "Error"
+    val title = if (isSuccess) getString(R.string.success) else  getString(R.string.error)
     val toastStyle = if (isSuccess) MotionToastStyle.SUCCESS else MotionToastStyle.ERROR
 
     // Use MotionToast to display the toast

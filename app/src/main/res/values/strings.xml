@@ -2,7 +2,7 @@
     <string name="app_name">Captive Portal Analyzer</string>
     <string name="error_connecting_to_wifi">Please make sure the device WIFI and GPS services are on</string>
     <string name="end_analysis">End Analysis</string>
-    <string name="report_screen_title">Security Report of the Captive Portal</string>
+    <string name="report_screen_title">Upload Report</string>
     <string name="analysis_screen_title">Interact with the Captive Portal</string>
     <string name="landing_screen_title">Select Network with Captive Portal</string>
     <string name="no_bypass_vulnerabilities_found">No Bypass Vulnerabilities Found</string>
@@ -63,5 +63,12 @@
     <string name="detected_captive_portal_url">Detected captive portal url!</string>
     <string name="switched_detection_method">Switched detection method</string>
     <string name="return_original_detection_method">Return to original detection method</string>
+    <string name="it_looks_like_you_still_have_no_full_internet_connection_please_complete_the_login_process_of_the_captive_portal_before_stopping_the_analysis">It looks like you still have no full internet connection, please complete the login process of the captive portal before stopping the analysis.</string>
+    <string name="stop_analysis_anyway">Stop analysis anyway</string>
+    <string name="warning">Warning</string>
+    <string name="success">Success</string>
+    <string name="error">Error</string>
+    <string name="failed_to_get_bssid">Failed to get network unique modifier</string>
+    <string name="unknown_session_id">Unknown session id</string>
 
 </resources>

@@ -2,9 +2,6 @@ package com.example.captive_portal_analyzer_kotlin.my_screens.analysis
 
 import android.app.Application
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.os.Build
 import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -39,52 +36,59 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acsbendi.requestinspectorwebview.RequestInspectorWebViewClient
 import com.acsbendi.requestinspectorwebview.WebViewRequest
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.components.AlertDialogInfo
+import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
 import com.example.captive_portal_analyzer_kotlin.components.MenuItem
 import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
-import com.example.captive_portal_analyzer_kotlin.room.OfflineCustomWebViewRequestsRepository
-import com.example.captive_portal_analyzer_kotlin.room.OfflineWebpageContentRepository
+import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
+import com.example.captive_portal_analyzer_kotlin.room.screenshots.OfflineScreenshotRepository
+import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
-import com.example.captive_portal_analyzer_kotlin.utils.Utils.Companion.convertBSSIDToFileName
 import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 
 @Composable
 fun AnalysisScreen(
     offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
+    offlineWebpageContentRepository: OfflineWebpageContentRepository,
+    screenshotRepository: OfflineScreenshotRepository,
     navigateToReport: () -> Unit,
     navigateBack: () -> Unit,
     navigateToAbout: () -> Unit,
-    offlineWebpageContentRepository: OfflineWebpageContentRepository,
     sessionManager: NetworkSessionManager,
-    showToast: (Boolean, String?) -> Unit
+    showToast: (Boolean, String?) -> Unit,
+    sharedViewModel: SharedViewModel,
 ) {
-    val viewModel: AnalysisViewModel = viewModel(
+    val analysisViewModel: AnalysisViewModel = viewModel(
         factory = AnalysisViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
             offlineCustomWebViewRequestsRepository = offlineCustomWebViewRequestsRepository,
             offlineWebpageContentRepository = offlineWebpageContentRepository,
+            screenshotRepository = screenshotRepository,
             sessionManager = sessionManager
         )
     )
 
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by analysisViewModel.uiState.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    val portalUrl by viewModel.portalUrl.collectAsState()
-    val shouldShowNormalWebView by viewModel.shouldShowNormalWebView.collectAsState()
-    val toast by viewModel.toast.collectAsState()
+    val portalUrl by analysisViewModel.portalUrl.collectAsState()
+    val shouldShowNormalWebView by analysisViewModel.shouldShowNormalWebView.collectAsState()
+    val toast by analysisViewModel.toast.collectAsState()
+    val actionAlertDialogData by analysisViewModel.actionAlertDialogData.collectAsState()
 
     LaunchedEffect(toast) {
         if (toast != null) {
             showToast(toast!!.first, toast!!.second)
         }
     }
+
+        if (actionAlertDialogData != null ) {
+            sharedViewModel.showDialog(
+                actionAlertDialogData!!
+            )
+        }
 
     val webView = remember {
         WebView(context)
@@ -105,7 +109,7 @@ fun AnalysisScreen(
                         iconPath = R.drawable.stop,
                         itemName = stringResource(id = R.string.stop_analysis),
                         onClick = {
-                            navigateToReport()
+                            analysisViewModel.stopAnalysis(onConfirm =navigateToReport , onDismiss = sharedViewModel::hideDialog)
                         }
                     ),
                     MenuItem(
@@ -116,7 +120,7 @@ fun AnalysisScreen(
                             stringResource(id = R.string.change_detection_method)
                         },
                         onClick = {
-                            viewModel.showNormalWebView(true)
+                            analysisViewModel.showNormalWebView(true)
                         }
                     ),
                     MenuItem(
@@ -131,7 +135,9 @@ fun AnalysisScreen(
             )
         }
     ) { contentPadding ->
+
         when (uiState) {
+
             is AnalysisUiState.Loading -> {
                 CustomProgressIndicator(
                     message = stringResource((uiState as AnalysisUiState.Loading).messageStringResource),
@@ -146,23 +152,23 @@ fun AnalysisScreen(
                         webView = webView,
                         saveWebRequest = { request ->
                             coroutineScope.launch {
-                                viewModel.saveWebResourceRequest(
+                                analysisViewModel.saveWebResourceRequest(
                                     request
                                 )
                             }
                         },
-                        bssid = viewModel.getCurrentNetworkUniqueIdentifier(),
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(contentPadding),
                         captureAndSaveContent = { webView, content ->
                             coroutineScope.launch {
-                                viewModel.saveWebpageContent(
+                                analysisViewModel.saveWebpageContent(
                                     webView,
-                                    content
+                                    content,
                                 )
                             }
-                        }
+                        },
+                        takeScreenshot = analysisViewModel::takeScreenshot
                     )
 
                 } else {
@@ -171,18 +177,18 @@ fun AnalysisScreen(
                         webView = webView,
                         saveWebRequest = { request ->
                             coroutineScope.launch {
-                                viewModel.saveWebViewRequest(
+                                analysisViewModel.saveWebViewRequest(
                                     request
                                 )
                             }
                         },
-                        bssid = viewModel.getCurrentNetworkUniqueIdentifier(),
+                        takeScreenshot = analysisViewModel::takeScreenshot,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(contentPadding),
                         captureAndSaveContent = { webView, content ->
                             coroutineScope.launch {
-                                viewModel.saveWebpageContent(
+                                analysisViewModel.saveWebpageContent(
                                     webView,
                                     content
                                 )
@@ -211,7 +217,7 @@ fun AnalysisScreen(
 
                         Button(
                             onClick = {
-                                viewModel.getCaptivePortalAddress()
+                                analysisViewModel.getCaptivePortalAddress()
                             }
                         ) {
                             Text(stringResource(id = R.string.retry_captive_detection))
@@ -219,6 +225,8 @@ fun AnalysisScreen(
                     }
                 }
             }
+
+            AnalysisUiState.AnalysisComplete -> navigateToReport()
         }
     }
 }
@@ -228,9 +236,9 @@ fun AnalysisScreen(
 private fun NormalWebView(
     portalUrl: String?,
     webView: WebView,
-    bssid: String,
     saveWebRequest: (WebResourceRequest?) -> Unit,
     captureAndSaveContent: (WebView, String) -> Unit,
+    takeScreenshot: (WebView, String) -> Unit,
     modifier: Modifier
 ) {
 
@@ -253,7 +261,6 @@ private fun NormalWebView(
                             takeScreenshot(
                                 view,
                                 url,
-                                bssid
                             ) // Capture screenshot when a new page finishes loading
                             captureAndSaveContent(
                                 view,
@@ -292,7 +299,7 @@ private fun CustomWebView(
     webView: WebView,
     saveWebRequest: (WebViewRequest) -> Unit,
     captureAndSaveContent: (WebView, String) -> Unit,
-    bssid: String,
+    takeScreenshot: (WebView, String) -> Unit,
     modifier: Modifier
 ) {
 
@@ -304,9 +311,9 @@ private fun CustomWebView(
             portalUrl = portalUrl,
             webView = webView,
             saveWebRequest = saveWebRequest,
-            bssid = bssid,
             modifier = Modifier.fillMaxSize(),
-            captureAndSaveContent = captureAndSaveContent
+            captureAndSaveContent = captureAndSaveContent,
+            takeScreenshot = takeScreenshot,
         )
 
         HintInfoBox(
@@ -328,7 +335,7 @@ private fun HintInfoBox(context: Context, modifier: Modifier) {
     }
 
     if (showInfoBox1) {
-        AlertDialogInfo(
+        NeverSeeAgainAlertDialog(
             title = stringResource(R.string.hint),
             message = stringResource(R.string.login_to_captive_then_click_end_analysis),
             preferenceKey = "info_box_1",
@@ -345,7 +352,7 @@ private fun WebViewWithCustomClient(
     webView: WebView,
     saveWebRequest: (WebViewRequest) -> Unit,
     captureAndSaveContent: (WebView, String) -> Unit,
-    bssid: String,
+    takeScreenshot: (WebView, String) -> Unit,
     modifier: Modifier
 ) {
 
@@ -361,7 +368,6 @@ private fun WebViewWithCustomClient(
                             takeScreenshot(
                                 view,
                                 url,
-                                bssid
                             ) // Capture screenshot when a new page finishes loading
                             captureAndSaveContent(
                                 view,
@@ -407,50 +413,3 @@ private fun WebViewWithCustomClient(
     }
 }
 
-private fun takeScreenshot(webView: WebView, url: String, bssid: String) {
-    val formatted_bssid = convertBSSIDToFileName(bssid)
-    val bitmap: Bitmap? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        // For Android 8.0 (API 26) or later
-        webView.capturePicture()?.let { picture ->
-            // Check for valid dimensions before creating the bitmap
-            if (picture.width > 0 && picture.height > 0) {
-                Bitmap.createBitmap(picture.width, picture.height, Bitmap.Config.ARGB_8888)
-                    .apply { picture.draw(Canvas(this)) }
-            } else {
-                null
-            }
-        }
-    } else {
-        // Fallback for older versions
-        webView.isDrawingCacheEnabled = true
-        val drawingCache = webView.drawingCache
-        if (drawingCache != null && drawingCache.width > 0 && drawingCache.height > 0) {
-            Bitmap.createBitmap(drawingCache)
-        } else {
-            null
-        }
-    }
-
-    bitmap?.let {
-        // Define the path where the image will be saved
-        val directory =
-            File(webView.context.getExternalFilesDir(null), "$formatted_bssid/screenshots")
-        if (!directory.exists()) {
-            directory.mkdirs() // Create the directory if it doesn't exist
-        }
-
-        // Define the file name for the image
-        val fileName = "${System.currentTimeMillis()}.png"
-        val file = File(directory, fileName)
-
-        try {
-            // Save the bitmap to the file
-            FileOutputStream(file).use { out ->
-                it.compress(Bitmap.CompressFormat.PNG, 100, out) // Compress the bitmap as PNG
-                Log.i("WebViewScreenshot", "Screenshot saved to: ${file.absolutePath}")
-            }
-        } catch (e: IOException) {
-            Log.e("WebViewScreenshot", "Error saving screenshot: ${e.message}")
-        }
-    } ?: Log.e("WebViewScreenshot", "Invalid screenshot bitmap dimensions")
-}

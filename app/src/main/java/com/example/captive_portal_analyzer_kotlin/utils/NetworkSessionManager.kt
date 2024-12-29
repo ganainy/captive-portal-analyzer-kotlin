@@ -6,116 +6,99 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.wifi.WifiManager
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import com.example.captive_portal_analyzer_kotlin.room.network_session.NetworkSessionEntity
+import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNetworkSessionRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.UUID
-
-// DataStore instance
-val Context.sessionDataStore by preferencesDataStore(name = "network_sessions")
-
-class NetworkSessionManager(private val context: Context) {
+class NetworkSessionManager(private val context: Context, private val repository: OfflineNetworkSessionRepository) {
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val wifiManager =
         context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    data class NetworkSessionInfo(
-        val sessionId: String,
-        val ssid: String?,
-        val bssid: String?,
-        val timestamp: Long
-    )
+    // Add mutex to prevent concurrent session creation
+    private val sessionMutex = Mutex()
 
-    companion object {
-        private val SESSION_ID_KEY = stringPreferencesKey("current_session_id")
-        private val NETWORK_SSID_KEY = stringPreferencesKey("current_network_ssid")
-        private val NETWORK_BSSID_KEY = stringPreferencesKey("current_network_bssid")
-        private val SESSION_TIMESTAMP_KEY = stringPreferencesKey("session_timestamp")
-        private val SESSION_CAPTIVE_URL_KEY = stringPreferencesKey("captive_url")
-        private val IS_CAPTIVE_LOCAL_KEY = booleanPreferencesKey("is_captive_local")
-    }
+    // Keep track of current session to avoid unnecessary database queries
+    private var currentSession: NetworkSessionEntity? = null
 
-    // Generate a unique session ID
     private fun generateSessionId(): String {
         return UUID.randomUUID().toString()
     }
 
-    // Get current network information
-    private fun getCurrentNetworkInfo(): NetworkSessionInfo? {
-        val networkCapabilities = connectivityManager.getNetworkCapabilities(
-            connectivityManager.activeNetwork
-        )
-
-        // Check if we're on WiFi
-        if (networkCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
-            val wifiInfo = wifiManager.connectionInfo
-            return NetworkSessionInfo(
-                sessionId = generateSessionId(),
-                ssid = wifiInfo.ssid.removeSurrounding("\""),
-                bssid = wifiInfo.bssid,
-                timestamp = System.currentTimeMillis()
-            )
-        }
-        return null
+    suspend fun getCurrentSessionId(): String? {
+        return getCurrentSession()?.sessionId
     }
 
-    // Save session information to DataStore
-    suspend fun saveSessionInfo(sessionInfo: NetworkSessionInfo) {
-        context.sessionDataStore.edit { preferences ->
-            preferences[SESSION_ID_KEY] = sessionInfo.sessionId
-            preferences[NETWORK_SSID_KEY] = sessionInfo.ssid ?: ""
-            preferences[NETWORK_BSSID_KEY] = sessionInfo.bssid ?: ""
-            preferences[SESSION_TIMESTAMP_KEY] = sessionInfo.timestamp.toString()
-        }
-    }
+    private suspend fun getCurrentSession(): NetworkSessionEntity? {
+        // Use mutex to ensure thread-safety when checking/creating sessions
+        return sessionMutex.withLock {
+            val networkCapabilities = connectivityManager.getNetworkCapabilities(
+                connectivityManager.activeNetwork
+            ) ?: return null
 
-    //save portal url to DataStore
-    suspend fun savePortalUrl(portalUrl:String) {
-        context.sessionDataStore.edit { preferences ->
-            preferences[SESSION_CAPTIVE_URL_KEY] = portalUrl
-        }
-    }
+            if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                val wifiInfo = wifiManager.connectionInfo
+                val bssid = wifiInfo.bssid
 
-    //save if portal is local or remote  to DataStore
-    suspend fun saveIsCaptiveLocal( value: Boolean) {
-        context.sessionDataStore.edit { preferences ->
-            preferences[IS_CAPTIVE_LOCAL_KEY] = value
-        }
-    }
+                // First check our cached session
+                if (currentSession?.bssid == bssid) {
+                    return currentSession
+                }
 
-    // Get current session information from DataStore
-    fun getSessionInfo(): Flow<NetworkSessionInfo?> {
-        return context.sessionDataStore.data.map { preferences ->
-            val sessionId = preferences[SESSION_ID_KEY]
-            val ssid = preferences[NETWORK_SSID_KEY]
-            val bssid = preferences[NETWORK_BSSID_KEY]
-            val timestamp = preferences[SESSION_TIMESTAMP_KEY]?.toLongOrNull()
+                // Then check the database
+                val existingSession = repository.getSessionByBssid(bssid)
+                if (existingSession != null) {
+                    currentSession = existingSession
+                    return existingSession
+                }
 
-            if (sessionId != null && ssid != null && bssid != null && timestamp != null) {
-                NetworkSessionInfo(sessionId, ssid, bssid, timestamp)
-            } else {
-                null
+                // Only create new session if none exists
+                val dhcpInfo = wifiManager.dhcpInfo
+                val newSession = NetworkSessionEntity(
+                    sessionId = generateSessionId(),
+                    ssid = wifiInfo.ssid.removeSurrounding("\""),
+                    bssid = bssid,
+                    timestamp = System.currentTimeMillis(),
+                    ipAddress = dhcpInfo.ipAddress.toString(),
+                    gatewayAddress = dhcpInfo.gateway.toString(),
+                )
+
+                // Save new session to database
+                repository.insertSession(newSession)
+                currentSession = newSession
+                return newSession
             }
+            null
         }
     }
 
-    // Network callback to monitor network changes
+    suspend fun savePortalUrl(sessionId: String, portalUrl: String) {
+        repository.updatePortalUrl(sessionId, portalUrl)
+    }
+
+    suspend fun saveIsCaptiveLocal(sessionId: String, value: Boolean) {
+        repository.updateIsCaptiveLocal(sessionId, value)
+    }
+
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             super.onAvailable(network)
-            updateSessionIfNeeded()
+            handleNetworkChange()
         }
 
         override fun onLost(network: Network) {
             super.onLost(network)
-            updateSessionIfNeeded()
+            handleNetworkChange()
+            // Clear current session when network is lost
+            currentSession = null
         }
 
         override fun onCapabilitiesChanged(
@@ -123,50 +106,36 @@ class NetworkSessionManager(private val context: Context) {
             networkCapabilities: NetworkCapabilities
         ) {
             super.onCapabilitiesChanged(network, networkCapabilities)
-            updateSessionIfNeeded()
+            handleNetworkChange()
         }
     }
 
-    // Update session if network has changed
-    private fun updateSessionIfNeeded() {
-        val currentNetworkInfo = getCurrentNetworkInfo()
-
-        kotlinx.coroutines.GlobalScope.launch {
-            val existingSession = getSessionInfo().map { it }.collect { existingSession ->
-                if (shouldUpdateSession(existingSession, currentNetworkInfo)) {
-                    currentNetworkInfo?.let { saveSessionInfo(it) }
-                }
-            }
+    // Consolidated network change handling
+    private fun handleNetworkChange() {
+        scope.launch {
+            getCurrentSession()
         }
     }
 
-    private fun shouldUpdateSession(
-        existingSession: NetworkSessionInfo?,
-        currentNetwork: NetworkSessionInfo?
-    ): Boolean {
-        if (existingSession == null || currentNetwork == null) return true
-
-        // Compare network identifiers
-        return existingSession.ssid != currentNetwork.ssid ||
-                existingSession.bssid != currentNetwork.bssid
-    }
-
-    // Register network callback
     fun startMonitoring() {
         val networkRequest = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
             .build()
 
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
-        updateSessionIfNeeded() // Initial check
+        scope.launch {
+            getCurrentSession()
+        }
     }
 
-    // Unregister network callback
+    // Add cleanup method
     fun stopMonitoring() {
         try {
             connectivityManager.unregisterNetworkCallback(networkCallback)
         } catch (e: IllegalArgumentException) {
-            // Callback was not registered
+            // Callback was not registered or already unregistered
         }
+        scope.cancel()
+        currentSession = null
     }
 }

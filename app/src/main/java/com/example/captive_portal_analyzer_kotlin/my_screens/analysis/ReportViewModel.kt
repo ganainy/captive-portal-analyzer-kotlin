@@ -4,8 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.captive_portal_analyzer_kotlin.room.OfflineCustomWebViewRequestsRepository
-import com.example.captive_portal_analyzer_kotlin.room.OfflineWebpageContentRepository
+import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
+import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
