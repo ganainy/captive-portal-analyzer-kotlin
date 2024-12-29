@@ -21,10 +21,10 @@
     <string name="cellular_is_off">Device Cellular data is turned off</string>
     <string name="wifi_network_is_connected">Connected to a WiFi network</string>
     <string name="hint1">Once all the three steps are completed, please click the continue button.</string>
-    <string name="no_captive_portal_detected">Couldn\'t detect captive portal Url</string>
+    <string name="no_captive_portal_detected">Couldn\'t detect captive portal url, are you sure the current network has a captive portal?</string>
     <string name="detecting_captive_portal_page">Trying to detect captive portal login page</string>
     <string name="hint">Hint</string>
-    <string name="login_to_captive_then_click_end_analysis">Please complete the login steps to the captive portal then click end analysis.</string>
+    <string name="login_to_captive_then_click_end_analysis">Please complete the login steps to the captive portal. If you found privacy policy link, please view it. Then click end analysis from top menu.</string>
     <string name="back_button_description">go back</string>
     <string name="forward_button_description">go forward</string>
     <string name="refresh_button_description">refresh</string>
@@ -54,5 +54,14 @@
     <string name="dismiss">Dismiss</string>
     <string name="welcome_to_app">Welcome to captive portal analyzer</string>
     <string name="grant_permissions">Grant permissions</string>
+    <string name="never_show_again">Never show again</string>
+    <string name="about_screen_title">About application</string>
+    <string name="change_detection_method">Change detection method</string>
+    <string name="retry_captive_detection">Retry detecting captive url</string>
+    <string name="operation_successful">Operation Successful</string>
+    <string name="operation_failed">Operation Failed</string>
+    <string name="detected_captive_portal_url">Detected captive portal url!</string>
+    <string name="switched_detection_method">Switched detection method</string>
+    <string name="return_original_detection_method">Return to original detection method</string>
 
 </resources>

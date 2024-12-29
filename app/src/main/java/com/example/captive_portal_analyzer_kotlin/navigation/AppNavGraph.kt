@@ -1,8 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.navigation
 
 import HomeScreen
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
@@ -15,6 +13,7 @@ import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.ReportScre
 import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
 import com.example.captive_portal_analyzer_kotlin.room.OfflineCustomWebViewRequestsRepository
 import com.example.captive_portal_analyzer_kotlin.room.OfflineWebpageContentRepository
+import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 
 sealed class Screen(val route: String) {
     object ManualConnect : Screen("manual_connect")
@@ -24,9 +23,12 @@ sealed class Screen(val route: String) {
     object About : Screen("about")
 }
 
-@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
-fun AppNavGraph(navController: NavHostController) {
+fun AppNavGraph(
+    navController: NavHostController,
+    sessionManager: NetworkSessionManager,
+    showToast: (Boolean, String?) -> Unit
+) {
     val actions = remember(navController) { NavigationActions(navController) }
 
      val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository by lazy {
@@ -41,14 +43,16 @@ fun AppNavGraph(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Screen.Landing.route) {
         composable(route = Screen.ManualConnect.route) {
             HomeScreen(
-                actions.navigateToAnalysisScreen,
-                actions.navigateToLandingScreen
+                navigateToAnalysis =actions.navigateToAnalysisScreen,
+                navigateToLanding =actions.navigateToLandingScreen,
+                navigateToAbout = actions.navigateToAbout,
             )
         }
         composable(route = Screen.Landing.route) {
             LandingScreen(
                 navigateToManualConnect = actions.navigateToManualConnectScreen,
                 navigateToAnalysis = actions.navigateToAnalysisScreen,
+                navigateToAbout = actions.navigateToAbout,
             )
         }
         composable(route = Screen.Analysis.route) {
@@ -58,6 +62,8 @@ fun AppNavGraph(navController: NavHostController) {
                 navigateToReport = actions.navigateToReportScreen,
                 navigateBack = actions.navigateBack,
                 navigateToAbout = actions.navigateToAbout,
+                sessionManager = sessionManager,
+                showToast = showToast,
             )
         }
         composable(

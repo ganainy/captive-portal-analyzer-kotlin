@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -48,7 +49,6 @@ import com.example.captive_portal_analyzer_kotlin.components.CustomSnackBar
 import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkItem
 
-@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun AboutScreen(
     navigateBack: () -> Unit,
@@ -57,7 +57,7 @@ fun AboutScreen(
     Scaffold(
         topBar = {
             ToolbarWithMenu(
-                 title = stringResource(id = R.string.landing_screen_title),
+                 title = stringResource(id = R.string.about_screen_title),
             )
         },
     ) { paddingValues ->
@@ -69,17 +69,15 @@ fun AboutScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
             Text(
                 text = stringResource(id = R.string.about_app_text),
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .wrapContentSize(Alignment.Center)
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = stringResource(id = R.string.copyright_text),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
+
         }
 
     }

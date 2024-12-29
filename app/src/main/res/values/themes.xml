@@ -2,7 +2,8 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.Captiveportalanalyzerkotlin" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <!-- Set the fontFamily to your custom font -->
+        <item name="android:fontFamily">@font/mon_regular</item>
     </style>
 
     <style name="Theme.Captiveportalanalyzerkotlin" parent="Base.Theme.Captiveportalanalyzerkotlin" />

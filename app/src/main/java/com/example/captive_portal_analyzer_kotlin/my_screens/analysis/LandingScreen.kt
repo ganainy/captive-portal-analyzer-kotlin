@@ -50,13 +50,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
 import com.example.captive_portal_analyzer_kotlin.components.CustomSnackBar
+import com.example.captive_portal_analyzer_kotlin.components.MenuItem
 import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkItem
-@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun LandingScreen(
     navigateToAnalysis: () -> Unit,
-    navigateToManualConnect: () -> Unit
+    navigateToManualConnect: () -> Unit,
+    navigateToAbout: () -> Unit,
 ) {
     val viewModel: LandingViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
@@ -111,6 +112,16 @@ fun LandingScreen(
         topBar = {
             ToolbarWithMenu(
                 title = stringResource(id = R.string.landing_screen_title),
+            menuItems = listOf(
+                MenuItem(
+                    iconPath = R.drawable.about,
+                    itemName = stringResource(id = R.string.about),
+                    onClick = {
+                        navigateToAbout()
+                    }
+                ),
+
+                )
             )
         },
     ) { paddingValues ->

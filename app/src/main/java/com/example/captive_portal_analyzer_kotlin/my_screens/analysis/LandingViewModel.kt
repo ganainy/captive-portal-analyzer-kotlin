@@ -8,6 +8,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.wifi.ScanResult
+import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -88,39 +89,72 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
-    fun connectToNetwork(ssid: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val networkSpecifier = android.net.wifi.WifiNetworkSpecifier.Builder()
-                .setSsid(ssid)
-                .build()
-
-            val networkRequest = NetworkRequest.Builder()
-                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                .setNetworkSpecifier(networkSpecifier)
-                .build()
-
-            connectivityManager.requestNetwork(
-                networkRequest,
-                object : ConnectivityManager.NetworkCallback() {
-                    override fun onAvailable(network: Network) {
-                        super.onAvailable(network)
-                        connectivityManager.bindProcessToNetwork(network) // Bind to the Wi-Fi network
-
-                        // Notify UI of successful connection
-                        viewModelScope.launch(Dispatchers.Main) {
-                            _uiState.value = LandingUiState.ConnectionSuccess
+    fun connectToNetwork(ssid: String, password: String? = null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // For API 29 and above
+            viewModelScope.launch(Dispatchers.IO) {
+                val networkSpecifier = android.net.wifi.WifiNetworkSpecifier.Builder()
+                    .setSsid(ssid)
+                    .apply {
+                        password?.let {
+                            setWpa2Passphrase(it)
                         }
                     }
+                    .build()
 
-                    override fun onUnavailable() {
-                        super.onUnavailable()
-                        _uiState.value = LandingUiState.Error(R.string.error_connecting_to_wifi)
-                        // Handle connection failure
+                val networkRequest = NetworkRequest.Builder()
+                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                    .setNetworkSpecifier(networkSpecifier)
+                    .build()
+
+                connectivityManager.requestNetwork(
+                    networkRequest,
+                    object : ConnectivityManager.NetworkCallback() {
+                        override fun onAvailable(network: Network) {
+                            super.onAvailable(network)
+                            connectivityManager.bindProcessToNetwork(network)
+
+                            // Notify UI of successful connection
+                            viewModelScope.launch(Dispatchers.Main) {
+                                _uiState.value = LandingUiState.ConnectionSuccess
+                            }
+                        }
+
+                        override fun onUnavailable() {
+                            super.onUnavailable()
+                            // Notify UI of failure
+                            viewModelScope.launch(Dispatchers.Main) {
+                                _uiState.value = LandingUiState.Error(R.string.error_connecting_to_wifi)
+                            }
+                        }
                     }
-                })
+                )
+            }
+        } else {
+            // For API levels below 29
+            val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val wifiConfig = WifiConfiguration().apply {
+                SSID = "\"$ssid\"" // Quote the SSID
+                password?.let {
+                    preSharedKey = "\"$it\"" // Quote the password
+                }
+            }
+
+            val networkId = wifiManager.addNetwork(wifiConfig)
+            if (networkId != -1) {
+                wifiManager.disconnect()
+                wifiManager.enableNetwork(networkId, true)
+                wifiManager.reconnect()
+
+                // Notify UI of successful connection
+                _uiState.value = LandingUiState.ConnectionSuccess
+            } else {
+                // Notify UI of failure
+                _uiState.value = LandingUiState.Error(R.string.error_connecting_to_wifi)
+            }
         }
     }
+
 
 
     @SuppressLint("MissingPermission")

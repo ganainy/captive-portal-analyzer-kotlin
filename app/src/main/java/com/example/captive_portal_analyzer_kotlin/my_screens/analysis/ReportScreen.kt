@@ -38,11 +38,6 @@ import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndic
 import com.example.captive_portal_analyzer_kotlin.components.CustomSnackBar
 import com.example.captive_portal_analyzer_kotlin.components.MenuItem
 import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
-import com.example.captive_portal_analyzer_kotlin.dataclasses.BypassVulnerability
-import com.example.captive_portal_analyzer_kotlin.dataclasses.CaptivePortalReport
-import com.example.captive_portal_analyzer_kotlin.dataclasses.DefaultCredentialResult
-import com.example.captive_portal_analyzer_kotlin.dataclasses.TLSAnalysis
-import com.example.captive_portal_analyzer_kotlin.mock_data.generateMockReport
 import com.example.captive_portal_analyzer_kotlin.room.OfflineCustomWebViewRequestsRepository
 import com.example.captive_portal_analyzer_kotlin.room.OfflineWebpageContentRepository
 import java.text.SimpleDateFormat
@@ -63,7 +58,6 @@ fun ReportScreen(
     )
     val uiState by viewModel.uiState.collectAsState()
 
-    val report = generateMockReport()
 
     Scaffold(
         topBar = {
@@ -86,23 +80,6 @@ fun ReportScreen(
         LazyColumn(modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)) {
-            // Display each field dynamically
-            item { FieldDisplay("Portal URL", report.portalUrl) }
-            item {
-            Column(modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)) {
-                KeyValueDisplay("SSID", report.networkInformation?.ssid)
-                KeyValueDisplay("BSSID", report.networkInformation?.bssid)
-                KeyValueDisplay("IP Address", report.networkInformation?.ipAddress)
-                KeyValueDisplay("Gateway Address", report.networkInformation?.gatewayAddress)
-                KeyValueDisplay("Link Speed", "${report.networkInformation?.linkSpeed} Mbps")
-                KeyValueDisplay("RSSI", "${report.networkInformation?.rssi} dBm")
-                KeyValueDisplay("MAC Address", report.networkInformation?.macAddress)
-            }
-            }
-
-            item { FieldDisplay("Uses HTTPS", report.usesHttps.toString()) }
 
         }
     }

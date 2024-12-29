@@ -71,9 +71,6 @@ dependencies {
     //pull to refresh
     implementation ("androidx.compose.foundation:foundation:1.6.0")
 
-    //detect network state
-    implementation ("com.github.fabricethilaw:sonarnet:1.0.0")
-
     //keep state of some variables across restarts
     implementation ("androidx.datastore:datastore-preferences:1.0.0")
 
@@ -81,6 +78,9 @@ dependencies {
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
+
+    //Toast
+    implementation ("com.github.Spikeysanju:MotionToast:1.4")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

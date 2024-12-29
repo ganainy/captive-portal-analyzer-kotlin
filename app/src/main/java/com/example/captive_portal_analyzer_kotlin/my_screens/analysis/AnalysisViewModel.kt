@@ -3,7 +3,6 @@ package com.example.captive_portal_analyzer_kotlin.my_screens.analysis
 import android.app.Application
 import android.content.Context
 import android.net.wifi.WifiManager
-import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import androidx.lifecycle.AndroidViewModel
@@ -16,12 +15,16 @@ import com.example.captive_portal_analyzer_kotlin.room.OfflineCustomWebViewReque
 import com.example.captive_portal_analyzer_kotlin.room.OfflineWebpageContentRepository
 import com.example.captive_portal_analyzer_kotlin.room.WebpageContent
 import com.example.captive_portal_analyzer_kotlin.room.toCustomWebViewRequest
+import com.example.captive_portal_analyzer_kotlin.utils.LocalOrRemoteCaptiveChecker
+import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import detectCaptivePortal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
 
 
 sealed class AnalysisUiState {
@@ -32,8 +35,9 @@ sealed class AnalysisUiState {
 
 class AnalysisViewModel(
     application: Application,
-    val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
-    val offlineWebpageContentRepository: OfflineWebpageContentRepository
+    private val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
+    private val offlineWebpageContentRepository: OfflineWebpageContentRepository,
+    private val sessionManager: NetworkSessionManager
 )
     : AndroidViewModel(application) {
     private val context: Context get() = getApplication<Application>().applicationContext
@@ -41,17 +45,16 @@ class AnalysisViewModel(
     private val _uiState = MutableStateFlow<AnalysisUiState>(AnalysisUiState.Loading(R.string.detecting_captive_portal_page))
     val uiState: StateFlow<AnalysisUiState> = _uiState.asStateFlow()
 
-    private val _portalUrl = MutableStateFlow("") // Default URL, changed to MutableStateFlow for consistency
-    val portalUrl: StateFlow<String> get() = _portalUrl.asStateFlow() // Changed to StateFlow for consistency
-
-    private var logcatProcess: Process? = null
-    private var isReading = true
+    private val _portalUrl = MutableStateFlow<String?>(null)
+    val portalUrl: StateFlow<String?> get() = _portalUrl.asStateFlow()
 
     private val _shouldShowNormalWebView = MutableStateFlow<Boolean>(false)
     val shouldShowNormalWebView = _shouldShowNormalWebView.asStateFlow()
 
 
 
+    private val _toast = MutableStateFlow<Pair<Boolean, String>?>(null)
+    val toast = _toast.asStateFlow()
 
     init {
 
@@ -59,37 +62,48 @@ class AnalysisViewModel(
 
        /* //testing
          _uiState.value = AnalysisUiState.CaptiveUrlDetected("http://captive.ganainy.online")
-        updateUrl("http://captive.ganainy.online")
-         viewModelScope.launch { showDbContent() }*/
+        updateUrl("http://captive.ganainy.online")*/
     }
 
 
 
 
-    private suspend fun showDbContent() {
-        offlineCustomWebViewRequestsRepository.getAllItemsStream().
-        collect { requests ->
-            Log.i("DatabaseContent", requests.toString())
-        }
-
-
-    }
-
-    private fun getCaptivePortalAddress() {
+    fun getCaptivePortalAddress() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val portalUrl = detectCaptivePortal(context)
                 if (portalUrl != null) {
                     _uiState.value = AnalysisUiState.CaptiveUrlDetected(portalUrl)
                     updateUrl(portalUrl)
+                    sessionManager.savePortalUrl(portalUrl)
+                    detectLocalOrRemoteCaptivePortal(context)
+                    _toast.value = Pair(true, context.getString(R.string.detected_captive_portal_url))
+
+
                 } else {
                     _uiState.value = AnalysisUiState.Error(R.string.no_captive_portal_detected)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+                withContext(Dispatchers.Main) {
                 _uiState.value = AnalysisUiState.Error(R.string.no_captive_portal_detected)
             }
+            }
         }
+    }
+
+    private fun detectLocalOrRemoteCaptivePortal(context: Context) {
+        val analyzer = LocalOrRemoteCaptiveChecker(context)
+
+        viewModelScope.launch {
+            try {
+                val result = analyzer.analyzePortal()
+                sessionManager.saveIsCaptiveLocal(result.isLocal)
+            } catch (e: IOException) {
+                println("Failed to analyze portal: ${e.message}")
+            }
+        }
+
     }
 
     // Update the URL, which will be passed to the UI to show in the WebView
@@ -123,7 +137,8 @@ class AnalysisViewModel(
 
     fun showNormalWebView(shouldShowNormalWebView: Boolean) {
         _shouldShowNormalWebView.value=shouldShowNormalWebView
-    }
+        _toast.value = Pair(true , context.getString(R.string.switched_detection_method))
+        }
 
     fun saveWebpageContent(webView: WebView,url: String) {
         // Capture HTML content
@@ -180,12 +195,13 @@ private fun String.unescapeJsonString(): String {
 class AnalysisViewModelFactory(
     private val application: Application,
     private val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
-    private val offlineWebpageContentRepository: OfflineWebpageContentRepository
+    private val offlineWebpageContentRepository: OfflineWebpageContentRepository,
+    private val sessionManager: NetworkSessionManager,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AnalysisViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return AnalysisViewModel(application,offlineCustomWebViewRequestsRepository,offlineWebpageContentRepository) as T
+            return AnalysisViewModel(application,offlineCustomWebViewRequestsRepository,offlineWebpageContentRepository,sessionManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
