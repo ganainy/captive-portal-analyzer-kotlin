@@ -19,4 +19,7 @@ interface NetworkSessionDao {
 
     @Query("SELECT * FROM network_sessions WHERE bssid = :bssid ORDER BY timestamp DESC LIMIT 1")
     suspend fun getSessionByBssid(bssid: String?): NetworkSessionEntity?
+
+    @Query("SELECT * FROM network_sessions")
+    abstract fun getAllSessions(): List<NetworkSessionEntity>?
 }

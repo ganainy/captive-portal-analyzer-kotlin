@@ -27,4 +27,8 @@ interface WebpageContentDao {
 
     @Query("DELETE FROM webpage_content WHERE url = :url")
     suspend fun deleteByUrl(url: String)
+
+
+    @Query("SELECT * FROM webpage_content WHERE sessionId = :sessionId")
+    abstract fun getAllContentForSessionId(sessionId: String): Flow<List<WebpageContentEntity>>
 }

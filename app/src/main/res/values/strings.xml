@@ -70,5 +70,10 @@
     <string name="error">Error</string>
     <string name="failed_to_get_bssid">Failed to get network unique modifier</string>
     <string name="unknown_session_id">Unknown session id</string>
+    <string name="no_sessions_detected">We couldn\'t find any saved interactions with captive portals generated from the app, please try again later.</string>
+    <string name="session_screen_title">Session details</string>
+    <string name="my_sessions">My sessions</string>
+    <string name="create_session">Create session</string>
+    <string name="welcome_to_app_2">Welcome! Thank you for helping make the internet safer. Start a session to generate a report on the nearest captive portal for analysis.</string>
 
 </resources>

@@ -6,11 +6,10 @@ import kotlinx.coroutines.flow.Flow
 // Repository interface
 interface WebpageContentRepository {
     fun getAllContentStream(): Flow<List<WebpageContentEntity>>
-    fun getContentForUrlStream(url: String): Flow<WebpageContentEntity?>
-    fun getLatestContentStream(): Flow<List<WebpageContentEntity>>
     suspend fun insertContent(content: WebpageContentEntity)
     suspend fun deleteContent(content: WebpageContentEntity)
     suspend fun deleteContentForUrl(url: String)
+    fun getAllContentForSessionId(sessionId: String): Flow<List<WebpageContentEntity>>
 }
 
 class OfflineWebpageContentRepository(private val webpageContentDao: WebpageContentDao) :
@@ -18,11 +17,8 @@ class OfflineWebpageContentRepository(private val webpageContentDao: WebpageCont
     override fun getAllContentStream(): Flow<List<WebpageContentEntity>> =
         webpageContentDao.getAllContentStream()
 
-    override fun getContentForUrlStream(url: String): Flow<WebpageContentEntity?> =
-        webpageContentDao.getContentForUrlStream(url)
-
-    override fun getLatestContentStream(): Flow<List<WebpageContentEntity>> =
-        webpageContentDao.getLatestContentStream()
+    override fun getAllContentForSessionId(sessionId: String): Flow<List<WebpageContentEntity>> =
+        webpageContentDao.getAllContentForSessionId(sessionId)
 
     override suspend fun insertContent(content: WebpageContentEntity) =
         webpageContentDao.insert(content)

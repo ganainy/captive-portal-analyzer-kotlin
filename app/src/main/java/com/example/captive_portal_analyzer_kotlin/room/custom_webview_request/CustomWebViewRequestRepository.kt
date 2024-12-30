@@ -13,7 +13,7 @@ interface CustomWebViewRequestsRepository {
     /**
      * Retrieve all the items from the the given data source that matches with the [bssid].
      */
-    fun getAllDomainCustomWebViewRequest(bssid:String): Flow<List<CustomWebViewRequestEntity>>
+    fun getSessionCustomWebViewRequest(bssid:String): Flow<List<CustomWebViewRequestEntity>>
 
     /**
      * Retrieve an item from the given data source that matches with the [id].
@@ -41,7 +41,7 @@ class OfflineCustomWebViewRequestsRepository(private val customWebViewRequestDao
     CustomWebViewRequestsRepository {
     override fun getAllItemsStream(): Flow<List<CustomWebViewRequestEntity>> = customWebViewRequestDao.getAllCustomWebViewRequest()
 
-    override fun getAllDomainCustomWebViewRequest(bssid: String): Flow<List<CustomWebViewRequestEntity>> = customWebViewRequestDao.getSessionCustomWebViewRequest(bssid)
+    override fun getSessionCustomWebViewRequest(bssid: String): Flow<List<CustomWebViewRequestEntity>> = customWebViewRequestDao.getSessionCustomWebViewRequest(bssid)
 
     override fun getItemStream(id: Int): Flow<CustomWebViewRequestEntity?> = customWebViewRequestDao.getCustomWebViewRequest(id)
 
