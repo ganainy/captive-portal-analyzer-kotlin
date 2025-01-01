@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.my_screens.analysis
+package com.example.captive_portal_analyzer_kotlin.screens.analysis
 
 import android.app.Application
 import android.content.Context
@@ -44,6 +44,8 @@ import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
 import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
 import com.example.captive_portal_analyzer_kotlin.room.screenshots.OfflineScreenshotRepository
 import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
+import com.example.captive_portal_analyzer_kotlin.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import kotlinx.coroutines.launch
 
@@ -56,7 +58,6 @@ fun AnalysisScreen(
     navigateBack: () -> Unit,
     navigateToAbout: () -> Unit,
     sessionManager: NetworkSessionManager,
-    showToast: (Boolean, String?) -> Unit,
     sharedViewModel: SharedViewModel,
 ) {
     val analysisViewModel: AnalysisViewModel = viewModel(
@@ -75,20 +76,13 @@ fun AnalysisScreen(
 
     val portalUrl by analysisViewModel.portalUrl.collectAsState()
     val shouldShowNormalWebView by analysisViewModel.shouldShowNormalWebView.collectAsState()
-    val toast by analysisViewModel.toast.collectAsState()
-    val actionAlertDialogData by analysisViewModel.actionAlertDialogData.collectAsState()
 
-    LaunchedEffect(toast) {
-        if (toast != null) {
-            showToast(toast!!.first, toast!!.second)
-        }
+    val showToast= { message:String, style:ToastStyle ->
+        sharedViewModel.showToast(
+            message = message, style = style,
+        )
     }
-
-        if (actionAlertDialogData != null ) {
-            sharedViewModel.showDialog(
-                actionAlertDialogData!!
-            )
-        }
+    analysisViewModel.getCaptivePortalAddress(showToast)
 
     val webView = remember {
         WebView(context)
@@ -109,9 +103,19 @@ fun AnalysisScreen(
                         iconPath = R.drawable.stop,
                         itemName = stringResource(id = R.string.stop_analysis),
                         onClick = {
-                            analysisViewModel.stopAnalysis(onConfirm =navigateToReport , onDismiss = sharedViewModel::hideDialog)
+                            analysisViewModel.stopAnalysis(onUncompletedAnalysis= {
+                                sharedViewModel.showDialog(
+                                    title = context.getString(R.string.warning),
+                                    message =context.getString(R.string.it_looks_like_you_still_have_no_full_internet_connection_please_complete_the_login_process_of_the_captive_portal_before_stopping_the_analysis),
+                                    confirmText =  context.getString(R.string.stop_analysis_anyway),
+                                    dismissText = context.getString(R.string.dismiss),
+                                    onConfirm = navigateToReport,
+                                    onDismiss = sharedViewModel::hideDialog
+                                )
+                            },)
                         }
                     ),
+
                     MenuItem(
                         iconPath = R.drawable.web,
                         itemName = if (shouldShowNormalWebView) {
@@ -120,7 +124,7 @@ fun AnalysisScreen(
                             stringResource(id = R.string.change_detection_method)
                         },
                         onClick = {
-                            analysisViewModel.showNormalWebView(true)
+                            analysisViewModel.showNormalWebView(true,showToast)
                         }
                     ),
                     MenuItem(
@@ -165,6 +169,7 @@ fun AnalysisScreen(
                                 analysisViewModel.saveWebpageContent(
                                     webView,
                                     content,
+                                    showToast
                                 )
                             }
                         },
@@ -190,7 +195,8 @@ fun AnalysisScreen(
                             coroutineScope.launch {
                                 analysisViewModel.saveWebpageContent(
                                     webView,
-                                    content
+                                    content,
+                                    showToast
                                 )
                             }
                         }
@@ -217,7 +223,7 @@ fun AnalysisScreen(
 
                         Button(
                             onClick = {
-                                analysisViewModel.getCaptivePortalAddress()
+                                analysisViewModel.getCaptivePortalAddress(showToast)
                             }
                         ) {
                             Text(stringResource(id = R.string.retry_captive_detection))

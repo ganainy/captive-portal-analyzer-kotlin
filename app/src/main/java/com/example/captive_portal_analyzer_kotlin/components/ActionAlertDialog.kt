@@ -8,36 +8,43 @@ import androidx.compose.runtime.Composable
 
 @Composable
 fun ActionAlertDialog(
-    dialogData: ActionAlertDialogData,
+    dialogState: DialogState,
+    onDismissRequest: () -> Unit
 ) {
-    if (dialogData.showDialog) {
+    if (dialogState is DialogState.Shown) {
         AlertDialog(
-            onDismissRequest = dialogData.onDismiss,
-            title = { Text(text = dialogData.title) },
-            text = { Text(text = dialogData.message) },
+            onDismissRequest = onDismissRequest,
+            title = { Text(text = dialogState.title) },
+            text = { Text(text = dialogState.message) },
             confirmButton = {
                 TextButton(onClick = {
-                    dialogData.onConfirm()
-                    dialogData.onDismiss()
+                    dialogState.onConfirm()
+                    onDismissRequest()
                 }) {
-                    Text(dialogData.confirmButtonText)
+                    Text(dialogState.confirmText)
                 }
             },
             dismissButton = {
-                TextButton(onClick = dialogData.onDismiss) {
-                    Text(dialogData.dismissButtonText)
+                TextButton(onClick = {
+                    dialogState.onDismiss()
+                    onDismissRequest()
+                }) {
+                    Text(dialogState.dismissText)
                 }
             }
         )
     }
 }
 
-data class ActionAlertDialogData(
-    var showDialog: Boolean,
-    val title: String,
-    val message: String,
-    val confirmButtonText: String,
-    val dismissButtonText: String,
-    val onConfirm: () -> Unit,
-    val onDismiss: () -> Unit,
-)
+sealed class DialogState {
+    object Hidden : DialogState()
+    data class Shown(
+        val title: String,
+        val message: String,
+        val confirmText: String = "OK",
+        val dismissText: String = "Cancel",
+        val onConfirm: () -> Unit,
+        val onDismiss: () -> Unit
+    ) : DialogState()
+}
+

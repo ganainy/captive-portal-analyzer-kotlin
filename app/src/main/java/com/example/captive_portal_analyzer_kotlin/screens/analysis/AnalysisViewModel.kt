@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.my_screens.analysis
+package com.example.captive_portal_analyzer_kotlin.screens.analysis
 
 import android.app.Application
 import android.content.Context
@@ -16,7 +16,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.acsbendi.requestinspectorwebview.WebViewRequest
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialogData
+import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
 import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
 import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageContentEntity
@@ -27,8 +27,10 @@ import com.example.captive_portal_analyzer_kotlin.utils.LocalOrRemoteCaptiveChec
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import detectCaptivePortal
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,7 +54,7 @@ class AnalysisViewModel(
     private val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
     private val offlineWebpageContentRepository: OfflineWebpageContentRepository,
     private val sessionManager: NetworkSessionManager,
-    private val screenshotRepository: OfflineScreenshotRepository
+    private val screenshotRepository: OfflineScreenshotRepository,
 ) : AndroidViewModel(application) {
     private val context: Context get() = getApplication<Application>().applicationContext
 
@@ -66,16 +68,9 @@ class AnalysisViewModel(
     private val _shouldShowNormalWebView = MutableStateFlow<Boolean>(false)
     val shouldShowNormalWebView = _shouldShowNormalWebView.asStateFlow()
 
-
-    private val _toast = MutableStateFlow<Pair<Boolean, String>?>(null)
-    val toast = _toast.asStateFlow()
-
-    private val _actionAlertDialogData = MutableStateFlow<ActionAlertDialogData?>(null)
-    val actionAlertDialogData = _actionAlertDialogData.asStateFlow()
-
     init {
 
-        getCaptivePortalAddress()
+
 
         /* //testing
           _uiState.value = AnalysisUiState.CaptiveUrlDetected("http://captive.ganainy.online")
@@ -83,7 +78,8 @@ class AnalysisViewModel(
     }
 
 
-    fun getCaptivePortalAddress() {
+
+    fun getCaptivePortalAddress( showToast:(message: String,style: ToastStyle) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val portalUrl = detectCaptivePortal(context)
@@ -97,9 +93,12 @@ class AnalysisViewModel(
                             sessionId = sessionId
                         )
                     } else {
-                        _toast.value = Pair(false, context.getString(R.string.unknown_session_id))
+                        showToast(context.getString(R.string.unknown_session_id),ToastStyle.ERROR)
                     }
-                    detectLocalOrRemoteCaptivePortal(context)
+                    detectLocalOrRemoteCaptivePortal(
+                        context,
+                        showToast = showToast
+                    )
 
                 } else {
                     _uiState.value = AnalysisUiState.Error(R.string.no_captive_portal_detected)
@@ -113,7 +112,7 @@ class AnalysisViewModel(
         }
     }
 
-    private fun detectLocalOrRemoteCaptivePortal(context: Context) {
+    private fun detectLocalOrRemoteCaptivePortal(context: Context,showToast:(message: String,style: ToastStyle) -> Unit) {
         val analyzer = LocalOrRemoteCaptiveChecker(context)
 
         viewModelScope.launch {
@@ -127,7 +126,7 @@ class AnalysisViewModel(
                         sessionId = sessionId
                     )
                 } else {
-                    _toast.value = Pair(false, context.getString(R.string.unknown_session_id))
+                    showToast( context.getString(R.string.unknown_session_id),ToastStyle.ERROR)
                 }
             } catch (e: IOException) {
                 println("Failed to analyze portal: ${e.message}")
@@ -164,16 +163,16 @@ class AnalysisViewModel(
     }
 
 
-    fun showNormalWebView(shouldShowNormalWebView: Boolean) {
+    fun showNormalWebView(shouldShowNormalWebView: Boolean,showToast:(message: String,style: ToastStyle) -> Unit) {
         _shouldShowNormalWebView.value = shouldShowNormalWebView
-        _toast.value = Pair(true, context.getString(R.string.switched_detection_method))
+        showToast( context.getString(R.string.switched_detection_method),ToastStyle.SUCCESS)
     }
 
-    fun saveWebpageContent(webView: WebView, url: String) {
+    fun saveWebpageContent(webView: WebView, url: String,showToast:(message: String,style: ToastStyle) -> Unit) {
         viewModelScope.launch {
             val currentSessionId = sessionManager.getCurrentSessionId()
             if (currentSessionId == null) {
-                _toast.value = Pair(false, context.getString(R.string.unknown_session_id))
+                showToast( context.getString(R.string.unknown_session_id),ToastStyle.ERROR)
             } else {
                 // Capture HTML content
                 webView.evaluateJavascript(
@@ -250,20 +249,16 @@ class AnalysisViewModel(
         }
     }
 
-    fun stopAnalysis(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-        viewModelScope.launch {
+    fun stopAnalysis(onUncompletedAnalysis: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
             if (hasFullInternetAccess(context)) {
-                _uiState.value = AnalysisUiState.AnalysisComplete
+                withContext(Dispatchers.Main) {
+                    _uiState.value = AnalysisUiState.AnalysisComplete
+                }
             } else {
-                _actionAlertDialogData.value = ActionAlertDialogData(
-                    title = context.getString(R.string.warning),
-                    message = context.getString(R.string.it_looks_like_you_still_have_no_full_internet_connection_please_complete_the_login_process_of_the_captive_portal_before_stopping_the_analysis),
-                    confirmButtonText = context.getString(R.string.stop_analysis_anyway),
-                    dismissButtonText = context.getString(R.string.dismiss),
-                    onConfirm = onConfirm,
-                    onDismiss = onDismiss,
-                    showDialog = true,
-                )
+                withContext(Dispatchers.Main) {
+                    onUncompletedAnalysis()
+                }
             }
         }
 
@@ -358,7 +353,7 @@ class AnalysisViewModelFactory(
                 offlineCustomWebViewRequestsRepository,
                 offlineWebpageContentRepository,
                 sessionManager,
-                screenshotRepository
+                screenshotRepository,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

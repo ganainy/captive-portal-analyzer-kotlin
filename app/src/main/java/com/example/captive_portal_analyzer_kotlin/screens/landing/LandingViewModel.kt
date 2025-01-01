@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.my_screens.analysis
+package com.example.captive_portal_analyzer_kotlin.screens.landing
 
 import android.annotation.SuppressLint
 import android.app.Application
@@ -11,7 +11,6 @@ import android.net.wifi.ScanResult
 import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
 import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
@@ -124,7 +123,8 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
                             super.onUnavailable()
                             // Notify UI of failure
                             viewModelScope.launch(Dispatchers.Main) {
-                                _uiState.value = LandingUiState.Error(R.string.error_connecting_to_wifi)
+                                _uiState.value =
+                                    LandingUiState.Error(R.string.error_connecting_to_wifi)
                             }
                         }
                     }

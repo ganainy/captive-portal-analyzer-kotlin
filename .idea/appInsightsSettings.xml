@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.captive_portal_analyzer_kotlin" />
+                  <option name="mobileSdkAppId" value="1:293998296917:android:94dd3f51eef93c752db9dc" />
+                  <option name="projectId" value="captive-portal-analyzer" />
+                  <option name="projectNumber" value="293998296917" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

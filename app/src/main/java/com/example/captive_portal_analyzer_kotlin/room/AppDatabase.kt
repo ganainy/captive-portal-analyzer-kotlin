@@ -21,7 +21,7 @@ import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageCo
         WebpageContentEntity::class,
         ScreenshotEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

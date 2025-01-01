@@ -1,23 +1,29 @@
 package com.example.captive_portal_analyzer_kotlin.navigation
 
-import HomeScreen
+import com.example.captive_portal_analyzer_kotlin.screens.manual_connect.HomeScreen
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
-import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.LandingScreen
+import com.example.captive_portal_analyzer_kotlin.screens.landing.LandingScreen
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.AboutScreen
-import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.AnalysisScreen
-import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.MenuScreen
-import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.ReportScreen
-import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.SessionScreen
-import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.screens.about.AboutScreen
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreen
+import com.example.captive_portal_analyzer_kotlin.screens.menu.MenuScreen
+import com.example.captive_portal_analyzer_kotlin.screens.session.SessionScreen
+import com.example.captive_portal_analyzer_kotlin.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialog
+import com.example.captive_portal_analyzer_kotlin.components.AppToast
+import com.example.captive_portal_analyzer_kotlin.components.DialogState
+import com.example.captive_portal_analyzer_kotlin.firebase.OnlineRepository
 import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
 import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
 import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNetworkSessionRepository
 import com.example.captive_portal_analyzer_kotlin.room.screenshots.OfflineScreenshotRepository
 import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
+import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 
 sealed class Screen(val route: String) {
@@ -34,8 +40,8 @@ sealed class Screen(val route: String) {
 fun AppNavGraph(
     navController: NavHostController,
     sessionManager: NetworkSessionManager,
-    showToast: (Boolean, String?) -> Unit,
-    sharedViewModel: SharedViewModel ,
+    sharedViewModel: SharedViewModel,
+    dialogState: DialogState,
 ) {
     val actions = remember(navController) { NavigationActions(navController) }
 
@@ -55,7 +61,21 @@ fun AppNavGraph(
         OfflineNetworkSessionRepository(AppDatabase.getDatabase(navController.context).networkSessionDao())
     }
 
+    val onlineRepository: OnlineRepository by lazy {
+        OnlineRepository()
+    }
 
+    val toastState by sharedViewModel.toastState.collectAsState()
+
+    AppToast(
+        toastState = toastState,
+        onDismissRequest = { sharedViewModel.hideToast() }
+    )
+
+    ActionAlertDialog(
+        dialogState = dialogState,
+        onDismissRequest = { sharedViewModel.hideDialog() }
+    )
 
     NavHost(navController = navController, startDestination = Screen.Menu.route) {
         composable(route = Screen.Menu.route) {
@@ -88,21 +108,20 @@ fun AppNavGraph(
                 navigateBack = actions.navigateBack,
                 navigateToAbout = actions.navigateToAbout,
                 sessionManager = sessionManager,
-                showToast = showToast,
                 sharedViewModel = sharedViewModel,
             )
         }
         composable(
             route = Screen.Report.route,
         ) {
-                ReportScreen(
-                    navigateBack = actions.navigateBack,
+                SessionListScreen(
+                    navigateToMenu = actions.navigateToMenuScreen,
                     offlineCustomWebViewRequestsRepository = offlineCustomWebViewRequestsRepository,
                     offlineWebpageContentRepository = offlineWebpageContentRepository,
                     offlineScreenshotRepository = screenshotRepository,
                     navigateToAbout = actions.navigateToAbout,
                     offlineNetworkSessionRepository =offlineNetworkSessionRepository,
-                    clickedSession = sharedViewModel::clickedSession,
+                    clickedSession = sharedViewModel::setClickedSession,
                     navigateToSessionScreen = actions.navigateToSessionScreen
                 )
         }
@@ -113,6 +132,8 @@ fun AppNavGraph(
                 navigateBack = actions.navigateBack,
                 navigateToAbout = actions.navigateToAbout,
                 sharedViewModel = sharedViewModel,
+                onlineRepository = onlineRepository,
+                offlineNetworkSessionRepository = offlineNetworkSessionRepository,
             )
         }
         composable(
@@ -122,6 +143,9 @@ fun AppNavGraph(
                 navigateBack = actions.navigateBack,
             )
         }
+
+
+
 
     }
 }
@@ -144,6 +168,10 @@ class NavigationActions(private val navController: NavHostController) {
 
     val navigateToAnalysisScreen: () -> Unit = {
         navController.navigate(Screen.Analysis.route)
+    }
+
+    val navigateToMenuScreen: () -> Unit = {
+        navController.navigate(Screen.Menu.route)
     }
 
     val navigateToReportScreen: () -> Unit = {

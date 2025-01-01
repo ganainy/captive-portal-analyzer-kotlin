@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "293998296917",
+    "project_id": "captive-portal-analyzer",
+    "storage_bucket": "captive-portal-analyzer.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:293998296917:android:94dd3f51eef93c752db9dc",
+        "android_client_info": {
+          "package_name": "com.example.captive_portal_analyzer_kotlin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKTql3D5DujEumRklpz3s4-j9xEMGSTbY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

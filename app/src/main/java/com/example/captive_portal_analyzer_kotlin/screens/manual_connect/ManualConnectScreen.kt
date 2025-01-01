@@ -1,3 +1,5 @@
+package com.example.captive_portal_analyzer_kotlin.screens.manual_connect
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,7 +35,6 @@ import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.HintText
 import com.example.captive_portal_analyzer_kotlin.components.MenuItem
 import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
-import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.ManualConnectViewModel
 
 @Composable
 fun HomeScreen(

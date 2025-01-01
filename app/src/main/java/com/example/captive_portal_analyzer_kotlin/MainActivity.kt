@@ -14,8 +14,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
-import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialog
-import com.example.captive_portal_analyzer_kotlin.my_screens.analysis.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.navigation.AppNavGraph
 import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
 import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNetworkSessionRepository
@@ -38,55 +36,30 @@ class MainActivity : ComponentActivity() {
             OfflineNetworkSessionRepository(AppDatabase.getDatabase(this).networkSessionDao())
         }
 
-        sessionManager = NetworkSessionManager(this,offlineNetworkSessionRepository)
-
         // Start monitoring network changes
+        sessionManager = NetworkSessionManager(this, offlineNetworkSessionRepository)
         sessionManager.startMonitoring()
-
 
 
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
         setContent {
+            val navController = rememberNavController()
             val sharedViewModel: SharedViewModel = viewModel()
-            val actionAlertDialogData by sharedViewModel.actionAlertDialogData.collectAsState()
+            val dialogState by sharedViewModel.dialogState.collectAsState()
             CaptivePortalAnalyzerComposeTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    val navController = rememberNavController()
-                    AppNavGraph(navController = navController,sessionManager = sessionManager,
-                        showToast = { isSuccess: Boolean, message: String? ->
-                            showToast(isSuccess, message)
-                        },sharedViewModel = sharedViewModel)
-                    actionAlertDialogData?.let { ActionAlertDialog(it) }
+                    AppNavGraph(
+                        navController = navController, sessionManager = sessionManager,
+                        sharedViewModel = sharedViewModel,
+                        dialogState = dialogState
+                    )
                 }
             }
         }
     }
 
-private fun showToast(
-    isSuccess: Boolean,
-    message: String? = null
-) {
-    val finalMessage = when {
-        message != null -> message
-        isSuccess -> this.getString(R.string.operation_successful)
-        else -> this.getString(R.string.operation_failed)
-    }
 
-    val title = if (isSuccess) getString(R.string.success) else  getString(R.string.error)
-    val toastStyle = if (isSuccess) MotionToastStyle.SUCCESS else MotionToastStyle.ERROR
-
-    // Use MotionToast to display the toast
-    MotionToast.createToast(
-        this,
-        title,
-        finalMessage,
-        toastStyle,
-        MotionToast.GRAVITY_BOTTOM,
-        MotionToast.LONG_DURATION,
-        ResourcesCompat.getFont(this, R.font.mon_regular)
-    )
-}
 }
 
 @Preview(showBackground = true)

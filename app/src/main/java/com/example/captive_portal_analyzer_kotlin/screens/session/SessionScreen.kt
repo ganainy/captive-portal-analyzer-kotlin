@@ -1,7 +1,6 @@
-package com.example.captive_portal_analyzer_kotlin.my_screens.analysis
+package com.example.captive_portal_analyzer_kotlin.screens.session
 
 import android.app.Application
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -15,8 +14,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
@@ -28,24 +29,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import coil3.compose.rememberAsyncImagePainter
-import coil3.request.ImageRequest
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
 import com.example.captive_portal_analyzer_kotlin.components.MenuItem
 import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
+import com.example.captive_portal_analyzer_kotlin.dataclasses.Report
+import com.example.captive_portal_analyzer_kotlin.firebase.OnlineRepository
 import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.CustomWebViewRequestEntity
-import com.example.captive_portal_analyzer_kotlin.room.network_session.NetworkSessionEntity
+import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNetworkSessionRepository
 import com.example.captive_portal_analyzer_kotlin.room.screenshots.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageContentEntity
+import com.example.captive_portal_analyzer_kotlin.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -55,22 +55,27 @@ fun SessionScreen(
     navigateBack: () -> Unit,
     navigateToAbout: () -> Unit,
     sharedViewModel: SharedViewModel,
+    onlineRepository: OnlineRepository,
+    offlineNetworkSessionRepository: OfflineNetworkSessionRepository,
 ) {
 
-    val clickedSession by sharedViewModel.clickedSession.collectAsState()
-    val clickedSessionRequests by sharedViewModel.clickedSessionRequests.collectAsState()
-    val clickedSessionContentList by sharedViewModel.clickedSessionContentList.collectAsState()
-    val clickedSessionScreenshotList by sharedViewModel.clickedSessionScreenshotList.collectAsState()
-
+    val clickedReport by sharedViewModel.clickedReport.collectAsState()
 
     val sessionViewModel: SessionViewModel = viewModel(
         factory = SessionViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
+            onlineRepository = onlineRepository,
+            offlineNetworkSessionRepository = offlineNetworkSessionRepository
         )
     )
-    val uiState by sessionViewModel.uiState.collectAsState()
 
+    val isUploading by sessionViewModel.isUploading.collectAsState()
 
+    val showToast= { message:String, style: ToastStyle ->
+        sharedViewModel.showToast(
+            message = message, style = style,
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -90,47 +95,27 @@ fun SessionScreen(
         },
     ) { paddingValues ->
 
-        when (uiState) {
 
-            is SessionUiState.Loading -> {
-                // Show loading indicator
-                CustomProgressIndicator()
-            }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
 
-            is SessionUiState.Error -> {
-                // Show error message
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource((uiState as LandingUiState.Error).messageStringResource),
-                        color = Color.Red
-                    )
-                }
-            }
-
-            SessionUiState.Success -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-
-                    clickedSession?.let {
-                        SessionDetail(
-                            session = it,
-                            requests = clickedSessionRequests,
-                            content = clickedSessionContentList,
-                            screenshots = clickedSessionScreenshotList,
+            clickedReport?.let {
+                SessionDetail(
+                    clickedReport = clickedReport!!,
+                    uploadSession = {
+                        sessionViewModel.uploadReport(
+                            clickedReport!!,
+                            showToast
                         )
-                    }
-
-
-                }
+                    },
+                    isUploading = isUploading
+                )
             }
+
+
         }
     }
 
@@ -139,10 +124,9 @@ fun SessionScreen(
 
 @Composable
 fun SessionDetail(
-    session: NetworkSessionEntity,
-    requests: List<CustomWebViewRequestEntity>,
-    content: List<WebpageContentEntity>,
-    screenshots: List<ScreenshotEntity>
+    clickedReport: Report,
+    uploadSession: () -> Unit,
+    isUploading: Boolean
 ) {
     Column(
         modifier = Modifier
@@ -161,12 +145,40 @@ fun SessionDetail(
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                session.ssid?.let { Text("SSID: $it") }
-                session.bssid?.let { Text("BSSID: $it") }
-                session.ipAddress?.let { Text("IP: $it") }
-                session.gatewayAddress?.let { Text("Gateway: $it") }
-                session.securityType?.let { Text("Security: $it") }
-                session.captivePortalUrl?.let { Text("Portal URL: $it") }
+                clickedReport.session.ssid?.let { Text("SSID: $it") }
+                clickedReport.session.bssid?.let { Text("BSSID: $it") }
+                clickedReport.session.ipAddress?.let { Text("IP: $it") }
+                clickedReport.session.gatewayAddress?.let { Text("Gateway: $it") }
+                clickedReport.session.securityType?.let { Text("Security: $it") }
+                clickedReport.session.captivePortalUrl?.let { Text("Portal URL: $it") }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            enabled = !clickedReport.session.isUploadedToRemoteServer,
+            onClick = {
+                uploadSession()
+            }
+        ) {
+            if (isUploading) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .width(24.dp)
+                        .height(24.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            } else {
+                if (clickedReport.session.isUploadedToRemoteServer) {
+                    Text(stringResource(R.string.already_uploaded))
+                } else {
+                    Text(stringResource(R.string.upload_session_for_analysis))
+                }
             }
         }
 
@@ -178,24 +190,24 @@ fun SessionDetail(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("Requests (${requests.size})") }
+                text = { Text("Requests (${clickedReport.requests.size})") }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("Content (${content.size})") }
+                text = { Text("Content (${clickedReport.webpageContent.size})") }
             )
             Tab(
                 selected = selectedTab == 2,
                 onClick = { selectedTab = 2 },
-                text = { Text("Screenshots (${screenshots.size})") }
+                text = { Text("Screenshots (${clickedReport.screenshots.size})") }
             )
         }
 
         when (selectedTab) {
-            0 -> RequestsList(requests)
-            1 -> ContentList(content)
-            2 -> ScreenshotsList(screenshots)
+            0 -> RequestsList(clickedReport.requests)
+            1 -> ContentList(clickedReport.webpageContent)
+            2 -> ScreenshotsList(clickedReport.screenshots)
         }
     }
 }

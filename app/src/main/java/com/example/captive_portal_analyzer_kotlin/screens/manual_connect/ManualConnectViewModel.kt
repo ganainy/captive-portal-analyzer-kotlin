@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.my_screens.analysis
+package com.example.captive_portal_analyzer_kotlin.screens.manual_connect
 
 import android.app.Application
 import android.content.BroadcastReceiver

@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.my_screens.analysis
+package com.example.captive_portal_analyzer_kotlin.screens.session_list
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
@@ -23,15 +23,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 
-sealed class ReportUiState {
-    object Loading : ReportUiState()
-    object Empty : ReportUiState()
-    object Success : ReportUiState()
-    data class Error(val messageStringResource: Int) : ReportUiState()
+sealed class SessionListUiState {
+    object Loading : SessionListUiState()
+    object Empty : SessionListUiState()
+    object Success : SessionListUiState()
+    data class Error(val messageStringResource: Int) : SessionListUiState()
 }
 
 
-class ReportViewModel(
+class SessionListViewModel(
     application: Application,
     private val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
     private val offlineWebpageContentRepository: OfflineWebpageContentRepository,
@@ -39,8 +39,8 @@ class ReportViewModel(
     private val offlineNetworkSessionRepository: NetworkSessionRepository
 ) : AndroidViewModel(application) {
 
-    private val _uiState = MutableStateFlow<ReportUiState>(ReportUiState.Loading)
-    val uiState: StateFlow<ReportUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<SessionListUiState>(SessionListUiState.Loading)
+    val uiState: StateFlow<SessionListUiState> = _uiState.asStateFlow()
 
 
     private val _sessions = MutableStateFlow<List<NetworkSessionEntity>?>(null)
@@ -68,10 +68,10 @@ class ReportViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val sessions = offlineNetworkSessionRepository.getAllSessions()
             if (sessions.isNullOrEmpty()) {
-                _uiState.value = ReportUiState.Empty
+                _uiState.value = SessionListUiState.Empty
             } else {
                 _sessions.value = sessions
-                _uiState.value = ReportUiState.Success
+                _uiState.value = SessionListUiState.Success
                 sessions.forEach { session ->
 
                     val sessionCustomWebViewRequests =
@@ -97,7 +97,7 @@ class ReportViewModel(
 }
 
 
-class ReportViewModelFactory(
+class SessionListViewModelFactory(
     private val application: Application,
     private val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
     private val offlineWebpageContentRepository: OfflineWebpageContentRepository,
@@ -105,9 +105,9 @@ class ReportViewModelFactory(
     private val offlineNetworkSessionRepository: OfflineNetworkSessionRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(ReportViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(SessionListViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ReportViewModel(
+            return SessionListViewModel(
                 application,
                 offlineCustomWebViewRequestsRepository,
                 offlineWebpageContentRepository,

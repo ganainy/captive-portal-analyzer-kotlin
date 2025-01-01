@@ -37,6 +37,16 @@ class NetworkSessionManager(private val context: Context, private val repository
         return getCurrentSession()?.sessionId
     }
 
+    private fun isValidWifiConnection(ssid: String, bssid: String): Boolean {
+        return bssid.isNotEmpty() &&
+                bssid != "02:00:00:00:00:00" &&
+                ssid.isNotEmpty() &&
+                ssid != "<unknown ssid>" &&
+                ssid != "0x" &&
+                ssid != "null" &&
+                bssid.matches(Regex("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$")) // Valid MAC address format
+    }
+
     private suspend fun getCurrentSession(): NetworkSessionEntity? {
         // Use mutex to ensure thread-safety when checking/creating sessions
         return sessionMutex.withLock {
@@ -47,6 +57,11 @@ class NetworkSessionManager(private val context: Context, private val repository
             if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                 val wifiInfo = wifiManager.connectionInfo
                 val bssid = wifiInfo.bssid
+                val ssid = wifiInfo.ssid.removeSurrounding("\"")
+
+                if (!isValidWifiConnection(ssid, bssid)) {
+                    return null
+                }
 
                 // First check our cached session
                 if (currentSession?.bssid == bssid) {
@@ -64,11 +79,11 @@ class NetworkSessionManager(private val context: Context, private val repository
                 val dhcpInfo = wifiManager.dhcpInfo
                 val newSession = NetworkSessionEntity(
                     sessionId = generateSessionId(),
-                    ssid = wifiInfo.ssid.removeSurrounding("\""),
+                    ssid = ssid,
                     bssid = bssid,
                     timestamp = System.currentTimeMillis(),
-                    ipAddress = dhcpInfo.ipAddress.toString(),
-                    gatewayAddress = dhcpInfo.gateway.toString(),
+                    ipAddress = intToIpAddress(dhcpInfo.ipAddress),
+                    gatewayAddress = intToIpAddress(dhcpInfo.gateway),
                 )
 
                 // Save new session to database
@@ -78,6 +93,10 @@ class NetworkSessionManager(private val context: Context, private val repository
             }
             null
         }
+    }
+
+    private fun intToIpAddress(ip: Int): String {
+        return "${ip and 0xff}.${ip shr 8 and 0xff}.${ip shr 16 and 0xff}.${ip shr 24 and 0xff}"
     }
 
     suspend fun savePortalUrl(sessionId: String, portalUrl: String) {

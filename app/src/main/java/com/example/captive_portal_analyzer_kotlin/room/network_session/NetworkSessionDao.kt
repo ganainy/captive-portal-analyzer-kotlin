@@ -22,4 +22,7 @@ interface NetworkSessionDao {
 
     @Query("SELECT * FROM network_sessions")
     abstract fun getAllSessions(): List<NetworkSessionEntity>?
+
+    @Query("UPDATE network_sessions SET isUploadedToRemoteServer = :isUploadedToRemoteServer WHERE sessionId = :sessionId")
+    abstract fun updateIsUploadedToRemoteServer(sessionId: String, isUploadedToRemoteServer: Boolean)
 }

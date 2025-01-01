@@ -38,8 +38,8 @@
     <string name="connected_to_wifi">Successfully connected to netwrok</string>
     <string name="please_proceed_to_next_step">Please proceed to next step to start the analysis.\n</string>
     <string name="next">Next</string>
-    <string name="location_and_other_permissions_are_required_to_scan_wi_fi_networks">Location and networks permissions are required to analyze captive networks.</string>
-    <string name="location_and_other_permissions_are_required_for_analyzing_captive_networks">Location and networks permissions are required to analyze captive networks. App needs to know your location to detect nearby Wi-Fi networks and to check the network\'s status.</string>
+    <string name="location_and_other_permissions_are_required_to_scan_wi_fi_networks">Location permission is required to analyze captive networks. please enable from app settings</string>
+    <string name="location_and_other_permissions_are_required_for_analyzing_captive_networks">Location permission is required, app needs to know your location to detect nearby Wi-Fi networks and to check the network\'s status.</string>
     <string name="access_fine_location_required_to_detect_wi_fi_networks_accurately">Access Fine Location - Required to detect Wi-Fi networks accurately.</string>
     <string name="access_coarse_location_required_to_detect_nearby_wi_fi_networks">Access Coarse Location - Required to detect nearby Wi-Fi networks.</string>
     <string name="access_network_state_required_to_check_the_network_s_status">Access Network State - Required to check the network\'s status.</string>
@@ -75,5 +75,14 @@
     <string name="my_sessions">My sessions</string>
     <string name="create_session">Create session</string>
     <string name="welcome_to_app_2">Welcome! Thank you for helping make the internet safer. Start a session to generate a report on the nearest captive portal for analysis.</string>
+    <string name="upload_session_for_analysis">Upload Session for Analysis</string>
+    <string name="already_uploaded">Already uploaded</string>
+    <string name="network_name">Network name: %1$s</string>
+    <string name="date">Date: %1$s</string>
+    <string name="requests">Requests: %1$s</string>
+    <string name="webpages">Webpages: %1$s</string>
+    <string name="screenshots">Screenshots: %1$s</string>
+    <string name="info">Information</string>
+    <string name="delete">Delete</string>
 
 </resources>

@@ -7,6 +7,7 @@ interface NetworkSessionRepository {
     suspend fun updateIsCaptiveLocal(sessionId: String, isLocal: Boolean)
     suspend fun getSessionByBssid(bssid: String?): NetworkSessionEntity?
     suspend fun getAllSessions(): List<NetworkSessionEntity>?
+    suspend fun updateIsUploadedToRemoteServer(sessionId: String, isUploaded: Boolean)
 }
 
 class OfflineNetworkSessionRepository(private val networkSessionDao: NetworkSessionDao) :
@@ -14,6 +15,10 @@ class OfflineNetworkSessionRepository(private val networkSessionDao: NetworkSess
 
     override suspend fun insertSession(session: NetworkSessionEntity) {
         networkSessionDao.insertSession(session)
+    }
+
+    override suspend fun updateIsUploadedToRemoteServer(sessionId: String, isUploaded: Boolean) {
+        networkSessionDao.updateIsUploadedToRemoteServer(sessionId, isUploaded)
     }
 
     override suspend fun updatePortalUrl(sessionId: String, portalUrl: String) {
