@@ -2,7 +2,7 @@
     <string name="app_name">Captive Portal Analyzer</string>
     <string name="error_connecting_to_wifi">Please make sure the device WIFI and GPS services are on</string>
     <string name="end_analysis">End Analysis</string>
-    <string name="report_screen_title">Upload Report</string>
+    <string name="session_list_screen_title">Stored sessions</string>
     <string name="analysis_screen_title">Interact with the Captive Portal</string>
     <string name="landing_screen_title">Select Network with Captive Portal</string>
     <string name="no_bypass_vulnerabilities_found">No Bypass Vulnerabilities Found</string>
@@ -13,7 +13,7 @@
     <string name="turn_on_wifi">Go to wifi settings</string>
     <string name="connect_to_network">Select Network</string>
     <string name="continuee">Continue</string>
-    <string name="please_connect_to_a_wifi_captive_disable_mobile_data_then_press_continue"><![CDATA[Please connect to a WiFi captive Portal & Disable Mobile Data then Press Continue.]]></string>
+    <string name="please_connect_to_a_wifi_captive_disable_mobile_data_then_press_continue">Please complete the checklist then press continue</string>
     <string name="we_couldn_t_find_any_networks_with_no_password_which_is_usually_the">"We couldn't find any networks with no password which is usually the "</string>
     <string name="case_with_captive_portals_please_connect_manually_to_network">case with captive portals. Please connect manually to Network.</string>
     <string name="empty_string" />
@@ -84,5 +84,20 @@
     <string name="screenshots">Screenshots: %1$s</string>
     <string name="info">Information</string>
     <string name="delete">Delete</string>
+    <string name="cannot_connect_automatically_tap_here_to_connect_manually">If you have an issue connecting to network automatically please click the button to try manual connection.</string>
+    <string name="network_list_screen_title">Open networks</string>
+    <string name="menu_screen_title">Menu</string>
+    <string name="manual_connect_screen_title">Connect to a Network</string>
+    <string name="menu">Menu</string>
+    <string name="welcome_screen_title">Welcome</string>
+    <string name="welcome_to_captive_portal_analyzer">Welcome to Captive portal analyzer</string>
+    <string name="start">Start</string>
+    <string name="this_app_is_designed_to_assist_in_the_collection_of_data_related_to_captive_portals_with_the_aim_of_enhancing_user_security_and_ensuring_data_privacy">This app is designed to assist in the collection of data related to captive portals, with the aim of enhancing user security and ensuring data privacy.</string>
+    <string name="start_by_creating_a_session_and_login_to_your_network_with_a_captive_portal_we_ll_guide_you_step_by_step">Start by creating a session and login to your network with a captive portal. We\'ll guide you step by step.</string>
+    <string name="couldnt_detect_captive_url">Couldn\'t detect captive portal url</string>
+    <string name="something_went_wrong">Something went wrong</string>
+    <string name="are_you_sure_current_network_has_captive_portal">Are you sure current network has a captive portal?</string>
+    <string name="connect_to_another_network">Connect to another network</string>
+    <string name="on_login_completed">Please login through the captive portal then click</string>
 
 </resources>

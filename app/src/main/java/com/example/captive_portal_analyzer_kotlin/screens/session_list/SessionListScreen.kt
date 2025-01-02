@@ -1,9 +1,8 @@
 package com.example.captive_portal_analyzer_kotlin.screens.session_list
 
 import android.app.Application
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
-import androidx.annotation.StringRes
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -43,8 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
-import com.example.captive_portal_analyzer_kotlin.components.MenuItem
-import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
+
 import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
 import com.example.captive_portal_analyzer_kotlin.room.network_session.NetworkSessionEntity
@@ -53,10 +51,8 @@ import com.example.captive_portal_analyzer_kotlin.room.screenshots.OfflineScreen
 import com.example.captive_portal_analyzer_kotlin.room.screenshots.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
 import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageContentEntity
-import com.example.captive_portal_analyzer_kotlin.screens.landing.LandingUiState
-import com.example.captive_portal_analyzer_kotlin.theme.LightGreen
-import com.example.captive_portal_analyzer_kotlin.theme.LightRed
-import java.lang.Error
+import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
+import com.google.firebase.database.collection.LLRBNode
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -64,7 +60,7 @@ import java.util.UUID
 
 @Composable
 fun SessionListScreen(
-    navigateToMenu: () -> Unit,
+    navigateToWelcome: () -> Unit,
     navigateToAbout: () -> Unit,
     clickedSession: (NetworkSessionEntity, List<CustomWebViewRequestEntity>, List<WebpageContentEntity>, List<ScreenshotEntity>) -> Unit,
     offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
@@ -90,25 +86,11 @@ fun SessionListScreen(
 
     // Handle back button to navigate to menu screen instead of last screen (which might be analysis screen)
     BackHandler {
-        navigateToMenu()
+        navigateToWelcome()
     }
 
     Scaffold(
-        topBar = {
-            ToolbarWithMenu(
-                title = stringResource(id = R.string.report_screen_title),
-                menuItems = listOf(
-                    MenuItem(
-                        iconPath = R.drawable.about,
-                        itemName = stringResource(id = R.string.about),
-                        onClick = {
-                            navigateToAbout()
-                        }
-                    ),
 
-                    )
-            )
-        },
     ) { paddingValues ->
 
         when (uiState) {
@@ -182,15 +164,20 @@ private fun ErrorText(
 }
 
 @Preview(
-    showBackground = true
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
+@Preview(
+    showBackground = true,
 )
 @Composable
-fun PreviewErrorText() {
+fun PreviewErrorTextDarkMode() {
+    AppTheme {
     ErrorText(
         error = stringResource(R.string.no_sessions_detected) // Provide a mock error state
     )
 }
-
+}
 
 @Composable
 fun SessionsList(
@@ -303,10 +290,15 @@ fun SessionCard(
     }
 }
 
-
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
+    AppTheme {
+
     SessionCard(
         session = NetworkSessionEntity(
             ssid = "SSID",
@@ -321,6 +313,8 @@ fun DefaultPreview() {
         onClick = {},
         navigateToSessionScreen = {}
     )
+    }
+
 }
 
 private fun formatDate(timestamp: Long): String {

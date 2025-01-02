@@ -1,6 +1,8 @@
 package com.example.captive_portal_analyzer_kotlin.screens.session
 
 import android.app.Application
+import android.content.res.Configuration
+import android.view.MenuItem
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,12 +35,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.components.MenuItem
-import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
+
 import com.example.captive_portal_analyzer_kotlin.dataclasses.Report
 import com.example.captive_portal_analyzer_kotlin.firebase.OnlineRepository
 import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.CustomWebViewRequestEntity
@@ -46,9 +49,11 @@ import com.example.captive_portal_analyzer_kotlin.room.screenshots.ScreenshotEnt
 import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
+import com.example.captive_portal_analyzer_kotlin.room.network_session.NetworkSessionEntity
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 @Composable
 fun SessionScreen(
@@ -78,21 +83,7 @@ fun SessionScreen(
     }
 
     Scaffold(
-        topBar = {
-            ToolbarWithMenu(
-                title = stringResource(id = R.string.session_screen_title),
-                menuItems = listOf(
-                    MenuItem(
-                        iconPath = R.drawable.about,
-                        itemName = stringResource(id = R.string.about),
-                        onClick = {
-                            navigateToAbout()
-                        }
-                    ),
 
-                    )
-            )
-        },
     ) { paddingValues ->
 
 
@@ -160,6 +151,7 @@ fun SessionDetail(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
+            shape =  RoundedCornerShape(16.dp),
             enabled = !clickedReport.session.isUploadedToRemoteServer,
             onClick = {
                 uploadSession()
@@ -211,6 +203,49 @@ fun SessionDetail(
         }
     }
 }
+
+@Preview(showBackground = true,)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun SessionDetailPreview() {
+    SessionDetail(
+        clickedReport = Report(
+            session = NetworkSessionEntity(
+                ssid = "test ssid",
+                bssid = "test bssid",
+                ipAddress = "test ip",
+                gatewayAddress = "test gateway",
+                securityType = "test security",
+                captivePortalUrl = "test portal url",
+                timestamp = Date().time,
+                sessionId = 1.toString(),
+            ),
+            requests = listOf(
+                CustomWebViewRequestEntity(
+                    sessionId = 11.toString(),
+                )
+            ),
+            screenshots = listOf(
+                ScreenshotEntity(
+                    screenshotId = UUID.randomUUID().toString(),
+                    sessionId = "11",
+                    timestamp = Date().time,
+                    path = "test path",
+                    size = "100KB",
+                    url = "test url"
+                )
+            ),
+            webpageContent = listOf(
+                WebpageContentEntity(
+                    sessionId = 11.toString(),
+                )
+            )
+        ),
+        uploadSession = { },
+        isUploading = false
+    )
+}
+
 
 private fun formatDate(timestamp: Long): String {
     return SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(timestamp))

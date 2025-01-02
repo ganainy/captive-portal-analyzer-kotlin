@@ -1,7 +1,9 @@
 package com.example.captive_portal_analyzer_kotlin.screens.manual_connect
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -13,8 +15,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,19 +30,22 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.HintText
-import com.example.captive_portal_analyzer_kotlin.components.MenuItem
-import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
+import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
+import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
+
 
 @Composable
-fun HomeScreen(
+fun ManualConnectScreen(
     navigateToAnalysis: () -> Unit,
-    navigateToLanding: () -> Unit,
+    navigateToNetworkList: () -> Unit,
     navigateToAbout: () -> Unit,
 ) {
 
@@ -50,84 +56,112 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            ToolbarWithMenu(
-                    title = stringResource(id = R.string.app_name),
-                menuItems = listOf(
-                    MenuItem(
-                        iconPath = R.drawable.about,
-                        itemName = stringResource(id = R.string.about),
-                        onClick = {
-                            navigateToAbout()
-                        }
-                    ),
 
-                    )
-            )
         },
     ) { paddingValues ->
-
+        val isWifiOn = viewModel.isWifiOn.collectAsState().value
+        val isCellularOff = !viewModel.isCellularOn.collectAsState().value
+        val isConnectedToWifiNetwork =
+            viewModel.isConnectedToWifiNetwork.collectAsState().value
 
                 //device has wifi connection ask user to connect to captive portal
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding( start = paddingValues.calculateStartPadding(LayoutDirection.Ltr) * 2,
-                            top = paddingValues.calculateTopPadding() * 2,
-                            end = paddingValues.calculateEndPadding(LayoutDirection.Ltr) * 2,
-                            bottom = paddingValues.calculateBottomPadding() * 2),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        (stringResource(R.string.please_connect_to_a_wifi_captive_disable_mobile_data_then_press_continue)),
-                        style = TextStyle(
-                            fontWeight = FontWeight.Bold,  // Make the text bold
-                        ),
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    val isWifiOn = viewModel.isWifiOn.collectAsState().value
-                    StatusTextWithIcon(
-                        text = stringResource(R.string.wifi_is_on),
-                        isSuccess = isWifiOn
-                    )
-                    val isCellularOff = !viewModel.isCellularOn.collectAsState().value
-                    StatusTextWithIcon(
-                        text = stringResource(R.string.cellular_is_off),
-                        isSuccess = isCellularOff
-                    )
-                    val isConnectedToWifiNetwork =
-                        viewModel.isConnectedToWifiNetwork.collectAsState().value
-                    StatusTextWithIcon(
-                        text = stringResource(R.string.wifi_network_is_connected),
-                        isSuccess = isConnectedToWifiNetwork
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HintText(stringResource(R.string.hint1))
-                    Spacer(modifier = Modifier.height(16.dp))
-
-
-                    Button(
-                        onClick = { navigateToAnalysis() },
-                        enabled = areAllRequirementsFulfilled
-                    ) {
-                        Text(stringResource(R.string.continuee))
-                    }
-                }
+        ManualConnectContent(paddingValues, isWifiOn, isCellularOff, isConnectedToWifiNetwork, navigateToAnalysis, areAllRequirementsFulfilled)
             }
 
 
 
 }
 
+@Composable
+private fun ManualConnectContent(
+    paddingValues: PaddingValues,
+    isWifiOn:Boolean,
+    isCellularOff: Boolean,
+    isConnectedToWifiNetwork: Boolean,
+    navigateToAnalysis: () -> Unit,
+    areAllRequirementsFulfilled: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(
+                start = paddingValues.calculateStartPadding(LayoutDirection.Ltr) * 2,
+                top = paddingValues.calculateTopPadding() * 2,
+                end = paddingValues.calculateEndPadding(LayoutDirection.Ltr) * 2,
+                bottom = paddingValues.calculateBottomPadding() * 2
+            ),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            (stringResource(R.string.please_connect_to_a_wifi_captive_disable_mobile_data_then_press_continue)),
+            style = typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        StatusTextWithIcon(
+            text = stringResource(R.string.wifi_is_on),
+
+            isSuccess = isWifiOn
+        )
+
+        StatusTextWithIcon(
+            text = stringResource(R.string.wifi_network_is_connected),
+            isSuccess = isConnectedToWifiNetwork
+        )
+
+        StatusTextWithIcon(
+            text = stringResource(R.string.cellular_is_off),
+            isSuccess = isCellularOff
+        )
+
+
+        Spacer(modifier = Modifier.height(16.dp))
+        HintText(stringResource(R.string.hint1))
+        Spacer(modifier = Modifier.height(16.dp))
+
+
+        RoundCornerButton(
+            onClick = { navigateToAnalysis() },
+            enabled = areAllRequirementsFulfilled,
+            buttonText = stringResource(R.string.continuee)
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun ManualConnectContentPreview() {
+    AppTheme {
+        ManualConnectContent(
+            paddingValues = PaddingValues(),
+            isWifiOn = true,
+            isCellularOff = true,
+            isConnectedToWifiNetwork = true,
+            navigateToAnalysis = {},
+            areAllRequirementsFulfilled = true
+        )
+    }
+}
+
+
 
 @Composable
 fun StatusTextWithIcon(text: String, isSuccess: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(text = text, style = TextStyle(fontSize = 16.sp))
+        Text(
+            text = text,
+            style = if (isSuccess) {
+                MaterialTheme.typography.bodyLarge.copy(
+                    textDecoration = TextDecoration.LineThrough
+                )
+            } else {
+                MaterialTheme.typography.bodyLarge
+            }
+        )
         Spacer(modifier = Modifier.width(8.dp))  // Space between text and icon
         if (isSuccess) {
             Icon(

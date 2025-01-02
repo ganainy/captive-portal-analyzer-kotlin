@@ -1,13 +1,19 @@
-package com.example.captive_portal_analyzer_kotlin.screens.landing
+package com.example.captive_portal_analyzer_kotlin.screens.network_list
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
+import android.net.wifi.ScanResult
+import android.view.MenuItem
 import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,8 +25,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -39,21 +48,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
 import com.example.captive_portal_analyzer_kotlin.components.CustomSnackBar
-import com.example.captive_portal_analyzer_kotlin.components.MenuItem
-import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
+import com.example.captive_portal_analyzer_kotlin.components.HintText
+import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
+
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkItem
+import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
+
 @Composable
-fun LandingScreen(
+fun NetworkListScreen(
     navigateToAnalysis: () -> Unit,
     navigateToManualConnect: () -> Unit,
     navigateToAbout: () -> Unit,
 ) {
-    val viewModel: LandingViewModel = viewModel()
+    val viewModel: NetworkListViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     val wifiNetworks by viewModel.openWifiNetworks.collectAsState()
     val context = LocalContext.current
@@ -104,45 +117,21 @@ fun LandingScreen(
     }
 
     Scaffold(
-        topBar = {
-            ToolbarWithMenu(
-                title = stringResource(id = R.string.landing_screen_title),
-            menuItems = listOf(
-                MenuItem(
-                    iconPath = R.drawable.about,
-                    itemName = stringResource(id = R.string.about),
-                    onClick = {
-                        navigateToAbout()
-                    }
-                ),
 
-                )
-            )
-        },
     ) { paddingValues ->
             when (uiState) {
-                is LandingUiState.Loading -> {
+                is NetworkListUiState.Loading -> {
                     CustomProgressIndicator()
                 }
-                is LandingUiState.LoadNetworkSuccess -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                    ) {
-                        items(wifiNetworks) { networkInformation ->
-                            WifiItem(networkInformation, onClick = {
-                                viewModel.connectToNetwork(networkInformation.scanResult.SSID)
-                            })
-                        }
-                    }
+                is NetworkListUiState.LoadNetworkSuccess -> {
+                    NetworksList(paddingValues, wifiNetworks, connectToNetwork = viewModel::connectToNetwork, navigateToManualConnect)
                 }
-                is LandingUiState.Error -> {
+                is NetworkListUiState.Error -> {
                     CustomSnackBar(
-                        message = stringResource((uiState as LandingUiState.Error).messageStringResource)
+                        message = stringResource((uiState as NetworkListUiState.Error).messageStringResource)
                     ) {}
                 }
-                is LandingUiState.ConnectionSuccess -> {
+                is NetworkListUiState.ConnectionSuccess -> {
                     AlertDialog(
                         onDismissRequest = { },
                         title = { Text(stringResource(id = R.string.connected_to_wifi)) },
@@ -153,8 +142,10 @@ fun LandingScreen(
                             }
                         },
                     )
+
+
                 }
-                LandingUiState.NoOpenNetworks -> {
+                NetworkListUiState.NoOpenNetworks -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -168,16 +159,126 @@ fun LandingScreen(
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { navigateToManualConnect() }) {
-                            Text(text = stringResource(id = R.string.connect_manually))
-                        }
+                        RoundCornerButton(
+                            onClick = { navigateToManualConnect() },
+                            buttonText = stringResource(id = R.string.connect_manually),
+                        )
                     }
                 }
 
-                LandingUiState.AskPermissions ->             GrantPermissionsScreen(paddingValues, permissionLauncher, permissions)
+                NetworkListUiState.AskPermissions ->             GrantPermissionsScreen(paddingValues, permissionLauncher, permissions)
 
             }
     }
+}
+
+
+@Preview(showBackground = true)
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun PreviewSuccessDialog() {
+    AppTheme {
+    AlertDialog(
+        onDismissRequest = { },
+        title = { Text(stringResource(id = R.string.connected_to_wifi)) },
+        text = { Text(stringResource(id = R.string.please_proceed_to_next_step)) },
+        confirmButton = {
+            TextButton(onClick = { }) {
+                Text(stringResource(id = R.string.next))
+            }
+        },
+    )
+    }
+}
+
+@SuppressLint("NewApi")
+@Composable
+@Preview(showBackground = true)
+@Preview(showBackground = true,uiMode = Configuration.UI_MODE_NIGHT_YES)
+private fun NetworksListPreview() {
+   AppTheme {
+        NetworksList(
+            paddingValues = PaddingValues(0.dp),
+            wifiNetworks = listOf(
+                NetworkItem(
+                    scanResult = ScanResult().apply {
+                        SSID = "Open Network"
+                    },
+                    isSecured = false,
+                    securityIcon = R.drawable.unlock
+                ),
+                NetworkItem(
+                    scanResult = ScanResult().apply {
+                        SSID = "Closed Network"
+                    },
+                    isSecured = true,
+                    securityIcon = R.drawable.lock
+                )
+            ),
+            connectToNetwork = { },
+            navigateToManualConnect = { }
+        )
+    }
+}
+
+@Composable
+private fun NetworksList(
+    paddingValues: PaddingValues,
+    wifiNetworks: List<NetworkItem>,
+    connectToNetwork: (String) -> Unit,
+    navigateToManualConnect: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            items(wifiNetworks) { networkInformation ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp, horizontal = 8.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    WifiItem(networkInformation, onClick = {
+                        connectToNetwork(networkInformation.scanResult.SSID)
+                    })
+                }
+            }
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            HintText(hint = stringResource(id = R.string.cannot_connect_automatically_tap_here_to_connect_manually))
+            Spacer(modifier = Modifier.height(8.dp))
+            RoundCornerButton(
+                onClick = {
+                    navigateToManualConnect()
+                }, buttonText = stringResource(id = R.string.connect_manually)
+            )
+        }
+    }
+}
+
+@Composable
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+private fun GrantPermissionsScreenPreview() {
+    AppTheme {     GrantPermissionsScreen(
+        paddingValues = PaddingValues(0.dp),
+        permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { },
+        permissions = arrayOf("android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION")
+    )
+    }
+
 }
 
 @Composable
@@ -194,27 +295,45 @@ private fun GrantPermissionsScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = stringResource(id = R.string.welcome_to_app),
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        val textColor = if (isSystemInDarkTheme()) {
+            Color.White
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        }
+
         Text(
             text = stringResource(id = R.string.location_and_other_permissions_are_required_for_analyzing_captive_networks),
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.titleLarge,
+            color = textColor,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(24.dp))
-        Button(
+        RoundCornerButton(
             onClick = { permissionLauncher.launch(permissions) },
+            buttonText =stringResource(id = R.string.grant_permissions),
             modifier = Modifier.padding(horizontal = 32.dp)
-        ) {
-            Text(text = stringResource(id = R.string.grant_permissions))
-        }
+        )
     }
 }
 
+
+@Composable
+@Preview
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+fun PermissionDeniedDialogPreview() {
+    AppTheme {
+        PermissionDeniedDialog(
+            missingPermissions = listOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.CHANGE_WIFI_STATE,
+            ),
+            onRetry = {},
+            onDismiss = {},
+            context = LocalContext.current
+        )
+    }
+}
 
 @Composable
 fun PermissionDeniedDialog(

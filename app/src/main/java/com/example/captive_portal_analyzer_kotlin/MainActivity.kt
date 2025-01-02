@@ -9,19 +9,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
+import com.example.captive_portal_analyzer_kotlin.components.AppScaffold
 import com.example.captive_portal_analyzer_kotlin.navigation.AppNavGraph
 import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
 import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNetworkSessionRepository
-import com.example.captive_portal_analyzer_kotlin.theme.CaptivePortalAnalyzerComposeTheme
+import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import com.google.firebase.FirebaseApp
-import www.sanju.motiontoast.MotionToast
-import www.sanju.motiontoast.MotionToastStyle
 
 class MainActivity : ComponentActivity() {
 
@@ -47,13 +46,20 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val sharedViewModel: SharedViewModel = viewModel()
             val dialogState by sharedViewModel.dialogState.collectAsState()
-            CaptivePortalAnalyzerComposeTheme {
+            val scope = rememberCoroutineScope()
+
+            AppTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    AppScaffold(
+                        navController = navController,
+                        scope = scope
+                    ) {
                     AppNavGraph(
                         navController = navController, sessionManager = sessionManager,
                         sharedViewModel = sharedViewModel,
                         dialogState = dialogState
                     )
+                }
                 }
             }
         }
@@ -65,7 +71,7 @@ class MainActivity : ComponentActivity() {
 @Preview(showBackground = true)
 @Composable
 fun MainPreview() {
-    CaptivePortalAnalyzerComposeTheme {
+    AppTheme {
 
     }
 }

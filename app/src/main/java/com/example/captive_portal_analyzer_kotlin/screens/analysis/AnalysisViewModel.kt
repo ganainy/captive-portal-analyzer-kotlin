@@ -46,7 +46,11 @@ sealed class AnalysisUiState {
     data class Loading(val messageStringResource: Int) : AnalysisUiState()
     data class CaptiveUrlDetected(val captiveUrl: String) : AnalysisUiState()
     object AnalysisComplete : AnalysisUiState()
-    data class Error(val messageStringResource: Int) : AnalysisUiState()
+    enum class ErrorType {
+        CannotDetectCaptiveUrl,
+        Unknown,
+    }
+    data class Error(val type: ErrorType) : AnalysisUiState()
 }
 
 class AnalysisViewModel(
@@ -101,12 +105,12 @@ class AnalysisViewModel(
                     )
 
                 } else {
-                    _uiState.value = AnalysisUiState.Error(R.string.no_captive_portal_detected)
+                    _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    _uiState.value = AnalysisUiState.Error(R.string.no_captive_portal_detected)
+                    _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl)
                 }
             }
         }

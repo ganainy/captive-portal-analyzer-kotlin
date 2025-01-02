@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.screens.landing
+package com.example.captive_portal_analyzer_kotlin.screens.network_list
 
 import android.annotation.SuppressLint
 import android.app.Application
@@ -26,23 +26,23 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 
-sealed class LandingUiState {
-    object Loading : LandingUiState()
-    object AskPermissions : LandingUiState()
-    object LoadNetworkSuccess : LandingUiState()
-    object NoOpenNetworks : LandingUiState()
-    object ConnectionSuccess : LandingUiState()
-    data class Error(val messageStringResource: Int) : LandingUiState()
+sealed class NetworkListUiState {
+    object Loading : NetworkListUiState()
+    object AskPermissions : NetworkListUiState()
+    object LoadNetworkSuccess : NetworkListUiState()
+    object NoOpenNetworks : NetworkListUiState()
+    object ConnectionSuccess : NetworkListUiState()
+    data class Error(val messageStringResource: Int) : NetworkListUiState()
 }
 
 // Extension for DataStore
 val Context.dataStore by preferencesDataStore(name = "app_preferences")
 
 
-class LandingViewModel(application: Application) : AndroidViewModel(application) {
+class NetworkListViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _uiState = MutableStateFlow<LandingUiState>(LandingUiState.Loading)
-    val uiState: StateFlow<LandingUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<NetworkListUiState>(NetworkListUiState.Loading)
+    val uiState: StateFlow<NetworkListUiState> = _uiState.asStateFlow()
 
     private val wifiManager = application.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
@@ -70,7 +70,7 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
             if (!showWelcomeScreen) {
                 scanOpenWifiNetworks()
             } else {
-                _uiState.value = LandingUiState.AskPermissions
+                _uiState.value = NetworkListUiState.AskPermissions
             }
         }
     }
@@ -81,7 +81,7 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
                 preferences[SHOW_WELCOME_SCREEN_KEY] = showWelcomeScreen
             }
             if (showWelcomeScreen){
-                _uiState.value = LandingUiState.AskPermissions
+                _uiState.value = NetworkListUiState.AskPermissions
             }else{
                 scanOpenWifiNetworks()
             }
@@ -115,7 +115,7 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
 
                             // Notify UI of successful connection
                             viewModelScope.launch(Dispatchers.Main) {
-                                _uiState.value = LandingUiState.ConnectionSuccess
+                                _uiState.value = NetworkListUiState.ConnectionSuccess
                             }
                         }
 
@@ -124,7 +124,7 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
                             // Notify UI of failure
                             viewModelScope.launch(Dispatchers.Main) {
                                 _uiState.value =
-                                    LandingUiState.Error(R.string.error_connecting_to_wifi)
+                                    NetworkListUiState.Error(R.string.error_connecting_to_wifi)
                             }
                         }
                     }
@@ -147,10 +147,10 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
                 wifiManager.reconnect()
 
                 // Notify UI of successful connection
-                _uiState.value = LandingUiState.ConnectionSuccess
+                _uiState.value = NetworkListUiState.ConnectionSuccess
             } else {
                 // Notify UI of failure
-                _uiState.value = LandingUiState.Error(R.string.error_connecting_to_wifi)
+                _uiState.value = NetworkListUiState.Error(R.string.error_connecting_to_wifi)
             }
         }
     }
@@ -186,9 +186,9 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
 
             if (openNetworkInfoList.isNotEmpty()) {
                 _openWifiNetworks.value = openNetworkInfoList
-                _uiState.value = LandingUiState.LoadNetworkSuccess
+                _uiState.value = NetworkListUiState.LoadNetworkSuccess
             } else {
-                _uiState.value = LandingUiState.NoOpenNetworks
+                _uiState.value = NetworkListUiState.NoOpenNetworks
             }
         }
     }
@@ -220,9 +220,9 @@ class LandingViewModel(application: Application) : AndroidViewModel(application)
 /*
 class FeedViewModelFactory(private val repository: IDataRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(LandingViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(NetworkListViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return LandingViewModel(repository) as T
+            return NetworkListViewModel(repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

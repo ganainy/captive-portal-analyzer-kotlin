@@ -1,17 +1,18 @@
 package com.example.captive_portal_analyzer_kotlin.navigation
 
-import com.example.captive_portal_analyzer_kotlin.screens.manual_connect.HomeScreen
+import androidx.annotation.StringRes
+import com.example.captive_portal_analyzer_kotlin.screens.manual_connect.ManualConnectScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
-import com.example.captive_portal_analyzer_kotlin.screens.landing.LandingScreen
+import com.example.captive_portal_analyzer_kotlin.screens.network_list.NetworkListScreen
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.screens.about.AboutScreen
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreen
-import com.example.captive_portal_analyzer_kotlin.screens.menu.MenuScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session.SessionScreen
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialog
@@ -24,16 +25,17 @@ import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNe
 import com.example.captive_portal_analyzer_kotlin.room.screenshots.OfflineScreenshotRepository
 import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
 import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
+import com.example.captive_portal_analyzer_kotlin.screens.welcome.WelcomeScreen
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 
-sealed class Screen(val route: String) {
-    object Menu : Screen("menu")
-    object ManualConnect : Screen("manual_connect")
-    object Landing : Screen("landing")
-    object Analysis : Screen("analysis")
-    object Report : Screen("report")
-    object Session : Screen("session")
-    object About : Screen("about")
+sealed class Screen(val route: String,@StringRes val titleStringResource: Int) {
+    object Welcome : Screen("welcome", R.string.welcome_screen_title)
+    object ManualConnect : Screen("manual_connect", R.string.manual_connect_screen_title)
+    object NetworkList : Screen("network_list", R.string.network_list_screen_title)
+    object Analysis : Screen("analysis", R.string.analysis_screen_title)
+    object SessionList : Screen("session_list", R.string.session_list_screen_title)
+    object Session : Screen("session", R.string.session_screen_title)
+    object About : Screen("about", R.string.about_screen_title)
 }
 
 @Composable
@@ -77,23 +79,22 @@ fun AppNavGraph(
         onDismissRequest = { sharedViewModel.hideDialog() }
     )
 
-    NavHost(navController = navController, startDestination = Screen.Menu.route) {
-        composable(route = Screen.Menu.route) {
-            MenuScreen(
-                navigateToLanding =actions.navigateToLandingScreen,
-                navigateToAbout = actions.navigateToAbout,
-                navigateToReport = actions.navigateToReportScreen
+    NavHost(navController = navController, startDestination = Screen.Welcome.route) {
+        composable(route = Screen.Welcome.route) {
+            WelcomeScreen(
+                navigateToNetworkList =actions.navigateToNetworkListScreen,
+
             )
         }
         composable(route = Screen.ManualConnect.route) {
-            HomeScreen(
+            ManualConnectScreen(
                 navigateToAnalysis =actions.navigateToAnalysisScreen,
-                navigateToLanding =actions.navigateToLandingScreen,
+                navigateToNetworkList =actions.navigateToNetworkListScreen,
                 navigateToAbout = actions.navigateToAbout,
             )
         }
-        composable(route = Screen.Landing.route) {
-            LandingScreen(
+        composable(route = Screen.NetworkList.route) {
+            NetworkListScreen(
                 navigateToManualConnect = actions.navigateToManualConnectScreen,
                 navigateToAnalysis = actions.navigateToAnalysisScreen,
                 navigateToAbout = actions.navigateToAbout,
@@ -104,18 +105,17 @@ fun AppNavGraph(
                 offlineCustomWebViewRequestsRepository = offlineCustomWebViewRequestsRepository,
                 offlineWebpageContentRepository = offlineWebpageContentRepository,
                 screenshotRepository = screenshotRepository,
-                navigateToReport = actions.navigateToReportScreen,
-                navigateBack = actions.navigateBack,
-                navigateToAbout = actions.navigateToAbout,
+                navigateToSessionList = actions.navigateToSessionListScreen,
+                navigateToManualConnect = actions.navigateToManualConnectScreen,
                 sessionManager = sessionManager,
                 sharedViewModel = sharedViewModel,
             )
         }
         composable(
-            route = Screen.Report.route,
+            route = Screen.SessionList.route,
         ) {
                 SessionListScreen(
-                    navigateToMenu = actions.navigateToMenuScreen,
+                    navigateToWelcome = actions.navigateToWelcomeScreen,
                     offlineCustomWebViewRequestsRepository = offlineCustomWebViewRequestsRepository,
                     offlineWebpageContentRepository = offlineWebpageContentRepository,
                     offlineScreenshotRepository = screenshotRepository,
@@ -159,8 +159,8 @@ class NavigationActions(private val navController: NavHostController) {
                 popUpTo(Screen.SignUp.route) { inclusive = true }
             }
         }*/
-    val navigateToLandingScreen: () -> Unit = {
-        navController.navigate(Screen.Landing.route)
+    val navigateToNetworkListScreen: () -> Unit = {
+        navController.navigate(Screen.NetworkList.route)
     }
     val navigateToManualConnectScreen: () -> Unit = {
         navController.navigate(Screen.ManualConnect.route)
@@ -170,12 +170,12 @@ class NavigationActions(private val navController: NavHostController) {
         navController.navigate(Screen.Analysis.route)
     }
 
-    val navigateToMenuScreen: () -> Unit = {
-        navController.navigate(Screen.Menu.route)
+    val navigateToWelcomeScreen: () -> Unit = {
+        navController.navigate(Screen.Welcome.route)
     }
 
-    val navigateToReportScreen: () -> Unit = {
-        navController.navigate(Screen.Report.route)
+    val navigateToSessionListScreen: () -> Unit = {
+        navController.navigate(Screen.SessionList.route)
     }
 
     val navigateToSessionScreen: () -> Unit = {

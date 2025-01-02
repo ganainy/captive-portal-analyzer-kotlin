@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
+
 
 @Composable
 fun AboutScreen(
@@ -22,11 +22,7 @@ fun AboutScreen(
 ) {
 
     Scaffold(
-        topBar = {
-            ToolbarWithMenu(
-                 title = stringResource(id = R.string.about_screen_title),
-            )
-        },
+
     ) { paddingValues ->
 
         Column(

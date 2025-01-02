@@ -2,21 +2,29 @@ package com.example.captive_portal_analyzer_kotlin.screens.analysis
 
 import android.app.Application
 import android.content.Context
+import android.content.res.Configuration
 import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebView.setWebContentsDebuggingEnabled
 import android.webkit.WebViewClient
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +38,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -39,13 +49,16 @@ import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
-import com.example.captive_portal_analyzer_kotlin.components.MenuItem
-import com.example.captive_portal_analyzer_kotlin.components.ToolbarWithMenu
+
 import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
 import com.example.captive_portal_analyzer_kotlin.room.screenshots.OfflineScreenshotRepository
 import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.components.GhostButton
+import com.example.captive_portal_analyzer_kotlin.components.HintText
+import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
+import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import kotlinx.coroutines.launch
 
@@ -54,9 +67,8 @@ fun AnalysisScreen(
     offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
     offlineWebpageContentRepository: OfflineWebpageContentRepository,
     screenshotRepository: OfflineScreenshotRepository,
-    navigateToReport: () -> Unit,
-    navigateBack: () -> Unit,
-    navigateToAbout: () -> Unit,
+    navigateToSessionList: () -> Unit,
+    navigateToManualConnect: () -> Unit,
     sessionManager: NetworkSessionManager,
     sharedViewModel: SharedViewModel,
 ) {
@@ -77,7 +89,7 @@ fun AnalysisScreen(
     val portalUrl by analysisViewModel.portalUrl.collectAsState()
     val shouldShowNormalWebView by analysisViewModel.shouldShowNormalWebView.collectAsState()
 
-    val showToast= { message:String, style:ToastStyle ->
+    val showToast = { message: String, style: ToastStyle ->
         sharedViewModel.showToast(
             message = message, style = style,
         )
@@ -95,11 +107,12 @@ fun AnalysisScreen(
     }
 
     Scaffold(
-        topBar = {
-            ToolbarWithMenu(
-                title = stringResource(id = R.string.analysis_screen_title),
-                menuItems = listOf(
-                    MenuItem(
+
+    ) { contentPadding ->
+
+        //todo make into a button
+        /*
+        *  MenuItem(
                         iconPath = R.drawable.stop,
                         itemName = stringResource(id = R.string.stop_analysis),
                         onClick = {
@@ -109,36 +122,15 @@ fun AnalysisScreen(
                                     message =context.getString(R.string.it_looks_like_you_still_have_no_full_internet_connection_please_complete_the_login_process_of_the_captive_portal_before_stopping_the_analysis),
                                     confirmText =  context.getString(R.string.stop_analysis_anyway),
                                     dismissText = context.getString(R.string.dismiss),
-                                    onConfirm = navigateToReport,
+                                    onConfirm = navigateToSessionList,
                                     onDismiss = sharedViewModel::hideDialog
                                 )
                             },)
                         }
                     ),
+        * */
 
-                    MenuItem(
-                        iconPath = R.drawable.web,
-                        itemName = if (shouldShowNormalWebView) {
-                            stringResource(id = R.string.return_original_detection_method)
-                        } else {
-                            stringResource(id = R.string.change_detection_method)
-                        },
-                        onClick = {
-                            analysisViewModel.showNormalWebView(true,showToast)
-                        }
-                    ),
-                    MenuItem(
-                        iconPath = R.drawable.about,
-                        itemName = stringResource(id = R.string.about),
-                        onClick = {
-                            navigateToAbout()
-                        }
-                    ),
 
-                    )
-            )
-        }
-    ) { contentPadding ->
 
         when (uiState) {
 
@@ -150,89 +142,231 @@ fun AnalysisScreen(
             }
 
             is AnalysisUiState.CaptiveUrlDetected -> {
-                if (shouldShowNormalWebView) {
-                    NormalWebView(
-                        portalUrl = portalUrl,
-                        webView = webView,
-                        saveWebRequest = { request ->
-                            coroutineScope.launch {
-                                analysisViewModel.saveWebResourceRequest(
-                                    request
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(contentPadding),
-                        captureAndSaveContent = { webView, content ->
-                            coroutineScope.launch {
-                                analysisViewModel.saveWebpageContent(
-                                    webView,
-                                    content,
-                                    showToast
-                                )
-                            }
-                        },
-                        takeScreenshot = analysisViewModel::takeScreenshot
-                    )
 
-                } else {
-                    CustomWebView(
-                        portalUrl = portalUrl,
-                        webView = webView,
-                        saveWebRequest = { request ->
-                            coroutineScope.launch {
-                                analysisViewModel.saveWebViewRequest(
-                                    request
-                                )
-                            }
-                        },
-                        takeScreenshot = analysisViewModel::takeScreenshot,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(contentPadding),
-                        captureAndSaveContent = { webView, content ->
-                            coroutineScope.launch {
-                                analysisViewModel.saveWebpageContent(
-                                    webView,
-                                    content,
-                                    showToast
-                                )
-                            }
+                Column {
+
+                    EndAnalysisBox(
+                        stopAnalysis = {
+                            analysisViewModel.stopAnalysis(onUncompletedAnalysis = { showUncompletedAnalysisDialog(
+                                context = context,
+                                hideDialog = sharedViewModel::hideDialog,
+                                showDialog = sharedViewModel::showDialog,
+                                navigateToSessionList = navigateToSessionList
+                            ) }
+
+                            )
                         }
                     )
-                }
 
+                    if (shouldShowNormalWebView) {
+                        NormalWebView(
+                            portalUrl = portalUrl,
+                            webView = webView,
+                            saveWebRequest = { request ->
+                                coroutineScope.launch {
+                                    analysisViewModel.saveWebResourceRequest(
+                                        request
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(contentPadding),
+                            captureAndSaveContent = { webView, content ->
+                                coroutineScope.launch {
+                                    analysisViewModel.saveWebpageContent(
+                                        webView,
+                                        content,
+                                        showToast
+                                    )
+                                }
+                            },
+                            takeScreenshot = analysisViewModel::takeScreenshot
+                        )
+
+                    } else {
+                        CustomWebView(
+                            portalUrl = portalUrl,
+                            webView = webView,
+                            saveWebRequest = { request ->
+                                coroutineScope.launch {
+                                    analysisViewModel.saveWebViewRequest(
+                                        request
+                                    )
+                                }
+                            },
+                            takeScreenshot = analysisViewModel::takeScreenshot,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(contentPadding),
+                            captureAndSaveContent = { webView, content ->
+                                coroutineScope.launch {
+                                    analysisViewModel.saveWebpageContent(
+                                        webView,
+                                        content,
+                                        showToast
+                                    )
+                                }
+                            }
+                        )
+                    }
+
+                }
             }
 
             is AnalysisUiState.Error -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(contentPadding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = stringResource((uiState as AnalysisUiState.Error).messageStringResource),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-
-                        Button(
-                            onClick = {
-                                analysisViewModel.getCaptivePortalAddress(showToast)
-                            }
-                        ) {
-                            Text(stringResource(id = R.string.retry_captive_detection))
-                        }
-                    }
-                }
+                AnalysisError(
+                    contentPadding,
+                    uiState,
+                    analysisViewModel::getCaptivePortalAddress,
+                    showToast,
+                    navigateToManualConnect
+                )
             }
 
-            AnalysisUiState.AnalysisComplete -> navigateToReport()
+            AnalysisUiState.AnalysisComplete -> navigateToSessionList()
+        }
+    }
+}
+
+@Composable
+private fun EndAnalysisBox(
+    stopAnalysis: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = stringResource(id = R.string.on_login_completed),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(
+                onClick = stopAnalysis,
+            ) {
+                Text(
+                    text = stringResource(id = R.string.stop_analysis),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+        }
+    }
+}
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+@Preview( )
+@Composable
+private fun EndAnalysisBoxPreview() {
+    AppTheme {
+        EndAnalysisBox( { })
+    }
+}
+
+// Extract dialog configuration into a separate function
+private fun showUncompletedAnalysisDialog(context: Context,hideDialog: () -> Unit,
+                                          showDialog: (title: String, message: String, confirmText: String, dismissText: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit, navigateToSessionList: () -> Unit) {
+    showDialog(
+        context.getString(R.string.warning),
+        context.getString(R.string.it_looks_like_you_still_have_no_full_internet_connection_please_complete_the_login_process_of_the_captive_portal_before_stopping_the_analysis),
+        context.getString(R.string.stop_analysis_anyway),
+         context.getString(R.string.dismiss),
+         navigateToSessionList,
+        hideDialog,
+    )
+}
+
+@Composable
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+@Preview(showBackground = true)
+private fun AnalysisErrorPreview() {
+    AppTheme {
+        AnalysisError(
+            contentPadding = PaddingValues(),
+            uiState = AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl),
+            getCaptivePortalAddress = {},
+            showToast = { _, _ -> },
+            navigateToManualConnect = {}
+        )
+    }
+}
+
+@Composable
+private fun AnalysisError(
+    contentPadding: PaddingValues,
+    uiState: AnalysisUiState,
+    getCaptivePortalAddress: (showToast: (String, ToastStyle) -> Unit) -> Unit,
+    showToast: (String, ToastStyle) -> Unit,
+    navigateToManualConnect: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val error = uiState as AnalysisUiState.Error
+            var text = ""
+            var hint = ""
+            when (error.type) {
+                AnalysisUiState.ErrorType.CannotDetectCaptiveUrl -> {
+                    text = stringResource(R.string.couldnt_detect_captive_url)
+                    hint = stringResource(R.string.are_you_sure_current_network_has_captive_portal)
+                }
+
+                AnalysisUiState.ErrorType.Unknown -> {
+                    text = stringResource(R.string.something_went_wrong)
+                }
+            }
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            HintText(
+                hint = hint,
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp), // Optional padding for better UI spacing
+                horizontalArrangement = Arrangement.SpaceBetween // Ensures buttons are spaced apart
+            ) {
+                RoundCornerButton(
+                    modifier = Modifier
+                        .weight(2f)
+                        .padding(start = 8.dp), // Add spacing between buttons
+                    onClick = {
+                        navigateToManualConnect()
+                    },
+                    buttonText = stringResource(id = R.string.connect_to_another_network)
+                )
+
+                GhostButton(
+                    modifier = Modifier
+                        .weight(1f) // Distribute available space equally
+                        .padding(end = 8.dp), // Add spacing between buttons
+                    onClick = {
+                        getCaptivePortalAddress(showToast)
+                    },
+                    text = stringResource(id = R.string.retry)
+                )
+
+            }
+
         }
     }
 }
