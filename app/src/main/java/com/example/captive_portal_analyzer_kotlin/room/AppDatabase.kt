@@ -4,14 +4,10 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.CustomWebViewRequestDao
-import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.CustomWebViewRequestEntity
-import com.example.captive_portal_analyzer_kotlin.room.network_session.NetworkSessionDao
-import com.example.captive_portal_analyzer_kotlin.room.network_session.NetworkSessionEntity
-import com.example.captive_portal_analyzer_kotlin.room.screenshots.ScreenshotDao
-import com.example.captive_portal_analyzer_kotlin.room.screenshots.ScreenshotEntity
-import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageContentDao
-import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageContentEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 
 
 @Database(
@@ -21,7 +17,7 @@ import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageCo
         WebpageContentEntity::class,
         ScreenshotEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

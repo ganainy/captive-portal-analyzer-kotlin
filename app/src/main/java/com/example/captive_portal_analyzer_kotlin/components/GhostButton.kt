@@ -18,6 +18,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
@@ -43,7 +44,8 @@ fun GhostButton(
 
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.scale(scale),
+
+        modifier = modifier.scale(scale).height(56.dp),
         shape = RoundedCornerShape(16.dp),
         enabled = enabled,
         colors = ButtonDefaults.outlinedButtonColors(

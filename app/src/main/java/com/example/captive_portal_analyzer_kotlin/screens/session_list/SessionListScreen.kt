@@ -1,5 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.screens.session_list
 
+import NetworkSessionRepository
 import android.app.Application
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
@@ -30,8 +31,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -42,17 +41,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
-
-import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.CustomWebViewRequestEntity
-import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
-import com.example.captive_portal_analyzer_kotlin.room.network_session.NetworkSessionEntity
-import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNetworkSessionRepository
-import com.example.captive_portal_analyzer_kotlin.room.screenshots.OfflineScreenshotRepository
-import com.example.captive_portal_analyzer_kotlin.room.screenshots.ScreenshotEntity
-import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
-import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageContentEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
-import com.google.firebase.database.collection.LLRBNode
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -61,21 +54,14 @@ import java.util.UUID
 @Composable
 fun SessionListScreen(
     navigateToWelcome: () -> Unit,
-    navigateToAbout: () -> Unit,
     clickedSession: (NetworkSessionEntity, List<CustomWebViewRequestEntity>, List<WebpageContentEntity>, List<ScreenshotEntity>) -> Unit,
-    offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
-    offlineWebpageContentRepository: OfflineWebpageContentRepository,
-    offlineScreenshotRepository: OfflineScreenshotRepository,
-    offlineNetworkSessionRepository: OfflineNetworkSessionRepository,
+    repository :  NetworkSessionRepository,
     navigateToSessionScreen: () -> Unit
 ) {
     val viewModel: SessionListViewModel = viewModel(
         factory = SessionListViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
-            offlineCustomWebViewRequestsRepository = offlineCustomWebViewRequestsRepository,
-            offlineWebpageContentRepository = offlineWebpageContentRepository,
-            offlineNetworkSessionRepository = offlineNetworkSessionRepository,
-            offlineScreenshotRepository = offlineScreenshotRepository,
+            repository =  repository,
         )
     )
     val uiState by viewModel.uiState.collectAsState()
@@ -305,7 +291,12 @@ fun DefaultPreview() {
             bssid = "BSSID",
             timestamp = System.currentTimeMillis(),
             sessionId = UUID.randomUUID().toString(),
-            isUploadedToRemoteServer = true
+            isUploadedToRemoteServer = true,
+            captivePortalUrl = "TODO()",
+            ipAddress = "192.168.0.2",
+            gatewayAddress = "192.168.0.1",
+            securityType = "WPA2",
+            isCaptiveLocal = false
         ),
         requests = emptyList(),
         content = emptyList(),

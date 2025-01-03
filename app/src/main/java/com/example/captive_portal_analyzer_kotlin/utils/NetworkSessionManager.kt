@@ -1,13 +1,13 @@
 package com.example.captive_portal_analyzer_kotlin.utils
 
+import NetworkSessionRepository
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.wifi.WifiManager
-import com.example.captive_portal_analyzer_kotlin.room.network_session.NetworkSessionEntity
-import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNetworkSessionRepository
+import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.UUID
-class NetworkSessionManager(private val context: Context, private val repository: OfflineNetworkSessionRepository) {
+class NetworkSessionManager(private val context: Context, private val repository: NetworkSessionRepository) {
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val wifiManager =
@@ -84,6 +84,7 @@ class NetworkSessionManager(private val context: Context, private val repository
                     timestamp = System.currentTimeMillis(),
                     ipAddress = intToIpAddress(dhcpInfo.ipAddress),
                     gatewayAddress = intToIpAddress(dhcpInfo.gateway),
+
                 )
 
                 // Save new session to database

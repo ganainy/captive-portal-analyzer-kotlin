@@ -57,7 +57,6 @@ import com.example.captive_portal_analyzer_kotlin.components.CustomSnackBar
 import com.example.captive_portal_analyzer_kotlin.components.HintText
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 
-import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkItem
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 
 @Composable

@@ -1,25 +1,19 @@
 package com.example.captive_portal_analyzer_kotlin.screens.session_list
 
+import NetworkSessionRepository
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.CustomWebViewRequestEntity
-import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
-import com.example.captive_portal_analyzer_kotlin.room.network_session.NetworkSessionEntity
-import com.example.captive_portal_analyzer_kotlin.room.network_session.NetworkSessionRepository
-import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNetworkSessionRepository
-import com.example.captive_portal_analyzer_kotlin.room.screenshots.OfflineScreenshotRepository
-import com.example.captive_portal_analyzer_kotlin.room.screenshots.ScreenshotEntity
-import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
-import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageContentEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import kotlinx.coroutines.Dispatchers
-
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 
@@ -33,10 +27,7 @@ sealed class SessionListUiState {
 
 class SessionListViewModel(
     application: Application,
-    private val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
-    private val offlineWebpageContentRepository: OfflineWebpageContentRepository,
-    private val offlineScreenshotRepository: OfflineScreenshotRepository,
-    private val offlineNetworkSessionRepository: NetworkSessionRepository
+    private val repository: NetworkSessionRepository,
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<SessionListUiState>(SessionListUiState.Loading)
@@ -66,7 +57,7 @@ class SessionListViewModel(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            val sessions = offlineNetworkSessionRepository.getAllSessions()
+            val sessions = repository.getAllSessions()
             if (sessions.isNullOrEmpty()) {
                 _uiState.value = SessionListUiState.Empty
             } else {
@@ -75,18 +66,18 @@ class SessionListViewModel(
                 sessions.forEach { session ->
 
                     val sessionCustomWebViewRequests =
-                        offlineCustomWebViewRequestsRepository.getSessionCustomWebViewRequest(
+                        repository.getSessionRequests(
                             session.sessionId
                         )
-                    _sessionCustomWebViewRequests.value = sessionCustomWebViewRequests.first()
+                    _sessionCustomWebViewRequests.value = sessionCustomWebViewRequests
 
                     val sessionWebpageContent =
-                        offlineWebpageContentRepository.getAllContentForSessionId(session.sessionId)
-                    _sessionWebpageContent.value = sessionWebpageContent.first()
+                        repository.getSessionWebpageContent(session.sessionId)
+                    _sessionWebpageContent.value = sessionWebpageContent
 
                     val sessionScreenshot =
-                        offlineScreenshotRepository.getAllScreenshotsForSession(session.sessionId)
-                    _sessionScreenshot.value = sessionScreenshot.first()
+                        repository.getSessionScreenshots(session.sessionId)
+                    _sessionScreenshot.value = sessionScreenshot
                 }
 
 
@@ -99,20 +90,14 @@ class SessionListViewModel(
 
 class SessionListViewModelFactory(
     private val application: Application,
-    private val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
-    private val offlineWebpageContentRepository: OfflineWebpageContentRepository,
-    private val offlineScreenshotRepository: OfflineScreenshotRepository,
-    private val offlineNetworkSessionRepository: OfflineNetworkSessionRepository,
+    private val repository: NetworkSessionRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SessionListViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
             return SessionListViewModel(
                 application,
-                offlineCustomWebViewRequestsRepository,
-                offlineWebpageContentRepository,
-                offlineScreenshotRepository,
-                offlineNetworkSessionRepository
+                repository
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

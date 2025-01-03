@@ -1,15 +1,19 @@
-package com.example.captive_portal_analyzer_kotlin.room.network_session
+package com.example.captive_portal_analyzer_kotlin.room
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
 
 @Dao
 interface NetworkSessionDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSession(session: NetworkSessionEntity)
+    suspend fun insert(session: NetworkSessionEntity)
+
+    @Query("SELECT * FROM network_sessions WHERE sessionId = :sessionId")
+    suspend fun getSession(sessionId: String): NetworkSessionEntity?
 
     @Query("UPDATE network_sessions SET captivePortalUrl = :portalUrl WHERE sessionId = :sessionId")
     suspend fun updatePortalUrl(sessionId: String, portalUrl: String)

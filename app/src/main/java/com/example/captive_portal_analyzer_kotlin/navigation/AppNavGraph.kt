@@ -1,5 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.navigation
 
+import NetworkSessionRepository
 import androidx.annotation.StringRes
 import com.example.captive_portal_analyzer_kotlin.screens.manual_connect.ManualConnectScreen
 import androidx.compose.runtime.Composable
@@ -18,12 +19,6 @@ import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.AppToast
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
-import com.example.captive_portal_analyzer_kotlin.firebase.OnlineRepository
-import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
-import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
-import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNetworkSessionRepository
-import com.example.captive_portal_analyzer_kotlin.room.screenshots.OfflineScreenshotRepository
-import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
 import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
 import com.example.captive_portal_analyzer_kotlin.screens.welcome.WelcomeScreen
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
@@ -44,28 +39,9 @@ fun AppNavGraph(
     sessionManager: NetworkSessionManager,
     sharedViewModel: SharedViewModel,
     dialogState: DialogState,
+    repository: NetworkSessionRepository,
 ) {
     val actions = remember(navController) { NavigationActions(navController) }
-
-     val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository by lazy {
-        OfflineCustomWebViewRequestsRepository(AppDatabase.getDatabase(navController.context).customWebViewRequestDao())
-    }
-
-    val offlineWebpageContentRepository: OfflineWebpageContentRepository by lazy {
-        OfflineWebpageContentRepository(AppDatabase.getDatabase(navController.context).webpageContentDao())
-    }
-
-    val screenshotRepository: OfflineScreenshotRepository by lazy {
-        OfflineScreenshotRepository(AppDatabase.getDatabase(navController.context).screenshotDao())
-    }
-
-    val offlineNetworkSessionRepository: OfflineNetworkSessionRepository by lazy {
-        OfflineNetworkSessionRepository(AppDatabase.getDatabase(navController.context).networkSessionDao())
-    }
-
-    val onlineRepository: OnlineRepository by lazy {
-        OnlineRepository()
-    }
 
     val toastState by sharedViewModel.toastState.collectAsState()
 
@@ -102,9 +78,7 @@ fun AppNavGraph(
         }
         composable(route = Screen.Analysis.route) {
             AnalysisScreen(
-                offlineCustomWebViewRequestsRepository = offlineCustomWebViewRequestsRepository,
-                offlineWebpageContentRepository = offlineWebpageContentRepository,
-                screenshotRepository = screenshotRepository,
+                repository = repository,
                 navigateToSessionList = actions.navigateToSessionListScreen,
                 navigateToManualConnect = actions.navigateToManualConnectScreen,
                 sessionManager = sessionManager,
@@ -115,12 +89,8 @@ fun AppNavGraph(
             route = Screen.SessionList.route,
         ) {
                 SessionListScreen(
+                    repository = repository,
                     navigateToWelcome = actions.navigateToWelcomeScreen,
-                    offlineCustomWebViewRequestsRepository = offlineCustomWebViewRequestsRepository,
-                    offlineWebpageContentRepository = offlineWebpageContentRepository,
-                    offlineScreenshotRepository = screenshotRepository,
-                    navigateToAbout = actions.navigateToAbout,
-                    offlineNetworkSessionRepository =offlineNetworkSessionRepository,
                     clickedSession = sharedViewModel::setClickedSession,
                     navigateToSessionScreen = actions.navigateToSessionScreen
                 )
@@ -129,11 +99,8 @@ fun AppNavGraph(
             route = Screen.Session.route,
         ) {
             SessionScreen(
-                navigateBack = actions.navigateBack,
-                navigateToAbout = actions.navigateToAbout,
+                repository = repository,
                 sharedViewModel = sharedViewModel,
-                onlineRepository = onlineRepository,
-                offlineNetworkSessionRepository = offlineNetworkSessionRepository,
             )
         }
         composable(

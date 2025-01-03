@@ -45,6 +45,7 @@ android {
         kotlinCompilerExtensionVersion = "1.5.3"
     }
 
+
 }
 
 dependencies {
@@ -55,14 +56,10 @@ dependencies {
     implementation (libs.androidx.lifecycle.viewmodel.compose)
     //lifecycle
     implementation (libs.androidx.lifecycle.runtime.ktx)
-    implementation (libs.androidx.lifecycle.viewmodel.ktx.v262)
     //gson
     implementation (libs.gson)
 
 
-    // okhttp3
-    implementation (libs.squareup.okhttp)
-    implementation (libs.logging.interceptor)
     //navigation
     implementation (libs.androidx.navigation.compose.v272)
 
@@ -93,9 +90,6 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-storage")
     implementation(libs.firebase.firestore.ktx)
-
-
-
 
 
     implementation(libs.androidx.core.ktx)

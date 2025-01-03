@@ -17,13 +17,18 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+data class NetworkItem(
+    val scanResult: ScanResult,
+    val isSecured: Boolean,
+    val securityIcon: Int // Resource ID for the icon
+)
 
 
 sealed class NetworkListUiState {

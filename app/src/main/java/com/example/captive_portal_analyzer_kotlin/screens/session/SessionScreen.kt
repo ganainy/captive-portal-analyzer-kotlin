@@ -1,8 +1,9 @@
 package com.example.captive_portal_analyzer_kotlin.screens.session
 
+import NetworkSessionRepository
+import SessionData
 import android.app.Application
 import android.content.res.Configuration
-import android.view.MenuItem
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -41,36 +42,28 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.example.captive_portal_analyzer_kotlin.R
 
-import com.example.captive_portal_analyzer_kotlin.dataclasses.Report
-import com.example.captive_portal_analyzer_kotlin.firebase.OnlineRepository
-import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.CustomWebViewRequestEntity
-import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNetworkSessionRepository
-import com.example.captive_portal_analyzer_kotlin.room.screenshots.ScreenshotEntity
-import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
-import com.example.captive_portal_analyzer_kotlin.room.network_session.NetworkSessionEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 
 @Composable
 fun SessionScreen(
-    navigateBack: () -> Unit,
-    navigateToAbout: () -> Unit,
     sharedViewModel: SharedViewModel,
-    onlineRepository: OnlineRepository,
-    offlineNetworkSessionRepository: OfflineNetworkSessionRepository,
+    repository : NetworkSessionRepository
 ) {
 
-    val clickedReport by sharedViewModel.clickedReport.collectAsState()
+    val clickedReport by sharedViewModel.clickedSessionData.collectAsState()
 
     val sessionViewModel: SessionViewModel = viewModel(
         factory = SessionViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
-            onlineRepository = onlineRepository,
-            offlineNetworkSessionRepository = offlineNetworkSessionRepository
+            repository = repository,
         )
     )
 
@@ -95,11 +88,12 @@ fun SessionScreen(
 
             clickedReport?.let {
                 SessionDetail(
-                    clickedReport = clickedReport!!,
+                    clickedSessionData = clickedReport!!,
                     uploadSession = {
-                        sessionViewModel.uploadReport(
+                        sessionViewModel.uploadSession(
                             clickedReport!!,
-                            showToast
+                            showToast,
+                            sharedViewModel::updateClickedSessionData
                         )
                     },
                     isUploading = isUploading
@@ -115,7 +109,7 @@ fun SessionScreen(
 
 @Composable
 fun SessionDetail(
-    clickedReport: Report,
+    clickedSessionData: SessionData,
     uploadSession: () -> Unit,
     isUploading: Boolean
 ) {
@@ -136,12 +130,12 @@ fun SessionDetail(
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                clickedReport.session.ssid?.let { Text("SSID: $it") }
-                clickedReport.session.bssid?.let { Text("BSSID: $it") }
-                clickedReport.session.ipAddress?.let { Text("IP: $it") }
-                clickedReport.session.gatewayAddress?.let { Text("Gateway: $it") }
-                clickedReport.session.securityType?.let { Text("Security: $it") }
-                clickedReport.session.captivePortalUrl?.let { Text("Portal URL: $it") }
+                clickedSessionData.session.ssid?.let { Text("SSID: $it") }
+                clickedSessionData.session.bssid?.let { Text("BSSID: $it") }
+                clickedSessionData.session.ipAddress?.let { Text("IP: $it") }
+                clickedSessionData.session.gatewayAddress?.let { Text("Gateway: $it") }
+                clickedSessionData.session.securityType?.let { Text("Security: $it") }
+                clickedSessionData.session.captivePortalUrl?.let { Text("Portal URL: $it") }
             }
         }
 
@@ -152,7 +146,7 @@ fun SessionDetail(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             shape =  RoundedCornerShape(16.dp),
-            enabled = !clickedReport.session.isUploadedToRemoteServer,
+            enabled = !clickedSessionData.session.isUploadedToRemoteServer,
             onClick = {
                 uploadSession()
             }
@@ -166,7 +160,7 @@ fun SessionDetail(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                if (clickedReport.session.isUploadedToRemoteServer) {
+                if (clickedSessionData.session.isUploadedToRemoteServer) {
                     Text(stringResource(R.string.already_uploaded))
                 } else {
                     Text(stringResource(R.string.upload_session_for_analysis))
@@ -182,24 +176,24 @@ fun SessionDetail(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("Requests (${clickedReport.requests.size})") }
+                text = { Text("Requests (${clickedSessionData.requests.size})") }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("Content (${clickedReport.webpageContent.size})") }
+                text = { Text("Content (${clickedSessionData.webpageContent.size})") }
             )
             Tab(
                 selected = selectedTab == 2,
                 onClick = { selectedTab = 2 },
-                text = { Text("Screenshots (${clickedReport.screenshots.size})") }
+                text = { Text("Screenshots (${clickedSessionData.screenshots.size})") }
             )
         }
 
         when (selectedTab) {
-            0 -> RequestsList(clickedReport.requests)
-            1 -> ContentList(clickedReport.webpageContent)
-            2 -> ScreenshotsList(clickedReport.screenshots)
+            0 -> RequestsList(clickedSessionData.requests)
+            1 -> ContentList(clickedSessionData.webpageContent)
+            2 -> ScreenshotsList(clickedSessionData.screenshots)
         }
     }
 }
@@ -209,7 +203,7 @@ fun SessionDetail(
 @Composable
 fun SessionDetailPreview() {
     SessionDetail(
-        clickedReport = Report(
+        clickedSessionData = SessionData(
             session = NetworkSessionEntity(
                 ssid = "test ssid",
                 bssid = "test bssid",
@@ -219,15 +213,21 @@ fun SessionDetailPreview() {
                 captivePortalUrl = "test portal url",
                 timestamp = Date().time,
                 sessionId = 1.toString(),
+                isCaptiveLocal = true,
+                isUploadedToRemoteServer = false,
             ),
             requests = listOf(
                 CustomWebViewRequestEntity(
                     sessionId = 11.toString(),
+                    type = "GET",
+                    url = "https://www.example.com",
+                    method = "GET",
+                    body = "{}",
+                    headers = "{}",
                 )
             ),
             screenshots = listOf(
                 ScreenshotEntity(
-                    screenshotId = UUID.randomUUID().toString(),
                     sessionId = "11",
                     timestamp = Date().time,
                     path = "test path",
@@ -238,6 +238,11 @@ fun SessionDetailPreview() {
             webpageContent = listOf(
                 WebpageContentEntity(
                     sessionId = 11.toString(),
+                    url = "https://www.example.com",
+                    htmlContent = "<html><body>This is a test.</body></html>",
+                    timestamp = Date().time,
+                    contentId = 1234,
+                    jsContent = "TODO()",
                 )
             )
         ),

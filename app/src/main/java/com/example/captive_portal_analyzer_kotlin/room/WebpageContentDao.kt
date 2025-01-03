@@ -1,10 +1,11 @@
-package com.example.captive_portal_analyzer_kotlin.room.webpage_content
+package com.example.captive_portal_analyzer_kotlin.room
 
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import kotlinx.coroutines.flow.Flow
 
 // DAO interface for database operations
@@ -30,5 +31,5 @@ interface WebpageContentDao {
 
 
     @Query("SELECT * FROM webpage_content WHERE sessionId = :sessionId")
-    abstract fun getAllContentForSessionId(sessionId: String): Flow<List<WebpageContentEntity>>
+    abstract fun getSessionWebpageContentList(sessionId: String): List<WebpageContentEntity>
 }

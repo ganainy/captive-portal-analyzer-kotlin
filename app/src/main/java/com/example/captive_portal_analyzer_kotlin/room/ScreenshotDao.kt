@@ -1,4 +1,7 @@
-package com.example.captive_portal_analyzer_kotlin.room.screenshots
+package com.example.captive_portal_analyzer_kotlin.room
+
+import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
+
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -26,5 +29,5 @@ interface ScreenshotDao {
 
 
     @Query("SELECT * from screenshots WHERE sessionId = :sessionId ORDER BY timestamp DESC")
-    fun getAllScreenshotsForSession(sessionId: String): Flow<List<ScreenshotEntity>>
+    fun getSessionScreenshotsList(sessionId: String): List<ScreenshotEntity>
 }

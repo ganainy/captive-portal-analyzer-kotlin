@@ -1,5 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.screens.analysis
 
+import NetworkSessionRepository
 import android.app.Application
 import android.content.Context
 import android.content.res.Configuration
@@ -9,7 +10,6 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebView.setWebContentsDebuggingEnabled
 import android.webkit.WebViewClient
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,11 +20,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -50,9 +49,7 @@ import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertD
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
 
-import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
-import com.example.captive_portal_analyzer_kotlin.room.screenshots.OfflineScreenshotRepository
-import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
+
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.HintText
@@ -64,9 +61,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AnalysisScreen(
-    offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
-    offlineWebpageContentRepository: OfflineWebpageContentRepository,
-    screenshotRepository: OfflineScreenshotRepository,
+    repository :  NetworkSessionRepository,
     navigateToSessionList: () -> Unit,
     navigateToManualConnect: () -> Unit,
     sessionManager: NetworkSessionManager,
@@ -75,9 +70,7 @@ fun AnalysisScreen(
     val analysisViewModel: AnalysisViewModel = viewModel(
         factory = AnalysisViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
-            offlineCustomWebViewRequestsRepository = offlineCustomWebViewRequestsRepository,
-            offlineWebpageContentRepository = offlineWebpageContentRepository,
-            screenshotRepository = screenshotRepository,
+            repository = repository,
             sessionManager = sessionManager
         )
     )
@@ -87,7 +80,8 @@ fun AnalysisScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val portalUrl by analysisViewModel.portalUrl.collectAsState()
-    val shouldShowNormalWebView by analysisViewModel.shouldShowNormalWebView.collectAsState()
+    val webViewType by analysisViewModel.webViewType.collectAsState()
+    val showedHint by analysisViewModel.showedHint.collectAsState()
 
     val showToast = { message: String, style: ToastStyle ->
         sharedViewModel.showToast(
@@ -110,27 +104,6 @@ fun AnalysisScreen(
 
     ) { contentPadding ->
 
-        //todo make into a button
-        /*
-        *  MenuItem(
-                        iconPath = R.drawable.stop,
-                        itemName = stringResource(id = R.string.stop_analysis),
-                        onClick = {
-                            analysisViewModel.stopAnalysis(onUncompletedAnalysis= {
-                                sharedViewModel.showDialog(
-                                    title = context.getString(R.string.warning),
-                                    message =context.getString(R.string.it_looks_like_you_still_have_no_full_internet_connection_please_complete_the_login_process_of_the_captive_portal_before_stopping_the_analysis),
-                                    confirmText =  context.getString(R.string.stop_analysis_anyway),
-                                    dismissText = context.getString(R.string.dismiss),
-                                    onConfirm = navigateToSessionList,
-                                    onDismiss = sharedViewModel::hideDialog
-                                )
-                            },)
-                        }
-                    ),
-        * */
-
-
 
         when (uiState) {
 
@@ -143,74 +116,120 @@ fun AnalysisScreen(
 
             is AnalysisUiState.CaptiveUrlDetected -> {
 
-                Column {
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // WebView container with weight to take all available space
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
 
-                    EndAnalysisBox(
-                        stopAnalysis = {
-                            analysisViewModel.stopAnalysis(onUncompletedAnalysis = { showUncompletedAnalysisDialog(
-                                context = context,
-                                hideDialog = sharedViewModel::hideDialog,
-                                showDialog = sharedViewModel::showDialog,
-                                navigateToSessionList = navigateToSessionList
-                            ) }
+                        when (webViewType) {
+                            WebViewType.NormalWebView -> {
 
+                                NormalWebView(
+                                    portalUrl = portalUrl,
+                                    webView = webView,
+                                    saveWebRequest = { request ->
+                                        coroutineScope.launch {
+                                            analysisViewModel.saveWebResourceRequest(request)
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(contentPadding),
+                                    captureAndSaveContent = { webView, content ->
+                                        coroutineScope.launch {
+                                            analysisViewModel.saveWebpageContent(
+                                                webView,
+                                                content,
+                                                showToast
+                                            )
+                                        }
+                                    },
+                                    takeScreenshot = analysisViewModel::takeScreenshot
+                                )
+
+
+                            }
+
+                            WebViewType.CustomWebView -> {
+
+                                CustomWebView(
+                                    portalUrl = portalUrl,
+                                    webView = webView,
+                                    saveWebRequest = { request ->
+                                        coroutineScope.launch {
+                                            analysisViewModel.saveWebViewRequest(request)
+                                        }
+                                    },
+                                    takeScreenshot = analysisViewModel::takeScreenshot,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(contentPadding),
+                                    captureAndSaveContent = { webView, content ->
+                                        coroutineScope.launch {
+                                            analysisViewModel.saveWebpageContent(
+                                                webView,
+                                                content,
+                                                showToast
+                                            )
+                                        }
+                                    },
+                                    showedHint = showedHint,
+                                    updateShowedHint = analysisViewModel::updateShowedHint
+                                )
+
+                            }
+                            }
+                        }
+
+
+
+                    // Other elements will wrap their content
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentHeight()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            RoundCornerButton(
+                                modifier = Modifier
+                                    .weight(2f)
+                                    .padding(start = 8.dp),
+                                onClick = {
+                                    analysisViewModel.stopAnalysis(onUncompletedAnalysis = {
+                                        showUncompletedAnalysisDialog(
+                                            context = context,
+                                            hideDialog = sharedViewModel::hideDialog,
+                                            showDialog = sharedViewModel::showDialog,
+                                            navigateToSessionList = navigateToSessionList
+                                        )
+                                    })
+                                },
+                                buttonText = stringResource(id = R.string.end_analysis)
+                            )
+
+                            GhostButton(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp),
+                                onClick = {
+                                    analysisViewModel.switchWebViewType(
+                                        showToast = showToast
+                                    )
+                                },
+                                text = stringResource(id = R.string.switch_browser_type)
                             )
                         }
-                    )
-
-                    if (shouldShowNormalWebView) {
-                        NormalWebView(
-                            portalUrl = portalUrl,
-                            webView = webView,
-                            saveWebRequest = { request ->
-                                coroutineScope.launch {
-                                    analysisViewModel.saveWebResourceRequest(
-                                        request
-                                    )
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(contentPadding),
-                            captureAndSaveContent = { webView, content ->
-                                coroutineScope.launch {
-                                    analysisViewModel.saveWebpageContent(
-                                        webView,
-                                        content,
-                                        showToast
-                                    )
-                                }
-                            },
-                            takeScreenshot = analysisViewModel::takeScreenshot
-                        )
-
-                    } else {
-                        CustomWebView(
-                            portalUrl = portalUrl,
-                            webView = webView,
-                            saveWebRequest = { request ->
-                                coroutineScope.launch {
-                                    analysisViewModel.saveWebViewRequest(
-                                        request
-                                    )
-                                }
-                            },
-                            takeScreenshot = analysisViewModel::takeScreenshot,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(contentPadding),
-                            captureAndSaveContent = { webView, content ->
-                                coroutineScope.launch {
-                                    analysisViewModel.saveWebpageContent(
-                                        webView,
-                                        content,
-                                        showToast
-                                    )
-                                }
-                            }
-                        )
                     }
-
                 }
             }
 
@@ -229,46 +248,7 @@ fun AnalysisScreen(
     }
 }
 
-@Composable
-private fun EndAnalysisBox(
-    stopAnalysis: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                text = stringResource(id = R.string.on_login_completed),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f)
-            )
-            TextButton(
-                onClick = stopAnalysis,
-            ) {
-                Text(
-                    text = stringResource(id = R.string.stop_analysis),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-        }
-    }
-}
 
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
-@Preview( )
-@Composable
-private fun EndAnalysisBoxPreview() {
-    AppTheme {
-        EndAnalysisBox( { })
-    }
-}
 
 // Extract dialog configuration into a separate function
 private fun showUncompletedAnalysisDialog(context: Context,hideDialog: () -> Unit,
@@ -440,7 +420,9 @@ private fun CustomWebView(
     saveWebRequest: (WebViewRequest) -> Unit,
     captureAndSaveContent: (WebView, String) -> Unit,
     takeScreenshot: (WebView, String) -> Unit,
-    modifier: Modifier
+    updateShowedHint: (Boolean) -> Unit,
+    modifier: Modifier,
+    showedHint: Boolean
 ) {
 
     Box(
@@ -458,13 +440,20 @@ private fun CustomWebView(
 
         HintInfoBox(
             context = LocalContext.current,
-            modifier = Modifier.align(Alignment.Center)
+            modifier = Modifier.align(Alignment.Center),
+            showedHint = showedHint,
+            updateShowedHint =updateShowedHint
         )
     }
 }
 
 @Composable
-private fun HintInfoBox(context: Context, modifier: Modifier) {
+private fun HintInfoBox(
+    context: Context,
+    modifier: Modifier,
+    updateShowedHint: (Boolean) -> Unit = {},
+    showedHint: Boolean
+) {
     var showInfoBox1 by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -474,12 +463,15 @@ private fun HintInfoBox(context: Context, modifier: Modifier) {
             }
     }
 
-    if (showInfoBox1) {
+    if (showInfoBox1 && !showedHint) {
+
         NeverSeeAgainAlertDialog(
             title = stringResource(R.string.hint),
             message = stringResource(R.string.login_to_captive_then_click_end_analysis),
             preferenceKey = "info_box_1",
-            onDismiss = { showInfoBox1 = false },
+            onDismiss = { showInfoBox1 = false
+                updateShowedHint(true)
+                        },
             modifier = modifier
         )
     }

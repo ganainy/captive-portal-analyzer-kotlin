@@ -1,14 +1,14 @@
 package com.example.captive_portal_analyzer_kotlin
 
+import SessionData
 import androidx.lifecycle.ViewModel
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
 import com.example.captive_portal_analyzer_kotlin.components.ToastState
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
-import com.example.captive_portal_analyzer_kotlin.dataclasses.Report
-import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.CustomWebViewRequestEntity
-import com.example.captive_portal_analyzer_kotlin.room.network_session.NetworkSessionEntity
-import com.example.captive_portal_analyzer_kotlin.room.screenshots.ScreenshotEntity
-import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageContentEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,14 +20,17 @@ class SharedViewModel : ViewModel() {
     val dialogState = _dialogState.asStateFlow()
 
 
-    private val _clickedReport = MutableStateFlow<Report?>(null)
-    val clickedReport: StateFlow<Report?> = _clickedReport
+    private val _clickedSessionData = MutableStateFlow<SessionData?>(null)
+    val clickedSessionData: StateFlow<SessionData?> = _clickedSessionData
 
 
     private val _toastState = MutableStateFlow<ToastState>(ToastState.Hidden)
     val toastState = _toastState.asStateFlow()
 
 
+    fun updateClickedSessionData(sessionData: SessionData) {
+        _clickedSessionData.value = sessionData
+    }
 
 
     fun showDialog(
@@ -69,7 +72,7 @@ class SharedViewModel : ViewModel() {
         contentList: List<WebpageContentEntity>,
         screenshotList: List<ScreenshotEntity>
     ) {
-        _clickedReport.value = Report(
+        _clickedSessionData.value = SessionData(
             session = session,
             requests = requests,
             webpageContent = contentList,

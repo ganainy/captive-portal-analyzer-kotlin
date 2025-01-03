@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,7 +24,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -49,32 +55,16 @@ fun AppScaffold(
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+    var showMenu by remember { mutableStateOf(false) }
 
-    val menuItems = remember(currentRoute) {
+    val drawerMenuItems = remember(currentRoute) {
         listOf(
             DrawerMenuItem(titleStringResource = Screen.Welcome.titleStringResource, route = Screen.Welcome.route),
             DrawerMenuItem(titleStringResource = Screen.SessionList.titleStringResource, route = Screen.SessionList.route),
             DrawerMenuItem(titleStringResource = Screen.ManualConnect.titleStringResource, route = Screen.ManualConnect.route),
             DrawerMenuItem(titleStringResource = Screen.About.titleStringResource, route = Screen.About.route)
-        ).filterNot { it.route == currentRoute } // Exclude current screen
+        ).filterNot { it.route == currentRoute }
     }
-
-    // Define screen-specific menu items
-    /*val menuItems = remember(currentRoute) {
-        when (currentRoute) {
-            Screen.Menu.route -> listOf(
-
-            )
-            Screen.About.route -> listOf(
-
-            )
-
-            // Add more screen-specific menu items here
-            else -> listOf(
-
-            )
-        }
-    }*/
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -87,7 +77,7 @@ fun AppScaffold(
                     style = MaterialTheme.typography.titleMedium
                 )
                 Divider()
-                menuItems.forEach { item ->
+                drawerMenuItems.forEach { item ->
                     NavigationDrawerItem(
                         label = { Text(stringResource(item.titleStringResource)) },
                         selected = currentRoute == item.route,
@@ -95,14 +85,10 @@ fun AppScaffold(
                             scope.launch {
                                 drawerState.close()
                                 navController.navigate(item.route) {
-                                    // Pop up to the start destination of the graph to
-                                    // avoid building up a large stack of destinations
                                     popUpTo(navController.graph.startDestinationId) {
                                         saveState = true
                                     }
-                                    // Avoid multiple copies of the same destination
                                     launchSingleTop = true
-                                    // Restore state when reselecting a previously selected item
                                     restoreState = true
                                 }
                             }
@@ -125,6 +111,11 @@ fun AppScaffold(
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(Icons.Default.Menu, contentDescription = "Menu")
                         }
+                    },
+                    actions = {
+//                        if (currentRoute == Screen.Analysis.route) {
+//                        DropDownMenu(showMenu)
+//                    }
                     }
                 )
             }
@@ -132,6 +123,39 @@ fun AppScaffold(
             Box(modifier = Modifier.padding(paddingValues)) {
                 content()
             }
+        }
+    }
+}
+
+@Composable
+private fun DropDownMenu(showMenu: Boolean) {
+    var showMenu1 = showMenu
+    Box {
+        IconButton(onClick = { showMenu1 = true }) {
+            Icon(
+                Icons.Default.MoreVert,
+                contentDescription = "More options"
+            )
+        }
+        DropdownMenu(
+            expanded = showMenu1,
+            onDismissRequest = { showMenu1 = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Settings") },
+                onClick = {
+                    showMenu1 = false
+                    // Add navigation or action here
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Help") },
+                onClick = {
+                    showMenu1 = false
+                    // Add navigation or action here
+                }
+            )
+            // Add more menu items as needed
         }
     }
 }

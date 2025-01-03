@@ -1,5 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.screens.analysis
 
+import NetworkSessionRepository
 import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
@@ -17,20 +18,15 @@ import androidx.lifecycle.viewModelScope
 import com.acsbendi.requestinspectorwebview.WebViewRequest
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
-import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.OfflineCustomWebViewRequestsRepository
-import com.example.captive_portal_analyzer_kotlin.room.webpage_content.OfflineWebpageContentRepository
-import com.example.captive_portal_analyzer_kotlin.room.webpage_content.WebpageContentEntity
-import com.example.captive_portal_analyzer_kotlin.room.custom_webview_request.toCustomWebViewRequest
-import com.example.captive_portal_analyzer_kotlin.room.screenshots.OfflineScreenshotRepository
-import com.example.captive_portal_analyzer_kotlin.room.screenshots.ScreenshotEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.utils.LocalOrRemoteCaptiveChecker
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import detectCaptivePortal
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -39,26 +35,29 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.UUID
 
 
 sealed class AnalysisUiState {
     data class Loading(val messageStringResource: Int) : AnalysisUiState()
-    data class CaptiveUrlDetected(val captiveUrl: String) : AnalysisUiState()
+    object CaptiveUrlDetected : AnalysisUiState()
     object AnalysisComplete : AnalysisUiState()
     enum class ErrorType {
         CannotDetectCaptiveUrl,
         Unknown,
     }
+
     data class Error(val type: ErrorType) : AnalysisUiState()
+}
+
+enum class WebViewType {
+    NormalWebView,
+    CustomWebView
 }
 
 class AnalysisViewModel(
     application: Application,
-    private val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
-    private val offlineWebpageContentRepository: OfflineWebpageContentRepository,
     private val sessionManager: NetworkSessionManager,
-    private val screenshotRepository: OfflineScreenshotRepository,
+    private val repository: NetworkSessionRepository,
 ) : AndroidViewModel(application) {
     private val context: Context get() = getApplication<Application>().applicationContext
 
@@ -69,11 +68,14 @@ class AnalysisViewModel(
     private val _portalUrl = MutableStateFlow<String?>(null)
     val portalUrl: StateFlow<String?> get() = _portalUrl.asStateFlow()
 
-    private val _shouldShowNormalWebView = MutableStateFlow<Boolean>(false)
-    val shouldShowNormalWebView = _shouldShowNormalWebView.asStateFlow()
+    private val _webViewType = MutableStateFlow<WebViewType>(WebViewType.CustomWebView)
+    val webViewType = _webViewType.asStateFlow()
+
+    // Flag to track if the hint has been shown
+    private val _showedHint = MutableStateFlow<Boolean>(false)
+    val showedHint = _showedHint.asStateFlow()
 
     init {
-
 
 
         /* //testing
@@ -82,13 +84,12 @@ class AnalysisViewModel(
     }
 
 
-
-    fun getCaptivePortalAddress( showToast:(message: String,style: ToastStyle) -> Unit) {
+    fun getCaptivePortalAddress(showToast: (message: String, style: ToastStyle) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val portalUrl = detectCaptivePortal(context)
                 if (portalUrl != null) {
-                    _uiState.value = AnalysisUiState.CaptiveUrlDetected(portalUrl)
+                    _uiState.value = AnalysisUiState.CaptiveUrlDetected
                     updateUrl(portalUrl)
                     val sessionId = sessionManager.getCurrentSessionId()
                     if (sessionId != null) {
@@ -97,7 +98,7 @@ class AnalysisViewModel(
                             sessionId = sessionId
                         )
                     } else {
-                        showToast(context.getString(R.string.unknown_session_id),ToastStyle.ERROR)
+                        showToast(context.getString(R.string.unknown_session_id), ToastStyle.ERROR)
                     }
                     detectLocalOrRemoteCaptivePortal(
                         context,
@@ -105,18 +106,23 @@ class AnalysisViewModel(
                     )
 
                 } else {
-                    _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl)
+                    _uiState.value =
+                        AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl)
+                    _uiState.value =
+                        AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl)
                 }
             }
         }
     }
 
-    private fun detectLocalOrRemoteCaptivePortal(context: Context,showToast:(message: String,style: ToastStyle) -> Unit) {
+    private fun detectLocalOrRemoteCaptivePortal(
+        context: Context,
+        showToast: (message: String, style: ToastStyle) -> Unit
+    ) {
         val analyzer = LocalOrRemoteCaptiveChecker(context)
 
         viewModelScope.launch {
@@ -130,7 +136,7 @@ class AnalysisViewModel(
                         sessionId = sessionId
                     )
                 } else {
-                    showToast( context.getString(R.string.unknown_session_id),ToastStyle.ERROR)
+                    showToast(context.getString(R.string.unknown_session_id), ToastStyle.ERROR)
                 }
             } catch (e: IOException) {
                 println("Failed to analyze portal: ${e.message}")
@@ -147,36 +153,63 @@ class AnalysisViewModel(
     //save the request including body to local db
     suspend fun saveWebViewRequest(request: WebViewRequest) {
         val currentSessionId = sessionManager.getCurrentSessionId()
-        offlineCustomWebViewRequestsRepository.insertItem(
-            request.toCustomWebViewRequest(
-                currentSessionId
-            )
+        val customWebViewRequest = getCustomWebViewRequestFromWebViewRequest(request,currentSessionId)
+        repository.insertRequest(
+            customWebViewRequest
         )
     }
+
+    private fun getCustomWebViewRequestFromWebViewRequest(request: WebViewRequest,sessionId: String?): CustomWebViewRequestEntity {
+        return CustomWebViewRequestEntity(
+            sessionId = sessionId,
+            url = request.url,
+            method = request.method,
+            headers = request.headers.toString(),
+            body = request.body,
+            type = request.type.name,
+        )
+    }
+
 
     //save the request with no body to local db
     suspend fun saveWebResourceRequest(request: WebResourceRequest?) {
         if (request != null) {
             val currentSessionId = sessionManager.getCurrentSessionId()
-            offlineCustomWebViewRequestsRepository.insertItem(
-                request.toCustomWebViewRequest(
-                    currentSessionId
-                )
+            val customWebViewRequest = getCustomWebViewRequestFromWebResourceRequest(request,currentSessionId)
+            repository.insertRequest(
+                customWebViewRequest
             )
         }
     }
 
-
-    fun showNormalWebView(shouldShowNormalWebView: Boolean,showToast:(message: String,style: ToastStyle) -> Unit) {
-        _shouldShowNormalWebView.value = shouldShowNormalWebView
-        showToast( context.getString(R.string.switched_detection_method),ToastStyle.SUCCESS)
+    private fun getCustomWebViewRequestFromWebResourceRequest(request: WebResourceRequest,sessionId: String?): CustomWebViewRequestEntity {
+        return CustomWebViewRequestEntity(
+            sessionId = sessionId,
+            url = request.url.toString(),
+            method = request.method,
+            headers = request.requestHeaders.toString(),
+        )
     }
 
-    fun saveWebpageContent(webView: WebView, url: String,showToast:(message: String,style: ToastStyle) -> Unit) {
+    fun switchWebViewType(
+        showToast: (message: String, style: ToastStyle) -> Unit
+    ) {
+        when (_webViewType.value) {
+            WebViewType.NormalWebView -> _webViewType.value = WebViewType.CustomWebView
+            WebViewType.CustomWebView -> _webViewType.value = WebViewType.NormalWebView
+        }
+        showToast(context.getString(R.string.switched_detection_method), ToastStyle.SUCCESS)
+    }
+
+    fun saveWebpageContent(
+        webView: WebView,
+        url: String,
+        showToast: (message: String, style: ToastStyle) -> Unit
+    ) {
         viewModelScope.launch {
             val currentSessionId = sessionManager.getCurrentSessionId()
             if (currentSessionId == null) {
-                showToast( context.getString(R.string.unknown_session_id),ToastStyle.ERROR)
+                showToast(context.getString(R.string.unknown_session_id), ToastStyle.ERROR)
             } else {
                 // Capture HTML content
                 webView.evaluateJavascript(
@@ -203,11 +236,12 @@ class AnalysisViewModel(
                         viewModelScope.launch(Dispatchers.IO) {
                             val content = WebpageContentEntity(
                                 url = url,
-                                html = html.unescapeJsonString(),
-                                javascript = javascript.unescapeJsonString(),
-                                sessionId = currentSessionId
+                                htmlContent = html.unescapeJsonString(),
+                                jsContent = javascript.unescapeJsonString(),
+                                sessionId = currentSessionId,
+                                timestamp = System.currentTimeMillis(),
                             )
-                            offlineWebpageContentRepository.insertContent(content)
+                            repository.insertWebpageContent(content)
                         }
                     }
                 }
@@ -254,6 +288,7 @@ class AnalysisViewModel(
     }
 
     fun stopAnalysis(onUncompletedAnalysis: () -> Unit) {
+        _uiState.value = AnalysisUiState.Loading(R.string.processing_request)
         viewModelScope.launch(Dispatchers.IO) {
             if (hasFullInternetAccess(context)) {
                 withContext(Dispatchers.Main) {
@@ -261,6 +296,7 @@ class AnalysisViewModel(
                 }
             } else {
                 withContext(Dispatchers.Main) {
+                    _uiState.value = AnalysisUiState.CaptiveUrlDetected
                     onUncompletedAnalysis()
                 }
             }
@@ -308,14 +344,13 @@ class AnalysisViewModel(
 
                     // Insert into the database
                     val screenshotEntity = ScreenshotEntity(
-                        screenshotId = UUID.randomUUID().toString(),
-                        sessionId = currentSessionId,
+                        sessionId = currentSessionId!!,
                         timestamp = System.currentTimeMillis(),
                         path = file.absolutePath,
                         size = "${file.length()} bytes",
                         url = url
                     )
-                    screenshotRepository.insertScreenshot(screenshotEntity) // Call repository method
+                    repository.insertScreenshot(screenshotEntity) // Call repository method
 
                 } catch (e: IOException) {
                     Log.e("WebViewScreenshot", "Error saving screenshot: ${e.message}")
@@ -324,6 +359,9 @@ class AnalysisViewModel(
         }
     }
 
+    fun updateShowedHint(showedHint: Boolean) {
+        _showedHint.value = showedHint
+    }
 
 
 }
@@ -344,20 +382,16 @@ private fun String.unescapeJsonString(): String {
 
 class AnalysisViewModelFactory(
     private val application: Application,
-    private val offlineCustomWebViewRequestsRepository: OfflineCustomWebViewRequestsRepository,
-    private val offlineWebpageContentRepository: OfflineWebpageContentRepository,
     private val sessionManager: NetworkSessionManager,
-    private val screenshotRepository: OfflineScreenshotRepository,
+    private val repository: NetworkSessionRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AnalysisViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
             return AnalysisViewModel(
                 application,
-                offlineCustomWebViewRequestsRepository,
-                offlineWebpageContentRepository,
                 sessionManager,
-                screenshotRepository,
+                repository,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

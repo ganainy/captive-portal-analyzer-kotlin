@@ -24,7 +24,7 @@
     <string name="no_captive_portal_detected">Couldn\'t detect captive portal url, are you sure the current network has a captive portal?</string>
     <string name="detecting_captive_portal_page">Trying to detect captive portal login page</string>
     <string name="hint">Hint</string>
-    <string name="login_to_captive_then_click_end_analysis">Please complete the login steps to the captive portal. If you found privacy policy link, please view it. Then click end analysis from top menu.</string>
+    <string name="login_to_captive_then_click_end_analysis">Please complete the login steps to the captive portal. If you found privacy policy link, please view it. Then click end analysis from top menu. \nIf website is not loading properly,  try the switch button. </string>
     <string name="back_button_description">go back</string>
     <string name="forward_button_description">go forward</string>
     <string name="refresh_button_description">refresh</string>
@@ -98,6 +98,18 @@
     <string name="something_went_wrong">Something went wrong</string>
     <string name="are_you_sure_current_network_has_captive_portal">Are you sure current network has a captive portal?</string>
     <string name="connect_to_another_network">Connect to another network</string>
-    <string name="on_login_completed">Please login through the captive portal then click</string>
+    <string name="on_login_completed">Please login into the captive portal through the app then click the End Analysis button.</string>
+    <string name="we_wanted_to_create_a_database_of_different_captive_portals_and_which_data_they_collect_from_users_and_what_privacy_rules_they_have_to_help_in_the_research_field_of_privacy_and_security_of_wlan_networks_in_the">"We wanted to create a database of different captive portals and which data they collect from users and what privacy rules they have to help in the research field of privacy and security of WLAN networks in the "</string>
+    <string name="_1_connect_to_a_network_with_a_captive_portal">1- Connect to a network with a captive portal\n</string>
+    <string name="_2_interact_with_as_many_pages_as_possible_within_the_captive_login_site_inside_the_app">2- Interact with as many pages as possible within the captive login site inside the app\n</string>
+    <string name="_3_view_the_captive_portal_privacy_policy_and_terms_of_service_tos_if_found">3- View the captive portal privacy policy and Terms of Service (ToS) if found\n</string>
+    <string name="_4_complete_login_to_the_captive_portal">4- Complete login to the captive portal\n</string>
+    <string name="_5_review_and_upload_the_session_data_for_more_analysis">5- Review and upload the session data for more analysis</string>
+    <string name="after_you_successfully_create_a_session_it_is_only_stored_on_your_device_and_won_t_be_shared_with_us_until_you_review_the_content_and_approve_the_upload_from_the_sessions_page">After you successfully create a session, it is only stored on your device and won\'t be shared with us until you review the content and approve the upload from the sessions page.</string>
+    <string name="what_data_will_i_share_with_you">What data will I share with you?</string>
+    <string name="why_was_this_app_created">Why was this app created?</string>
+    <string name="processing_request">Processing request</string>
+    <string name="website_not_loading">If website is not loading properly, please try to the switch button.</string>
+    <string name="switch_browser_type">Switch browser</string>
 
 </resources>

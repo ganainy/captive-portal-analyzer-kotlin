@@ -1,5 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin
 
+import NetworkSessionRepository
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,7 +18,6 @@ import androidx.navigation.compose.rememberNavController
 import com.example.captive_portal_analyzer_kotlin.components.AppScaffold
 import com.example.captive_portal_analyzer_kotlin.navigation.AppNavGraph
 import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
-import com.example.captive_portal_analyzer_kotlin.room.network_session.OfflineNetworkSessionRepository
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import com.google.firebase.FirebaseApp
@@ -31,12 +31,18 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
 
-        val offlineNetworkSessionRepository: OfflineNetworkSessionRepository by lazy {
-            OfflineNetworkSessionRepository(AppDatabase.getDatabase(this).networkSessionDao())
-        }
+        val database by lazy { AppDatabase.getDatabase(this) }
+
+        val repository = NetworkSessionRepository(
+            sessionDao = database.networkSessionDao(),
+            requestDao =database.customWebViewRequestDao(),
+            screenshotDao = database.screenshotDao(),
+            webpageContentDao =  database.webpageContentDao()
+        )
+
 
         // Start monitoring network changes
-        sessionManager = NetworkSessionManager(this, offlineNetworkSessionRepository)
+        sessionManager = NetworkSessionManager(this, repository)
         sessionManager.startMonitoring()
 
 
@@ -55,7 +61,9 @@ class MainActivity : ComponentActivity() {
                         scope = scope
                     ) {
                     AppNavGraph(
-                        navController = navController, sessionManager = sessionManager,
+                        navController = navController,
+                        sessionManager = sessionManager,
+                        repository = repository,
                         sharedViewModel = sharedViewModel,
                         dialogState = dialogState
                     )
