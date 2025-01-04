@@ -5,31 +5,28 @@ import androidx.lifecycle.ViewModel
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
 import com.example.captive_portal_analyzer_kotlin.components.ToastState
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
-import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
-import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
-import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
-import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class SharedViewModel : ViewModel() {
 
+
     /*show action alert dialogs from anywhere in the app*/
     private val _dialogState = MutableStateFlow<DialogState>(DialogState.Hidden)
     val dialogState = _dialogState.asStateFlow()
 
 
-    private val _clickedSessionData = MutableStateFlow<SessionData?>(null)
-    val clickedSessionData: StateFlow<SessionData?> = _clickedSessionData
+    private val _clickedSessionId = MutableStateFlow<String?>(null)
+    val clickedSessionId: StateFlow<String?> = _clickedSessionId
 
 
     private val _toastState = MutableStateFlow<ToastState>(ToastState.Hidden)
     val toastState = _toastState.asStateFlow()
 
 
-    fun updateClickedSessionData(sessionData: SessionData) {
-        _clickedSessionData.value = sessionData
+    fun updateClickedSessionId(clickedSessionId: String?)  {
+        _clickedSessionId.value = clickedSessionId
     }
 
 
@@ -66,17 +63,4 @@ class SharedViewModel : ViewModel() {
         _toastState.value = ToastState.Hidden
     }
 
-    fun setClickedSession(
-        session: NetworkSessionEntity,
-        requests: List<CustomWebViewRequestEntity>,
-        contentList: List<WebpageContentEntity>,
-        screenshotList: List<ScreenshotEntity>
-    ) {
-        _clickedSessionData.value = SessionData(
-            session = session,
-            requests = requests,
-            webpageContent = contentList,
-            screenshots = screenshotList
-        )
-    }
 }

@@ -10,6 +10,12 @@ import com.example.captive_portal_analyzer_kotlin.room.WebpageContentDao
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.last
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import java.io.File
 
@@ -27,16 +33,16 @@ class NetworkSessionRepository(
         sessionDao.insert(session)
     }
 
+    suspend fun updateSession(session: NetworkSessionEntity) {
+        sessionDao.update(session)
+    }
+
     suspend fun updatePortalUrl(sessionId: String, portalUrl: String) {
         sessionDao.updatePortalUrl(sessionId, portalUrl)
     }
 
     suspend fun updateIsCaptiveLocal(sessionId: String, isLocal: Boolean) {
         sessionDao.updateIsCaptiveLocal(sessionId, isLocal)
-    }
-
-    suspend fun updateIsUploadedToRemoteServer(sessionId: String, isUploadedToRemoteServer: Boolean) {
-        sessionDao.updateIsUploadedToRemoteServer(sessionId, isUploadedToRemoteServer)
     }
 
     suspend fun getSessionByBssid(bssid: String?): NetworkSessionEntity? {
@@ -51,44 +57,73 @@ class NetworkSessionRepository(
     fun getAllRequests(): Flow<List<CustomWebViewRequestEntity>> =
         requestDao.getAllCustomWebViewRequest()
 
-    fun getSessionRequests(sessionId: String): List<CustomWebViewRequestEntity> =
+    fun getSessionRequests(sessionId: String):  Flow<List<CustomWebViewRequestEntity>> =
         requestDao.getSessionRequestsList(sessionId)
 
-    suspend fun insertRequest(request: CustomWebViewRequestEntity) =
-        requestDao.insert(request)
+    suspend fun insertRequest(request: CustomWebViewRequestEntity) {
+        val isUnique = requestDao.isRequestUnique(
+            request.sessionId,
+            request.type,
+            request.url,
+            request.method,
+            request.body,
+            request.headers
+        ) == 0
+        if (isUnique) {
+            requestDao.insert(request)
+        }
+    }
+
 
     suspend fun deleteRequest(request: CustomWebViewRequestEntity) =
         requestDao.delete(request)
 
     // Screenshot Operations
     suspend fun insertScreenshot(screenshot: ScreenshotEntity) {
-        screenshotDao.insert(screenshot)
+        val isUnique = screenshotDao.isScreenshotUnique(
+            screenshot.url,
+            screenshot.size,
+            screenshot.sessionId
+        ) == 0
+        if (isUnique) {
+            screenshotDao.insert(screenshot)
+        }
     }
+
+    suspend fun updateScreenshot(screenshotEntity: ScreenshotEntity) =
+        screenshotDao.update(screenshotEntity)
 
     fun getScreenshot(screenshotId: String): Flow<ScreenshotEntity?> =
         screenshotDao.getScreenshot(screenshotId)
 
-    fun getSessionScreenshots(sessionId: String): List<ScreenshotEntity> =
+    fun getSessionScreenshots(sessionId: String): Flow<List<ScreenshotEntity>> =
         screenshotDao.getSessionScreenshotsList(sessionId)
 
     // Webpage Content Operations
     suspend fun insertWebpageContent(content: WebpageContentEntity) {
-        webpageContentDao.insert(content)
+        val isUnique = webpageContentDao.isWebpageContentUnique(
+            content.htmlContent,
+            content.jsContent,
+            content.sessionId
+        ) == 0
+        if (isUnique) {
+            webpageContentDao.insert(content)
+        }
     }
 
-    fun getSessionWebpageContent(sessionId: String): List<WebpageContentEntity> =
+    fun getSessionWebpageContent(sessionId: String): Flow<List<WebpageContentEntity>> =
         webpageContentDao.getSessionWebpageContentList(sessionId)
 
     // Remote Operations
     suspend fun uploadSessionData(sessionId: String): Result<Unit> {
         return try {
             // 1. Collect all session data
-            val session = sessionDao.getSession(sessionId) ?:
-            return Result.failure(Exception("Session not found"))
+            val session = sessionDao.getSession(sessionId)
+                ?: return Result.failure(Exception("Session not found"))
 
-            val requests = requestDao.getSessionRequestsList(sessionId)
-            val screenshots = screenshotDao.getSessionScreenshotsList(sessionId)
-            val webpageContent = webpageContentDao.getSessionWebpageContentList(sessionId)
+            val requests = requestDao.getSessionRequestsList(sessionId).last()
+            val screenshots = screenshotDao.getSessionScreenshotsList(sessionId).last()
+            val webpageContent = webpageContentDao.getSessionWebpageContentList(sessionId).last()
 
             // 2. Upload screenshots to Storage and get URLs
             val uploadedScreenshots = screenshots.map { screenshot ->
@@ -139,35 +174,56 @@ class NetworkSessionRepository(
     }
 
 
-
-
-    // Utility function to get complete session data
-   /* suspend fun getCompleteSessionData(sessionId: String): Flow<SessionData> = flow {
+    suspend fun getCompleteSessionDataList(): Flow<List<SessionData>> = flow {
         try {
-            val session = sessionDao.getSession(sessionId)
-            if (session != null) {
-                combine(
-                    getSessionRequests(sessionId),
-                    getSessionScreenshots(sessionId),
-                    getSessionWebpageContent(sessionId)
-                ) { requests, screenshots, content ->
-                    SessionData(
-                        session = session,
-                        requests = requests,
-                        screenshots = screenshots,
-                        webpageContent = content
-                    )
-                }.collect { sessionData ->
-                    emit(sessionData)
-                }
-            } else {
-                throw Exception("Session not found")
+            val allSessions = sessionDao.getAllSessions() // Assuming this returns List<Session>
+
+            if (allSessions.isNullOrEmpty()) {
+                emit(emptyList())
+                return@flow
+            }
+
+            // Convert list of sessions into list of SessionData
+            val allSessionsData = allSessions.map { session ->
+                getCompleteSessionData(session.sessionId)
+            }
+
+            // Combine all flows into a single flow of list
+            combine(allSessionsData) { sessionDataArray ->
+                sessionDataArray.toList()
+            }.collect { combinedList ->
+                emit(combinedList)
             }
         } catch (e: Exception) {
             throw e
         }
-    }*/
+    }
 
+    // Utility function to get complete session data
+    suspend fun getCompleteSessionData(sessionId: String): Flow<SessionData> = flow {
+        try {
+            val session = sessionDao.getSession(sessionId) ?: throw Exception("Session not found")
+
+            combine(
+                (getSessionRequests(sessionId)),
+                (getSessionScreenshots(sessionId)),
+                (getSessionWebpageContent(sessionId))
+            ) { requests: List<CustomWebViewRequestEntity>,
+                screenshots: List<ScreenshotEntity>,
+                content: List<WebpageContentEntity> ->
+                SessionData(
+                    session = session,
+                    requests = requests,
+                    screenshots = screenshots,
+                    webpageContent = content
+                )
+            }.collect { sessionData ->
+                emit(sessionData)
+            }
+        } catch (e: Exception) {
+            throw e
+        }
+    }
 
 }
 

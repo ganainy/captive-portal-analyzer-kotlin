@@ -31,5 +31,10 @@ interface WebpageContentDao {
 
 
     @Query("SELECT * FROM webpage_content WHERE sessionId = :sessionId")
-    abstract fun getSessionWebpageContentList(sessionId: String): List<WebpageContentEntity>
+    abstract fun getSessionWebpageContentList(sessionId: String): Flow<List<WebpageContentEntity>>
+
+    @Query(
+        "SELECT COUNT(*) FROM webpage_content WHERE htmlContent = :htmlContent AND jsContent = :jsContent AND sessionId = :sessionId"
+    )
+    abstract fun isWebpageContentUnique(htmlContent: String, jsContent: String, sessionId: String): Any
 }

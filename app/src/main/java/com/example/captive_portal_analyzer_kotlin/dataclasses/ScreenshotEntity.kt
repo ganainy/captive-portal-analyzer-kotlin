@@ -11,5 +11,6 @@ data class ScreenshotEntity(
     val timestamp: Long,
     val path: String,
     val size: String?,
-    val url: String?
+    val url: String?,
+    val isPrivacyOrTosRelated: Boolean=false,
 )

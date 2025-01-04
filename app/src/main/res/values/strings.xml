@@ -24,7 +24,7 @@
     <string name="no_captive_portal_detected">Couldn\'t detect captive portal url, are you sure the current network has a captive portal?</string>
     <string name="detecting_captive_portal_page">Trying to detect captive portal login page</string>
     <string name="hint">Hint</string>
-    <string name="login_to_captive_then_click_end_analysis">Please complete the login steps to the captive portal. If you found privacy policy link, please view it. Then click end analysis from top menu. \nIf website is not loading properly,  try the switch button. </string>
+    <string name="login_to_captive_then_click_end_analysis">-Please complete the login steps to the captive portal. If you found privacy policy link, please view it. Then click end analysis from top menu. \n-If website is not loading properly,  try the switch button. </string>
     <string name="back_button_description">go back</string>
     <string name="forward_button_description">go forward</string>
     <string name="refresh_button_description">refresh</string>
@@ -33,7 +33,7 @@
     <string name="reload">Reload Webpage</string>
     <string name="about_app_text">This app was created to study the behavior of captive portals, analyze their vulnerabilities, and evaluate whether they respect user privacy. It also examines depth of information they require from users.</string>
     <string name="copyright_text">© 2024 Captive Portal Analyzer. All rights reserved.</string>
-    <string name="no_open_networks_found">App couldn\'t find any open networks with no password, please connect to network manually.</string>
+    <string name="no_open_networks_found">App couldn\'t find any open networks.</string>
     <string name="connect_manually">Connect manually</string>
     <string name="connected_to_wifi">Successfully connected to netwrok</string>
     <string name="please_proceed_to_next_step">Please proceed to next step to start the analysis.\n</string>
@@ -111,5 +111,14 @@
     <string name="processing_request">Processing request</string>
     <string name="website_not_loading">If website is not loading properly, please try to the switch button.</string>
     <string name="switch_browser_type">Switch browser</string>
+    <string name="error_retrieving_data">Error retrieving data</string>
+    <string name="no_requests_found">No requests found</string>
+    <string name="no_webpages_found">No webpages found</string>
+    <string name="no_screenshots_found">No screenshots found</string>
+    <string name="please_process_to_manual_connection">Please proceed to connect to network manually</string>
+    <string name="image_selector_screen_title"><![CDATA[Select privacy & ToS related images]]></string>
+    <string name="select_privacy_images"><![CDATA[Select Privacy & ToS images]]></string>
+    <string name="hint_select_privacy_images">Please tap images with privacy policy or terms of service to mark them.</string>
+    <string name="review_session_data">-Feel free to review collected data \n-Please mark screenshots containing privacy policy or terms of service related data through the button below \n-Last step is to upload the collected data so we can further analyze it.</string>
 
 </resources>

@@ -1,19 +1,29 @@
 package com.example.captive_portal_analyzer_kotlin.screens.session_list
 
 import NetworkSessionRepository
+import SessionData
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
+
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 
@@ -30,62 +40,44 @@ class SessionListViewModel(
     private val repository: NetworkSessionRepository,
 ) : AndroidViewModel(application) {
 
+    private val _sessionsFlow = MutableStateFlow<List<SessionData>?>(null)
+    val sessionDataList = _sessionsFlow
+        .map { sessions ->
+            if (sessions.isNullOrEmpty()) null else sessions
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
     private val _uiState = MutableStateFlow<SessionListUiState>(SessionListUiState.Loading)
-    val uiState: StateFlow<SessionListUiState> = _uiState.asStateFlow()
-
-
-    private val _sessions = MutableStateFlow<List<NetworkSessionEntity>?>(null)
-    val sessions: StateFlow<List<NetworkSessionEntity>?> get() = _sessions.asStateFlow()
-
-    private val _sessionCustomWebViewRequests = MutableStateFlow<List<CustomWebViewRequestEntity>>(
-        emptyList()
-    )
-    val sessionCustomWebViewRequests: StateFlow<List<CustomWebViewRequestEntity>> get() = _sessionCustomWebViewRequests.asStateFlow()
-
-
-    private val _sessionWebpageContent = MutableStateFlow<List<WebpageContentEntity>>(
-        emptyList()
-    )
-    val sessionWebpageContent: StateFlow<List<WebpageContentEntity>> get() = _sessionWebpageContent.asStateFlow()
-
-
-    private val _sessionScreenshot = MutableStateFlow<List<ScreenshotEntity>>(
-        emptyList()
-    )
-    val sessionScreenshot: StateFlow<List<ScreenshotEntity>> get() = _sessionScreenshot.asStateFlow()
-
+    val uiState = _uiState
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = SessionListUiState.Loading
+        )
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            val sessions = repository.getAllSessions()
-            if (sessions.isNullOrEmpty()) {
-                _uiState.value = SessionListUiState.Empty
-            } else {
-                _sessions.value = sessions
-                _uiState.value = SessionListUiState.Success
-                sessions.forEach { session ->
-
-                    val sessionCustomWebViewRequests =
-                        repository.getSessionRequests(
-                            session.sessionId
-                        )
-                    _sessionCustomWebViewRequests.value = sessionCustomWebViewRequests
-
-                    val sessionWebpageContent =
-                        repository.getSessionWebpageContent(session.sessionId)
-                    _sessionWebpageContent.value = sessionWebpageContent
-
-                    val sessionScreenshot =
-                        repository.getSessionScreenshots(session.sessionId)
-                    _sessionScreenshot.value = sessionScreenshot
+            try {
+                repository.getCompleteSessionDataList().collect { sessions ->
+                    _sessionsFlow.value = sessions
+                    _uiState.value = if (sessions.isNullOrEmpty()) {
+                        SessionListUiState.Empty
+                    } else {
+                        SessionListUiState.Success
+                    }
                 }
-
-
+            } catch (e: Exception) {
+                _sessionsFlow.value = null
+                _uiState.value = SessionListUiState.Error(R.string.error_retrieving_data)
             }
         }
-
     }
 }
+
 
 
 class SessionListViewModelFactory(

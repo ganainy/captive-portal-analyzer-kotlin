@@ -91,7 +91,7 @@ fun AppNavGraph(
                 SessionListScreen(
                     repository = repository,
                     navigateToWelcome = actions.navigateToWelcomeScreen,
-                    clickedSession = sharedViewModel::setClickedSession,
+                    updateClickedSessionId = sharedViewModel::updateClickedSessionId,
                     navigateToSessionScreen = actions.navigateToSessionScreen
                 )
         }
@@ -101,7 +101,7 @@ fun AppNavGraph(
             SessionScreen(
                 repository = repository,
                 sharedViewModel = sharedViewModel,
-            )
+               )
         }
         composable(
             route = Screen.About.route,

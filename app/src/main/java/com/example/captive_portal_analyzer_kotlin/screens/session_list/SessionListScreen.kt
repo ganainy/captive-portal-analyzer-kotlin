@@ -1,6 +1,7 @@
 package com.example.captive_portal_analyzer_kotlin.screens.session_list
 
 import NetworkSessionRepository
+import SessionData
 import android.app.Application
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
@@ -41,10 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
-import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
-import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
-import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -54,75 +52,94 @@ import java.util.UUID
 @Composable
 fun SessionListScreen(
     navigateToWelcome: () -> Unit,
-    clickedSession: (NetworkSessionEntity, List<CustomWebViewRequestEntity>, List<WebpageContentEntity>, List<ScreenshotEntity>) -> Unit,
-    repository :  NetworkSessionRepository,
+    updateClickedSessionId: (String) -> Unit,
+    repository: NetworkSessionRepository,
     navigateToSessionScreen: () -> Unit
 ) {
-    val viewModel: SessionListViewModel = viewModel(
+    val sessionListViewModel: SessionListViewModel = viewModel(
         factory = SessionListViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
-            repository =  repository,
+            repository = repository,
         )
     )
-    val uiState by viewModel.uiState.collectAsState()
-    val sessions by viewModel.sessions.collectAsState()
-    val sessionCustomWebViewRequests by viewModel.sessionCustomWebViewRequests.collectAsState()
-    val sessionWebpageContent by viewModel.sessionWebpageContent.collectAsState()
-    val sessionScreenshot by viewModel.sessionScreenshot.collectAsState()
+    val uiState by sessionListViewModel.uiState.collectAsState()
+    val sessionDataList by sessionListViewModel.sessionDataList.collectAsState()
 
     // Handle back button to navigate to menu screen instead of last screen (which might be analysis screen)
     BackHandler {
         navigateToWelcome()
     }
 
-    Scaffold(
-
-    ) { paddingValues ->
-
-        when (uiState) {
-
-            is SessionListUiState.Loading -> {
-                // Show loading indicator
-                CustomProgressIndicator()
-            }
-
-            is SessionListUiState.Error -> {
-                // Show error message
-                val error = stringResource((uiState as SessionListUiState.Error).messageStringResource)
-                ErrorText(error)
-            }
-
-            SessionListUiState.Empty -> {
-                // Show message that no sessions were detected
-                val empty = stringResource(R.string.no_sessions_detected)
-                ErrorText(empty)
-            }
-
-            SessionListUiState.Success -> {
-                sessions?.let {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                    ) {
-                        SessionsList(
-                            sessions = it,
-                            requestsBySession = sessionCustomWebViewRequests,
-                            contentBySession = sessionWebpageContent,
-                            screenshotsBySession = sessionScreenshot,
-                            onSessionClick =
-                            clickedSession,
-                            navigateToSessionScreen = navigateToSessionScreen
-
-                        )
-                    }
-                }
-            }
-        }
-
+    Scaffold { paddingValues ->
+        SessionsContent(
+            uiState = uiState,
+            sessionDataList = sessionDataList,
+            paddingValues = paddingValues,
+            navigateToSessionScreen = navigateToSessionScreen,
+            updateClickedSessionId = { updateClickedSessionId(it) }
+        )
     }
 
 
+}
+
+@Composable
+private fun SessionsContent(
+    uiState: SessionListUiState,
+    sessionDataList: List<SessionData>?,
+    paddingValues: PaddingValues,
+    navigateToSessionScreen: () -> Unit,
+    updateClickedSessionId: (String) -> Unit
+) {
+    when (uiState) {
+        SessionListUiState.Loading -> {
+            CustomProgressIndicator()
+        }
+
+        is SessionListUiState.Error -> {
+            val error = stringResource((uiState as SessionListUiState.Error).messageStringResource)
+            ErrorText(error)
+        }
+
+        SessionListUiState.Empty -> {
+            val empty = stringResource(R.string.no_sessions_detected)
+            ErrorText(empty)
+        }
+
+        SessionListUiState.Success -> {
+            SessionsSuccessContent(
+                sessionDataList = sessionDataList,
+                paddingValues = paddingValues,
+                navigateToSessionScreen = navigateToSessionScreen,
+                updateClickedSessionId =updateClickedSessionId
+
+            )
+        }
+    }
+}
+
+@Composable
+private fun SessionsSuccessContent(
+    sessionDataList: List<SessionData>?,
+    paddingValues: PaddingValues,
+    navigateToSessionScreen: () -> Unit,
+    updateClickedSessionId: (String) -> Unit
+) {
+    sessionDataList?.let { sessionDataList ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            SessionsList(
+                sessionDataList = sessionDataList,
+                onSessionClick = { clickedSession ->
+                    updateClickedSessionId(clickedSession.session.sessionId)
+                },
+                navigateToSessionScreen = navigateToSessionScreen
+            )
+        }
+    }
 }
 
 @Composable
@@ -139,7 +156,9 @@ private fun ErrorText(
         Icon(
             imageVector = Icons.Filled.Search,  // Choose an appropriate icon
             contentDescription = null,
-            modifier = Modifier.width(256.dp).height(256.dp),
+            modifier = Modifier
+                .width(256.dp)
+                .height(256.dp),
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
@@ -159,37 +178,28 @@ private fun ErrorText(
 @Composable
 fun PreviewErrorTextDarkMode() {
     AppTheme {
-    ErrorText(
-        error = stringResource(R.string.no_sessions_detected) // Provide a mock error state
-    )
-}
+        ErrorText(
+            error = stringResource(R.string.no_sessions_detected) // Provide a mock error state
+        )
+    }
 }
 
 @Composable
 fun SessionsList(
-    sessions: List<NetworkSessionEntity>,
-    requestsBySession: List<CustomWebViewRequestEntity>,
-    contentBySession: List<WebpageContentEntity>,
-    screenshotsBySession: List<ScreenshotEntity>,
-    onSessionClick: (NetworkSessionEntity, List<CustomWebViewRequestEntity>, List<WebpageContentEntity>, List<ScreenshotEntity>) -> Unit,
+    sessionDataList: List<SessionData>,
+    onSessionClick: (SessionData) -> Unit,
     navigateToSessionScreen: () -> Unit
 ) {
-    val sortedSessions = sessions.sortedByDescending { it.timestamp }
+    val sortedSessionDataList = sessionDataList.sortedByDescending { it.session.timestamp }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(sortedSessions) { session ->
-            val requests = requestsBySession.filter { it.sessionId == session.sessionId }
-            val content = contentBySession.filter { it.sessionId == session.sessionId }
-            val screenshots = screenshotsBySession.filter { it.sessionId == session.sessionId }
+        items(sortedSessionDataList) { sessionData ->
             SessionCard(
-                session = session,
-                requests = requests,
-                content = content,
-                screenshots = screenshots,
-                onClick = { onSessionClick(session, requests, content, screenshots) },
+                sessionData = sessionData,
+                onClick = { onSessionClick(sessionData) },
                 navigateToSessionScreen = navigateToSessionScreen
             )
         }
@@ -199,21 +209,15 @@ fun SessionsList(
 
 @Composable
 fun SessionCard(
-    session: NetworkSessionEntity,
-    requests: List<CustomWebViewRequestEntity>,
-    content: List<WebpageContentEntity>,
-    screenshots: List<ScreenshotEntity>,
-    onClick: () -> Unit,
+    sessionData: SessionData,
+    onClick: (SessionData) -> Unit,
     navigateToSessionScreen: () -> Unit
 ) {
-    val isRecent = (System.currentTimeMillis() - session.timestamp) < 10 * 60 * 1000L
+    val isRecent = (System.currentTimeMillis() - sessionData.session.timestamp) < 10 * 60 * 1000L
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = {
-                onClick()
-                navigateToSessionScreen()
-            }),
+            .clickable(onClick = { onClick(sessionData); navigateToSessionScreen() }),
         colors = CardDefaults.cardColors(
             containerColor = if (isRecent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
         ),
@@ -229,31 +233,31 @@ fun SessionCard(
 
 
             Text(
-                text = "Network Session: ${session.sessionId}",
+                text = "Network Session: ${sessionData.session.sessionId}",
                 style = MaterialTheme.typography.headlineSmall,
                 color = if (isRecent) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
 
-            session.ssid?.let {
+            sessionData.session.ssid?.let {
                 Text(stringResource(R.string.network_name, it))
             }
-            session.timestamp.let {
+            sessionData.session.timestamp.let {
                 Text(stringResource(R.string.date, formatDate(it)))
             }
-            Text(stringResource(R.string.requests, requests.size))
-            Text(stringResource(R.string.webpages, content.size))
-            Text(stringResource(R.string.screenshots, screenshots.size))
+            Text(stringResource(R.string.requests, sessionData.requests.size))
+            Text(stringResource(R.string.webpages, sessionData.webpageContent.size))
+            Text(stringResource(R.string.screenshots, sessionData.screenshots.size))
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Spacer(modifier = Modifier.height(4.dp))
                 val icon =
-                    if (session.isUploadedToRemoteServer) R.drawable.cloud else R.drawable.local
+                    if (sessionData.session.isUploadedToRemoteServer) R.drawable.cloud else R.drawable.local
                 Icon(
                     painter = painterResource(id = icon),
-                    contentDescription = if (session.isUploadedToRemoteServer) "Cloud session" else "Local session",
+                    contentDescription = if (sessionData.session.isUploadedToRemoteServer) "Cloud session" else "Local session",
                     modifier = Modifier
                         .width(48.dp)
                         .height(24.dp)
@@ -285,25 +289,26 @@ fun SessionCard(
 fun DefaultPreview() {
     AppTheme {
 
-    SessionCard(
-        session = NetworkSessionEntity(
-            ssid = "SSID",
-            bssid = "BSSID",
-            timestamp = System.currentTimeMillis(),
-            sessionId = UUID.randomUUID().toString(),
-            isUploadedToRemoteServer = true,
-            captivePortalUrl = "TODO()",
-            ipAddress = "192.168.0.2",
-            gatewayAddress = "192.168.0.1",
-            securityType = "WPA2",
-            isCaptiveLocal = false
+        SessionCard(SessionData(
+            session = NetworkSessionEntity(
+                ssid = "SSID",
+                bssid = "BSSID",
+                timestamp = System.currentTimeMillis(),
+                sessionId = UUID.randomUUID().toString(),
+                isUploadedToRemoteServer = true,
+                captivePortalUrl = "TODO()",
+                ipAddress = "192.168.0.2",
+                gatewayAddress = "192.168.0.1",
+                securityType = "WPA2",
+                isCaptiveLocal = false
+            ),
+            requests = emptyList(),
+            webpageContent = emptyList(),
+            screenshots = emptyList(),
         ),
-        requests = emptyList(),
-        content = emptyList(),
-        screenshots = emptyList(),
-        onClick = {},
-        navigateToSessionScreen = {}
-    )
+            onClick = {},
+            navigateToSessionScreen = {}
+        )
     }
 
 }

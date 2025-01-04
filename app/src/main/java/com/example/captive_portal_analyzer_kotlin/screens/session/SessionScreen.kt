@@ -3,46 +3,63 @@ package com.example.captive_portal_analyzer_kotlin.screens.session
 import NetworkSessionRepository
 import SessionData
 import android.app.Application
+import android.content.Context
 import android.content.res.Configuration
+import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.compose.AsyncImage
+import coil3.compose.rememberAsyncImagePainter
+import coil3.request.ImageRequest
 import com.example.captive_portal_analyzer_kotlin.R
 
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
+import com.example.captive_portal_analyzer_kotlin.components.HintText
+import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
+import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
@@ -55,17 +72,20 @@ import java.util.Locale
 @Composable
 fun SessionScreen(
     sharedViewModel: SharedViewModel,
-    repository : NetworkSessionRepository
+    repository: NetworkSessionRepository,
 ) {
 
-    val clickedReport by sharedViewModel.clickedSessionData.collectAsState()
+    val clickedSessionId by sharedViewModel.clickedSessionId.collectAsState()
 
     val sessionViewModel: SessionViewModel = viewModel(
         factory = SessionViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
             repository = repository,
+            clickedSessionId = clickedSessionId!!
         )
     )
+
+    val sessionData by sessionViewModel.sessionData.collectAsState()
 
     val isUploading by sessionViewModel.isUploading.collectAsState()
 
@@ -86,20 +106,25 @@ fun SessionScreen(
                 .padding(paddingValues)
         ) {
 
-            clickedReport?.let {
+            sessionData?.let {
                 SessionDetail(
-                    clickedSessionData = clickedReport!!,
+                    clickedSessionData = sessionData!!,
                     uploadSession = {
                         sessionViewModel.uploadSession(
-                            clickedReport!!,
+                            sessionData!!,
                             showToast,
-                            sharedViewModel::updateClickedSessionData
                         )
                     },
-                    isUploading = isUploading
+                    isUploading = isUploading,
+                    switchScreenshotPrivacyOrToSrealted = sessionViewModel::toggleScreenshotPrivacyOrToSrelated,
                 )
             }
 
+
+            HintInfoBox(
+                context = LocalContext.current,
+                modifier = Modifier.align(Alignment.Center),
+            )
 
         }
     }
@@ -108,10 +133,39 @@ fun SessionScreen(
 
 
 @Composable
+private fun HintInfoBox(
+    context: Context,
+    modifier: Modifier,
+) {
+    var showInfoBox2 by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        AlertDialogState.getNeverSeeAgainState(context, "info_box_2")
+            .collect { neverSeeAgain ->
+                showInfoBox2 = !neverSeeAgain
+            }
+    }
+
+    if (showInfoBox2 ) {
+
+        NeverSeeAgainAlertDialog(
+            title = stringResource(R.string.hint),
+            message = stringResource(R.string.review_session_data),
+            preferenceKey = "info_box_2",
+            onDismiss = { showInfoBox2 = false
+            },
+            modifier = modifier
+        )
+    }
+}
+
+
+@Composable
 fun SessionDetail(
     clickedSessionData: SessionData,
     uploadSession: () -> Unit,
-    isUploading: Boolean
+    isUploading: Boolean,
+    switchScreenshotPrivacyOrToSrealted: (ScreenshotEntity) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -141,35 +195,6 @@ fun SessionDetail(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape =  RoundedCornerShape(16.dp),
-            enabled = !clickedSessionData.session.isUploadedToRemoteServer,
-            onClick = {
-                uploadSession()
-            }
-        ) {
-            if (isUploading) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .width(24.dp)
-                        .height(24.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-            } else {
-                if (clickedSessionData.session.isUploadedToRemoteServer) {
-                    Text(stringResource(R.string.already_uploaded))
-                } else {
-                    Text(stringResource(R.string.upload_session_for_analysis))
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         // Requests, Content, and Screenshots in TabRow
         var selectedTab by remember { mutableIntStateOf(0) }
         TabRow(selectedTabIndex = selectedTab) {
@@ -190,11 +215,34 @@ fun SessionDetail(
             )
         }
 
-        when (selectedTab) {
-            0 -> RequestsList(clickedSessionData.requests)
-            1 -> ContentList(clickedSessionData.webpageContent)
-            2 -> ScreenshotsList(clickedSessionData.screenshots)
+        // Scrollable content
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
+            when (selectedTab) {
+                0 -> RequestsList(clickedSessionData.requests)
+                1 -> ContentList(clickedSessionData.webpageContent)
+                2 -> ScreenshotsList(clickedSessionData.screenshots
+                    ,switchScreenshotPrivacyOrToSrealted,
+                    )
+            }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        RoundCornerButton(
+            onClick = { uploadSession() },
+            buttonText = if (clickedSessionData.session.isUploadedToRemoteServer) {
+                stringResource(R.string.already_uploaded)
+            } else {
+                stringResource(R.string.upload_session_for_analysis)
+            },
+            enabled = !clickedSessionData.session.isUploadedToRemoteServer,
+            isLoading = isUploading
+        )
+
     }
 }
 
@@ -216,7 +264,7 @@ fun SessionDetailPreview() {
                 isCaptiveLocal = true,
                 isUploadedToRemoteServer = false,
             ),
-            requests = listOf(
+            requests = emptyList()/*listOf(
                 CustomWebViewRequestEntity(
                     sessionId = 11.toString(),
                     type = "GET",
@@ -225,7 +273,7 @@ fun SessionDetailPreview() {
                     body = "{}",
                     headers = "{}",
                 )
-            ),
+            )*/,
             screenshots = listOf(
                 ScreenshotEntity(
                     sessionId = "11",
@@ -247,7 +295,8 @@ fun SessionDetailPreview() {
             )
         ),
         uploadSession = { },
-        isUploading = false
+        isUploading = false,
+        switchScreenshotPrivacyOrToSrealted = { },
     )
 }
 
@@ -258,6 +307,13 @@ private fun formatDate(timestamp: Long): String {
 
 @Composable
 private fun RequestsList(requests: List<CustomWebViewRequestEntity>) {
+
+
+        if (requests.isEmpty()) {
+            EmptyListUi(R.string.no_requests_found)
+    }
+    
+
     LazyColumn {
         items(requests) { request ->
             Card(
@@ -276,7 +332,26 @@ private fun RequestsList(requests: List<CustomWebViewRequestEntity>) {
 }
 
 @Composable
+private fun EmptyListUi(@StringRes stringRes: Int) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .wrapContentSize(Alignment.Center)
+    ) {
+        Text(
+            stringResource(id = stringRes),
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
+}
+
+@Composable
 private fun ContentList(content: List<WebpageContentEntity>) {
+
+    if (content.isEmpty()) {
+        EmptyListUi(R.string.no_webpages_found)
+    }
+
     LazyColumn {
         items(content) { item ->
             Card(
@@ -295,28 +370,106 @@ private fun ContentList(content: List<WebpageContentEntity>) {
 
 
 @Composable
-private fun ScreenshotsList(screenshots: List<ScreenshotEntity>) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 400.dp), // Adjust number of columns as needed
-            modifier = Modifier.padding(16.dp)
+private fun ScreenshotsList(screenshots: List<ScreenshotEntity>, toggleScreenshotPrivacyOrToSrelated: (ScreenshotEntity) -> Unit,) {
+
+    if (screenshots.isEmpty()) {
+        EmptyListUi(R.string.no_screenshots_found)
+    }
+
+
+    Column(){
+
+        HintText(hint = stringResource(R.string.hint_select_privacy_images), modifier = Modifier.padding(8.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            items(screenshots) { screenshot ->
-                AsyncImage(
-                    model = screenshot.path, // Path to the local image
-                    contentDescription = "Local Image",
-                    modifier = Modifier
-                        .height(350.dp)
-                        .width(350.dp)
-                        .padding(8.dp)
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 300.dp), // Adjust number of columns as needed
+                modifier = Modifier.padding(16.dp)
+            ) {
+                items(
+                    items = screenshots,
+                    key = { it.screenshotId } // Add key for better performance
+                ) { screenshot ->
+                    val imagePath = screenshot.path
+                    ImageItem(
+                        imagePath = imagePath,
+                        isSelected = screenshot.isPrivacyOrTosRelated,
+                        onImageClick = {
+                            toggleScreenshotPrivacyOrToSrelated(screenshot)
+                        }
+                    )
+                }
+            }
+        }
+
+    }
+
+
+}
+
+
+@Composable
+fun ImageItem(
+    imagePath: String,
+    isSelected: Boolean,
+    onImageClick: (Boolean) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .aspectRatio(1f)
+            .padding(8.dp)
+            .border(
+                width = if (isSelected) 2.dp else 0.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+            )
+            .clickable { onImageClick(!isSelected) }
+    ) {
+        // Display the image
+        Image(
+            painter = rememberAsyncImagePainter(
+                ImageRequest.Builder(LocalContext.current)
+                    .data(data = imagePath.toUri())
+                    .build()
+            ),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // Display the filled box with text when selected
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                        shape = RoundedCornerShape(4.dp)
+                    )
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "ToS/Privacy related screenshot",
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center
                 )
             }
         }
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun ImageItemPreview() {
+    ImageItem(
+        imagePath = "/storage/emulated/0/Android/data/com.example.captive_portal_analyzer_kotlin/files/fb045673-ebc5-42c7-b150-19557cf750be/screenshots/1735872934358.png",
+        isSelected = true,
+        onImageClick = {}
+    )
+}

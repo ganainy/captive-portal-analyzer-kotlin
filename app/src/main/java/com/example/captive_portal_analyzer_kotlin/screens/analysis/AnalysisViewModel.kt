@@ -153,13 +153,17 @@ class AnalysisViewModel(
     //save the request including body to local db
     suspend fun saveWebViewRequest(request: WebViewRequest) {
         val currentSessionId = sessionManager.getCurrentSessionId()
-        val customWebViewRequest = getCustomWebViewRequestFromWebViewRequest(request,currentSessionId)
+        val customWebViewRequest =
+            getCustomWebViewRequestFromWebViewRequest(request, currentSessionId)
         repository.insertRequest(
             customWebViewRequest
         )
     }
 
-    private fun getCustomWebViewRequestFromWebViewRequest(request: WebViewRequest,sessionId: String?): CustomWebViewRequestEntity {
+    private fun getCustomWebViewRequestFromWebViewRequest(
+        request: WebViewRequest,
+        sessionId: String?
+    ): CustomWebViewRequestEntity {
         return CustomWebViewRequestEntity(
             sessionId = sessionId,
             url = request.url,
@@ -175,14 +179,18 @@ class AnalysisViewModel(
     suspend fun saveWebResourceRequest(request: WebResourceRequest?) {
         if (request != null) {
             val currentSessionId = sessionManager.getCurrentSessionId()
-            val customWebViewRequest = getCustomWebViewRequestFromWebResourceRequest(request,currentSessionId)
+            val customWebViewRequest =
+                getCustomWebViewRequestFromWebResourceRequest(request, currentSessionId)
             repository.insertRequest(
                 customWebViewRequest
             )
         }
     }
 
-    private fun getCustomWebViewRequestFromWebResourceRequest(request: WebResourceRequest,sessionId: String?): CustomWebViewRequestEntity {
+    private fun getCustomWebViewRequestFromWebResourceRequest(
+        request: WebResourceRequest,
+        sessionId: String?
+    ): CustomWebViewRequestEntity {
         return CustomWebViewRequestEntity(
             sessionId = sessionId,
             url = request.url.toString(),
@@ -306,9 +314,14 @@ class AnalysisViewModel(
 
 
     fun takeScreenshot(webView: WebView, url: String) {
-        viewModelScope.launch {
-            val currentSessionId = sessionManager.getCurrentSessionId()
+        // Launch a coroutine on the Main dispatcher for WebView operations
+        viewModelScope.launch(Dispatchers.Main) {
+            // Get session ID on IO thread
+            val currentSessionId = withContext(Dispatchers.IO) {
+                sessionManager.getCurrentSessionId()
+            }
 
+            // Capture bitmap on Main thread since it involves WebView
             val bitmap: Bitmap? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 // For Android 8.0 (API 26) or later
                 webView.capturePicture()?.let { picture ->
@@ -326,38 +339,41 @@ class AnalysisViewModel(
                 } else null
             }
 
-            bitmap?.let {
-                val directory =
-                    File(webView.context.getExternalFilesDir(null), "$currentSessionId/screenshots")
-                if (!directory.exists()) {
-                    directory.mkdirs()
-                }
-
-                val fileName = "${System.currentTimeMillis()}.png"
-                val file = File(directory, fileName)
-
-                try {
-                    FileOutputStream(file).use { out ->
-                        it.compress(Bitmap.CompressFormat.PNG, 100, out)
-                        Log.i("WebViewScreenshot", "Screenshot saved to: ${file.absolutePath}")
+            // Switch to IO thread for file operations and database insertion
+            withContext(Dispatchers.IO) {
+                bitmap?.let {
+                    val directory =
+                        File(webView.context.getExternalFilesDir(null), "$currentSessionId/screenshots")
+                    if (!directory.exists()) {
+                        directory.mkdirs()
                     }
 
-                    // Insert into the database
-                    val screenshotEntity = ScreenshotEntity(
-                        sessionId = currentSessionId!!,
-                        timestamp = System.currentTimeMillis(),
-                        path = file.absolutePath,
-                        size = "${file.length()} bytes",
-                        url = url
-                    )
-                    repository.insertScreenshot(screenshotEntity) // Call repository method
+                    val fileName = "${System.currentTimeMillis()}.png"
+                    val file = File(directory, fileName)
 
-                } catch (e: IOException) {
-                    Log.e("WebViewScreenshot", "Error saving screenshot: ${e.message}")
-                }
-            } ?: Log.e("WebViewScreenshot", "Invalid screenshot bitmap dimensions")
+                    try {
+                        FileOutputStream(file).use { out ->
+                            it.compress(Bitmap.CompressFormat.PNG, 100, out)
+                            Log.i("WebViewScreenshot", "Screenshot saved to: ${file.absolutePath}")
+                        }
+
+                        // Insert into the database
+                        val screenshotEntity = ScreenshotEntity(
+                            sessionId = currentSessionId!!,
+                            timestamp = System.currentTimeMillis(),
+                            path = file.absolutePath,
+                            size = "${file.length()} bytes",
+                            url = url
+                        )
+                        repository.insertScreenshot(screenshotEntity) // Already on IO thread
+                    } catch (e: IOException) {
+                        Log.e("WebViewScreenshot", "Error saving screenshot: ${e.message}")
+                    }
+                } ?: Log.e("WebViewScreenshot", "Invalid screenshot bitmap dimensions")
+            }
         }
     }
+
 
     fun updateShowedHint(showedHint: Boolean) {
         _showedHint.value = showedHint

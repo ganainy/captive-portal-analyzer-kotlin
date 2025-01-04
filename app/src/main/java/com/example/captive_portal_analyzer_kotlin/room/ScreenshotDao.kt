@@ -29,5 +29,12 @@ interface ScreenshotDao {
 
 
     @Query("SELECT * from screenshots WHERE sessionId = :sessionId ORDER BY timestamp DESC")
-    fun getSessionScreenshotsList(sessionId: String): List<ScreenshotEntity>
+    fun getSessionScreenshotsList(sessionId: String): Flow<List<ScreenshotEntity>>
+
+    @Query(
+        "SELECT COUNT(*) FROM screenshots WHERE url = :url AND size = :size AND sessionId = :sessionId"
+    )
+    abstract fun isScreenshotUnique(url: String?, size: String?, sessionId: String): Any
+
+
 }
