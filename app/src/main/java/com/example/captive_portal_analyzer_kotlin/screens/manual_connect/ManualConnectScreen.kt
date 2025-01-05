@@ -3,12 +3,15 @@ package com.example.captive_portal_analyzer_kotlin.screens.manual_connect
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -149,9 +152,13 @@ private fun ManualConnectContentPreview() {
 
 
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun StatusTextWithIcon(text: String, isSuccess: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
         Text(
             text = text,
             style = if (isSuccess) {

@@ -2,7 +2,6 @@ package com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis
 
 import NetworkSessionRepository
 import android.app.Application
-import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,11 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -38,18 +34,19 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.ErrorIcon
 import com.example.captive_portal_analyzer_kotlin.components.HintText
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
-import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionDataDTO
 import com.example.captive_portal_analyzer_kotlin.dataclasses.toSessionDataDTO
+import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
 import dev.jeziellago.compose.markdowntext.MarkdownText
 
 @Composable
 fun AutomaticAnalysisScreen(
     sharedViewModel: SharedViewModel,
-    repository: NetworkSessionRepository
+    repository: NetworkSessionRepository,
 ) {
 
     val automaticAnalysisViewModel: AutomaticAnalysisViewModel = viewModel(
@@ -68,20 +65,28 @@ fun AutomaticAnalysisScreen(
     val sessionDataDTO = sessionData!!.toSessionDataDTO()
     automaticAnalysisViewModel.analyzeWithAi(sessionDataDTO)
 
+    val isConnected by sharedViewModel.isConnected.collectAsState()
+
     Scaffold(
 
     ) { paddingValues ->
 
-        AutomaticAnalysisContent(uiState = uiState, modifier = Modifier.padding(paddingValues))
-
-
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+        AutomaticAnalysisContent(uiState = uiState, modifier = Modifier.padding(paddingValues), onRetryClick = { automaticAnalysisViewModel.analyzeWithAi(sessionDataDTO) })
+        AnimatedNoInternetBanner(isConnected = isConnected)
+    }
     }
 }
 
 @Composable
 fun AutomaticAnalysisContent(
     uiState: AutomaticAnalysisUiState = AutomaticAnalysisUiState.Loading,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onRetryClick: () -> Unit = {}
 ) {
 
     when (uiState) {
@@ -100,7 +105,9 @@ fun AutomaticAnalysisContent(
         is AutomaticAnalysisUiState.Error -> {
             ErrorComponent(
                 error = uiState.errorMessage,
-                icon = ErrorIcon.ResourceIcon(R.drawable.robot)
+                icon = ErrorIcon.ResourceIcon(R.drawable.robot),
+                showRetryButton = true,
+                onRetryClick = onRetryClick
             )
         }
     }

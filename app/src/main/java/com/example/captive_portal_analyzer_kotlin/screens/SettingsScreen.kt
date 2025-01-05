@@ -1,0 +1,174 @@
+package com.example.captive_portal_analyzer_kotlin.screens
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import com.example.captive_portal_analyzer_kotlin.R
+import com.example.captive_portal_analyzer_kotlin.ThemeMode
+import java.util.Locale
+
+@Composable
+fun SettingsScreen(
+    onLocalChanged: (Locale) -> Unit,
+    onThemeChange: (ThemeMode) -> Unit,
+    themeMode: ThemeMode,
+    currentLanguage: String
+) {
+    var selectedLanguage by remember { mutableStateOf(Locale.getDefault()) }
+    val supportedLanguages = remember {
+        listOf(
+            Locale("en") to "English",
+            Locale("de") to "Deutsch",
+        )
+    }
+
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Language Section
+        Text(
+            text = stringResource(id = R.string.language_settings),
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        // Language Dropdown
+        LanguageDropdown(
+            currentLanguage = currentLanguage,
+            onLocalChanged = onLocalChanged
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Theme Section
+        Text(
+            text = stringResource(id = R.string.theme_settings),
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        // Theme selector
+        ThemeDropDown(themeMode = themeMode, onThemeModeChanged = onThemeChange)
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun ThemeDropDown(themeMode: ThemeMode, onThemeModeChanged: (ThemeMode) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = when (themeMode) {
+                ThemeMode.LIGHT -> stringResource(R.string.theme_light)
+                ThemeMode.DARK -> stringResource(R.string.theme_dark)
+                ThemeMode.SYSTEM -> stringResource(R.string.theme_system)
+            },
+            onValueChange = { },
+            readOnly = true,
+            label = { Text(stringResource(R.string.select_theme)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            ThemeMode.values().forEach { mode ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            when (mode) {
+                                ThemeMode.LIGHT -> stringResource(R.string.theme_light)
+                                ThemeMode.DARK -> stringResource(R.string.theme_dark)
+                                ThemeMode.SYSTEM -> stringResource(R.string.theme_system)
+                            }
+                        )
+                    },
+                    onClick = {
+                        onThemeModeChanged(mode)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LanguageDropdown(
+    currentLanguage: String,
+    onLocalChanged: (Locale) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val supportedLanguages = remember {
+        listOf(
+            Locale("en") to "English",
+            Locale("de") to "Deutsch",
+        )
+    }
+
+    val selectedLanguageName = remember(currentLanguage) {
+        supportedLanguages.find { it.first.language == currentLanguage }?.second ?: "English"
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = selectedLanguageName,
+            onValueChange = { },
+            readOnly = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            label = { Text(stringResource(id = R.string.select_language)) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            supportedLanguages.forEach { (locale, name) ->
+                DropdownMenuItem(
+                    text = { Text(name) },
+                    onClick = {
+                        onLocalChanged(locale)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}

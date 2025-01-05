@@ -62,7 +62,8 @@ fun AppScaffold(
             DrawerMenuItem(titleStringResource = Screen.Welcome.titleStringResource, route = Screen.Welcome.route),
             DrawerMenuItem(titleStringResource = Screen.SessionList.titleStringResource, route = Screen.SessionList.route),
             DrawerMenuItem(titleStringResource = Screen.ManualConnect.titleStringResource, route = Screen.ManualConnect.route),
-            DrawerMenuItem(titleStringResource = Screen.About.titleStringResource, route = Screen.About.route)
+            DrawerMenuItem(titleStringResource = Screen.Settings.titleStringResource, route = Screen.Settings.route),
+            DrawerMenuItem(titleStringResource = Screen.About.titleStringResource, route = Screen.About.route),
         ).filterNot { it.route == currentRoute }
     }
 

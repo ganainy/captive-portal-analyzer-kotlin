@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 
 
 sealed interface ErrorIcon {
@@ -35,7 +36,9 @@ sealed interface ErrorIcon {
 fun ErrorComponent(
     error: String,
     icon: ErrorIcon = ErrorIcon.VectorIcon(Icons.Default.Search),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showRetryButton: Boolean = false,
+    onRetryClick: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -68,6 +71,14 @@ fun ErrorComponent(
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyLarge,
         )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (showRetryButton) {
+            GhostButton(
+                onClick = onRetryClick,
+                text = stringResource(R.string.retry)
+            )
+    }
     }
 }
 
@@ -77,7 +88,8 @@ fun ErrorComponentPreviewWithVector() {
     MaterialTheme {
         ErrorComponent(
             error = "Something went wrong!",
-            icon = ErrorIcon.VectorIcon(Icons.Default.Search)
+            icon = ErrorIcon.VectorIcon(Icons.Default.Search),
+            showRetryButton = true,
         )
     }
 }

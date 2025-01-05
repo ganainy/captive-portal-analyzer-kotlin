@@ -16,13 +16,16 @@ import com.example.captive_portal_analyzer_kotlin.screens.about.AboutScreen
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session.SessionScreen
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.ThemeMode
 import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.AppToast
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
+import com.example.captive_portal_analyzer_kotlin.screens.SettingsScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
 import com.example.captive_portal_analyzer_kotlin.screens.welcome.WelcomeScreen
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
+import java.util.Locale
 
 sealed class Screen(val route: String,@StringRes val titleStringResource: Int) {
     object Welcome : Screen("welcome", R.string.welcome_screen_title)
@@ -33,6 +36,7 @@ sealed class Screen(val route: String,@StringRes val titleStringResource: Int) {
     object Session : Screen("session", R.string.session_screen_title)
     object About : Screen("about", R.string.about_screen_title)
     object AutomaticAnalysis : Screen("automatic_analysis", R.string.automatic_analysis)
+    object Settings : Screen("settings", R.string.settings)
 }
 
 @Composable
@@ -42,6 +46,10 @@ fun AppNavGraph(
     sharedViewModel: SharedViewModel,
     dialogState: DialogState,
     repository: NetworkSessionRepository,
+    themeMode: ThemeMode,
+    currentLanguage: String,
+    onThemeChanged:(mode: ThemeMode) -> Unit,
+    onLocalChanged: (locale: Locale) -> Unit,
 ) {
     val actions = remember(navController) { NavigationActions(navController) }
 
@@ -103,7 +111,7 @@ fun AppNavGraph(
             SessionScreen(
                 repository = repository,
                 sharedViewModel = sharedViewModel,
-                navigateToAutomaticAnalysis = actions.navigateToAutomaticAnalysisScreen
+                navigateToAutomaticAnalysis = actions.navigateToAutomaticAnalysisScreen,
                )
         }
         composable(
@@ -122,6 +130,20 @@ fun AppNavGraph(
                 repository = repository,
             )
         }
+
+        composable(
+            route = Screen.Settings.route,
+        ) {
+            SettingsScreen(
+                themeMode = themeMode,
+                currentLanguage = currentLanguage,
+                onThemeChange = onThemeChanged,
+                onLocalChanged = onLocalChanged
+            )
+        }
+
+
+
 
 
 
@@ -163,6 +185,10 @@ class NavigationActions(private val navController: NavHostController) {
 
     val navigateToAutomaticAnalysisScreen: () -> Unit = {
         navController.navigate(Screen.AutomaticAnalysis.route)
+    }
+
+    val navigateToSettingsScreen: () -> Unit = {
+        navController.navigate(Screen.Settings.route)
     }
 
 

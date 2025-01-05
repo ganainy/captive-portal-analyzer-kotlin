@@ -14,14 +14,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -61,6 +59,7 @@ import com.example.captive_portal_analyzer_kotlin.R
 
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
+import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.HintText
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
@@ -71,6 +70,7 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEnti
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
+import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -88,13 +88,17 @@ fun SessionScreen(
         factory = SessionViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
             repository = repository,
-            clickedSessionId = clickedSessionId!!
+            clickedSessionId = clickedSessionId!!,
         )
     )
 
     val sessionData by sessionViewModel.sessionData.collectAsState()
 
     val isUploading by sessionViewModel.isUploading.collectAsState()
+
+    val isConnected by sharedViewModel.isConnected.collectAsState()
+
+
 
     val showToast= { message:String, style: ToastStyle ->
         sharedViewModel.showToast(
@@ -133,6 +137,8 @@ fun SessionScreen(
                 context = LocalContext.current,
                 modifier = Modifier.align(Alignment.Center),
             )
+
+            AnimatedNoInternetBanner(isConnected = isConnected)
 
         }
     }

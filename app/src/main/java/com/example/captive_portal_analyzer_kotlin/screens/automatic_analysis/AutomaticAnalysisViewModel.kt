@@ -2,7 +2,6 @@ package com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis
 
 
 import NetworkSessionRepository
-import android.annotation.SuppressLint
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

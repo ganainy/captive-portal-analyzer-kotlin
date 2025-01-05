@@ -4,11 +4,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,7 +44,8 @@ fun AboutScreen(
             modifier = Modifier
                 .padding(padding)
                 .padding(16.dp)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             FAQItem(
@@ -63,7 +67,7 @@ fun AboutScreen(
             )
 
             FAQItem(
-                question = "How to create a good report?",
+                question = stringResource(R.string.how_to_create_a_good_report),
                 answer = buildAnnotatedString {
                     append(stringResource(R.string._1_connect_to_a_network_with_a_captive_portal))
                     append(stringResource(R.string._2_interact_with_as_many_pages_as_possible_within_the_captive_login_site_inside_the_app))
@@ -102,7 +106,8 @@ fun FAQItem(question: String, answer: AnnotatedString) {
         ClickableText(
             text = answer,
             style = MaterialTheme.typography.bodyLarge.copy(
-                lineHeight = 20.sp
+                lineHeight = 20.sp,
+                color =  MaterialTheme.colorScheme.onSurface
             ),
             onClick = { offset ->
                 answer.getStringAnnotations(tag = "URL", start = offset, end = offset)

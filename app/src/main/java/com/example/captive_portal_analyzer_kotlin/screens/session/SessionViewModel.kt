@@ -9,13 +9,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
+import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
 import kotlinx.coroutines.Dispatchers
 
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -26,19 +25,18 @@ class SessionViewModel(
     private val clickedSessionId: String,
 ) : AndroidViewModel(application) {
 
-
+    //is the session being uploaded to the server
     private val _isUploading = MutableStateFlow<Boolean>(false)
     val isUploading: StateFlow<Boolean> = _isUploading.asStateFlow()
 
-
     //keep getting any new changes to the session to view in the screen
-
     private val _sessionFlow = MutableStateFlow<SessionData?>(null)
     val sessionData = _sessionFlow.asStateFlow()  // Use asStateFlow() for public exposure
 
     init {
         loadSessionData()
     }
+
 
     private fun loadSessionData() {
         viewModelScope.launch(Dispatchers.IO) {
