@@ -47,7 +47,7 @@ import com.acsbendi.requestinspectorwebview.WebViewRequest
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
-import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
+import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 
 
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
@@ -108,7 +108,7 @@ fun AnalysisScreen(
         when (uiState) {
 
             is AnalysisUiState.Loading -> {
-                CustomProgressIndicator(
+                LoadingIndicator(
                     message = stringResource((uiState as AnalysisUiState.Loading).messageStringResource),
                     modifier = Modifier.padding(contentPadding)
                 )

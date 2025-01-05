@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     id("com.google.devtools.ksp") version "2.1.0-1.0.29"
     id("com.google.gms.google-services")
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
 }
 
 android {
@@ -16,7 +17,6 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -47,6 +47,8 @@ android {
 
 
 }
+
+
 
 dependencies {
 
@@ -91,6 +93,11 @@ dependencies {
     implementation("com.google.firebase:firebase-storage")
     implementation(libs.firebase.firestore.ktx)
 
+    //Gemini sdk
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+
+    //compose markdown
+    implementation ("com.github.jeziellago:compose-markdown:0.5.6")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -107,3 +114,4 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
+

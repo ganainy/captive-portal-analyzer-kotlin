@@ -1,7 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.screens.session_list
 
 import NetworkSessionRepository
-import SessionData
 import android.app.Application
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
@@ -19,8 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -35,14 +32,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.components.CustomProgressIndicator
+import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
+import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -93,17 +91,15 @@ private fun SessionsContent(
 ) {
     when (uiState) {
         SessionListUiState.Loading -> {
-            CustomProgressIndicator()
+            LoadingIndicator()
         }
 
         is SessionListUiState.Error -> {
-            val error = stringResource((uiState as SessionListUiState.Error).messageStringResource)
-            ErrorText(error)
+            ErrorComponent( stringResource((uiState as SessionListUiState.Error).messageStringResource))
         }
 
         SessionListUiState.Empty -> {
-            val empty = stringResource(R.string.no_sessions_detected)
-            ErrorText(empty)
+            ErrorComponent(stringResource(R.string.no_sessions_detected))
         }
 
         SessionListUiState.Success -> {
@@ -142,47 +138,9 @@ private fun SessionsSuccessContent(
     }
 }
 
-@Composable
-private fun ErrorText(
-    error: String
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Search,  // Choose an appropriate icon
-            contentDescription = null,
-            modifier = Modifier
-                .width(256.dp)
-                .height(256.dp),
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = error,
-            textAlign = TextAlign.Center
-        )
-    }
-}
 
-@Preview(
-    showBackground = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-)
-@Preview(
-    showBackground = true,
-)
-@Composable
-fun PreviewErrorTextDarkMode() {
-    AppTheme {
-        ErrorText(
-            error = stringResource(R.string.no_sessions_detected) // Provide a mock error state
-        )
-    }
-}
+
+
 
 @Composable
 fun SessionsList(

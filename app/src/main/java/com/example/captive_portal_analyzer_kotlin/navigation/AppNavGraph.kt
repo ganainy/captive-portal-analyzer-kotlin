@@ -19,6 +19,7 @@ import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.AppToast
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
+import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
 import com.example.captive_portal_analyzer_kotlin.screens.welcome.WelcomeScreen
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
@@ -31,6 +32,7 @@ sealed class Screen(val route: String,@StringRes val titleStringResource: Int) {
     object SessionList : Screen("session_list", R.string.session_list_screen_title)
     object Session : Screen("session", R.string.session_screen_title)
     object About : Screen("about", R.string.about_screen_title)
+    object AutomaticAnalysis : Screen("automatic_analysis", R.string.automatic_analysis)
 }
 
 @Composable
@@ -101,6 +103,7 @@ fun AppNavGraph(
             SessionScreen(
                 repository = repository,
                 sharedViewModel = sharedViewModel,
+                navigateToAutomaticAnalysis = actions.navigateToAutomaticAnalysisScreen
                )
         }
         composable(
@@ -108,6 +111,15 @@ fun AppNavGraph(
         ) {
             AboutScreen(
                 navigateBack = actions.navigateBack,
+            )
+        }
+
+        composable(
+            route = Screen.AutomaticAnalysis.route,
+        ) {
+            AutomaticAnalysisScreen(
+                sharedViewModel = sharedViewModel,
+                repository = repository,
             )
         }
 
@@ -147,6 +159,10 @@ class NavigationActions(private val navController: NavHostController) {
 
     val navigateToSessionScreen: () -> Unit = {
         navController.navigate(Screen.Session.route)
+    }
+
+    val navigateToAutomaticAnalysisScreen: () -> Unit = {
+        navController.navigate(Screen.AutomaticAnalysis.route)
     }
 
 

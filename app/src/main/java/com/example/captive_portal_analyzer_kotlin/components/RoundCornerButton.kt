@@ -27,16 +27,22 @@ fun RoundCornerButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isLoading: Boolean = false,
+    fillWidth: Boolean = true,
     colors: ButtonColors = ButtonDefaults.buttonColors()
 ) {
+    var modifier = modifier
+        .padding(horizontal = 16.dp)
+        .height(56.dp)
+
+    if (fillWidth) {
+        modifier = modifier.fillMaxWidth()
+    }
+
     Button(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         enabled = enabled,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .height(56.dp),
+        modifier = modifier,
         colors = colors
     ) {
 
@@ -70,7 +76,8 @@ private fun Preview() {
             onClick = { },
             buttonText = "Test Button",
             enabled = true,
-            isLoading = false
+            isLoading = false,
+            fillWidth = true
         )
     }
 }

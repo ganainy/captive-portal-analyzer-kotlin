@@ -1,7 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.screens.session
 
 import NetworkSessionRepository
-import SessionData
 import android.app.Application
 import android.content.Context
 import android.content.res.Configuration
@@ -10,14 +9,19 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -57,6 +61,7 @@ import com.example.captive_portal_analyzer_kotlin.R
 
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
+import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.HintText
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
@@ -64,6 +69,7 @@ import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -73,6 +79,7 @@ import java.util.Locale
 fun SessionScreen(
     sharedViewModel: SharedViewModel,
     repository: NetworkSessionRepository,
+    navigateToAutomaticAnalysis: () -> Unit,
 ) {
 
     val clickedSessionId by sharedViewModel.clickedSessionId.collectAsState()
@@ -117,6 +124,7 @@ fun SessionScreen(
                     },
                     isUploading = isUploading,
                     switchScreenshotPrivacyOrToSrealted = sessionViewModel::toggleScreenshotPrivacyOrToSrelated,
+                    navigateToAutomaticAnalysis = navigateToAutomaticAnalysis
                 )
             }
 
@@ -160,12 +168,14 @@ private fun HintInfoBox(
 }
 
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SessionDetail(
     clickedSessionData: SessionData,
     uploadSession: () -> Unit,
     isUploading: Boolean,
     switchScreenshotPrivacyOrToSrealted: (ScreenshotEntity) -> Unit,
+    navigateToAutomaticAnalysis: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -232,20 +242,35 @@ fun SessionDetail(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        RoundCornerButton(
-            onClick = { uploadSession() },
-            buttonText = if (clickedSessionData.session.isUploadedToRemoteServer) {
-                stringResource(R.string.already_uploaded)
-            } else {
-                stringResource(R.string.upload_session_for_analysis)
-            },
-            enabled = !clickedSessionData.session.isUploadedToRemoteServer,
-            isLoading = isUploading
-        )
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            maxItemsInEachRow = Int.MAX_VALUE,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            RoundCornerButton(
+                onClick = { uploadSession() },
+                buttonText = if (clickedSessionData.session.isUploadedToRemoteServer) {
+                    stringResource(R.string.already_uploaded)
+                } else {
+                    stringResource(R.string.upload_session_for_analysis)
+                },
+                enabled = !clickedSessionData.session.isUploadedToRemoteServer,
+                isLoading = isUploading,
+                fillWidth = false
+            )
 
+            GhostButton(
+                onClick = navigateToAutomaticAnalysis,
+                text = stringResource(R.string.automatic_analysis_button)
+            )
+        }
     }
 }
 
+@Preview(name = "Pixel 5", device = "id:pixel_5", showBackground = true)
+@Preview(name = "Tablet", device = "id:Nexus 7", showBackground = true)
 @Preview(showBackground = true,)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -297,6 +322,7 @@ fun SessionDetailPreview() {
         uploadSession = { },
         isUploading = false,
         switchScreenshotPrivacyOrToSrealted = { },
+        navigateToAutomaticAnalysis = { }
     )
 }
 

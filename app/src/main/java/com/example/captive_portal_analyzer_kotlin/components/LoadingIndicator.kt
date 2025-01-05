@@ -19,12 +19,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
 
 @Composable
-fun CustomProgressIndicator(message: String? = null,modifier: Modifier=Modifier) {
+fun LoadingIndicator(message: String? = null, modifier: Modifier=Modifier) {
     var loadingMessage by remember { mutableStateOf("${message}.") }
     val scope = rememberCoroutineScope()
 
@@ -64,4 +65,11 @@ fun CustomProgressIndicator(message: String? = null,modifier: Modifier=Modifier)
             }
         }
     }
+}
+
+
+@Preview(uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,showSystemUi = true)
+@Composable
+fun LoadingIndicatorPreview() {
+    LoadingIndicator(message = "Loading")
 }

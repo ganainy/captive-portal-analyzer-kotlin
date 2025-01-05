@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Ignore secret files
+C:\Users\amr-PC\AndroidStudioProjects\captive-portal-analyzer-kotlin\app\src\main\java\com\example\captive_portal_analyzer_kotlin\secret\*
+app/src/main/java/com/example/captive_portal_analyzer_kotlin/secret/

@@ -1,6 +1,5 @@
 package com.example.captive_portal_analyzer_kotlin
 
-import SessionData
 import androidx.lifecycle.ViewModel
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
 import com.example.captive_portal_analyzer_kotlin.components.ToastState

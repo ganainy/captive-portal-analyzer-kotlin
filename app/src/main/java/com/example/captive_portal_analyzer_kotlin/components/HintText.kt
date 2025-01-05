@@ -10,13 +10,13 @@ import androidx.compose.ui.text.style.TextAlign
 import com.example.captive_portal_analyzer_kotlin.R
 
 @Composable
-fun HintText(hint:String, modifier: Modifier = Modifier) {
+fun HintText(hint:String, modifier: Modifier = Modifier,textAlign: TextAlign= TextAlign.Center) {
     Text(
         modifier = modifier,
         text = hint,
         style = TextStyle(
             color = Color.Gray,       // Set text color to gray
             fontSize = 12.sp          // Set a smaller font size
-        ), textAlign = TextAlign.Center
+        ), textAlign = textAlign
     )
 }

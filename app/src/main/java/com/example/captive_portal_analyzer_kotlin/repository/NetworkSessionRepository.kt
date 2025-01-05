@@ -2,6 +2,7 @@ import android.net.Uri
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.room.CustomWebViewRequestDao
 import com.example.captive_portal_analyzer_kotlin.room.NetworkSessionDao
@@ -226,14 +227,6 @@ class NetworkSessionRepository(
     }
 
 }
-
-// Data class to hold complete session data
-data class SessionData(
-    val session: NetworkSessionEntity,
-    val requests: List<CustomWebViewRequestEntity>,
-    val screenshots: List<ScreenshotEntity>,
-    val webpageContent: List<WebpageContentEntity>
-)
 
 
 
