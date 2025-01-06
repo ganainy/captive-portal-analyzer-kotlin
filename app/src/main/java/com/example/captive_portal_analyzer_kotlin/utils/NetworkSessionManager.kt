@@ -56,20 +56,21 @@ class NetworkSessionManager(private val context: Context, private val repository
 
             if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                 val wifiInfo = wifiManager.connectionInfo
-                val bssid = wifiInfo.bssid
                 val ssid = wifiInfo.ssid.removeSurrounding("\"")
+                val bssid = wifiInfo.bssid
 
                 if (!isValidWifiConnection(ssid, bssid)) {
                     return null
                 }
 
                 // First check our cached session
-                if (currentSession?.bssid == bssid) {
+                if (currentSession?.ssid == ssid) {
                     return currentSession
                 }
 
                 // Then check the database
-                val existingSession = repository.getSessionByBssid(bssid)
+                //todo find better approach to check if a network is unique or not
+                val existingSession = repository.getSessionBySsid(ssid)
                 if (existingSession != null) {
                     currentSession = existingSession
                     return existingSession

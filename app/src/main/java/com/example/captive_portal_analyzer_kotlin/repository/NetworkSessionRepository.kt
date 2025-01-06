@@ -12,12 +12,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.last
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
 import java.io.File
 
 class NetworkSessionRepository(
@@ -46,8 +44,8 @@ class NetworkSessionRepository(
         sessionDao.updateIsCaptiveLocal(sessionId, isLocal)
     }
 
-    suspend fun getSessionByBssid(bssid: String?): NetworkSessionEntity? {
-        return sessionDao.getSessionByBssid(bssid)
+    suspend fun getSessionBySsid(bssid: String?): NetworkSessionEntity? {
+        return sessionDao.getSessionBySsid(bssid)
     }
 
     suspend fun getAllSessions(): List<NetworkSessionEntity>? {
@@ -122,9 +120,15 @@ class NetworkSessionRepository(
             val session = sessionDao.getSession(sessionId)
                 ?: return Result.failure(Exception("Session not found"))
 
-            val requests = requestDao.getSessionRequestsList(sessionId).last()
-            val screenshots = screenshotDao.getSessionScreenshotsList(sessionId).last()
-            val webpageContent = webpageContentDao.getSessionWebpageContentList(sessionId).last()
+            val requests = withTimeout(30_000) {
+                requestDao.getSessionRequestsList(sessionId).first()
+            }
+            val screenshots = withTimeout(30_000) {
+                screenshotDao.getSessionScreenshotsList(sessionId).first()
+            }
+            val webpageContent = withTimeout(30_000) {
+                webpageContentDao.getSessionWebpageContentList(sessionId).first()
+            }
 
             // 2. Upload screenshots to Storage and get URLs
             val uploadedScreenshots = screenshots.map { screenshot ->
@@ -141,13 +145,12 @@ class NetworkSessionRepository(
             )
 
             // 4. Upload to Firestore
-            firestore.collection("sessions")
-                .document(sessionId)
-                .set(sessionData)
-                .await()
-
-            // 5. Update local status
-            sessionDao.updateIsUploadedToRemoteServer(sessionId, true)
+            withTimeout(60_000) {
+                firestore.collection("sessions")
+                    .document(sessionId)
+                    .set(sessionData)
+                    .await()
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -165,10 +168,11 @@ class NetworkSessionRepository(
             val storageRef = storage.reference
                 .child("images/$sessionId/${screenshot.screenshotId}.jpg")
 
-            storageRef.putFile(imageUri).await()
-            val downloadUrl = storageRef.downloadUrl.await()
-
-            Result.success(downloadUrl.toString())
+            withTimeout(60_000) {
+                storageRef.putFile(imageUri).await()
+                val downloadUrl = storageRef.downloadUrl.await()
+                downloadUrl.toString()
+            }.let { Result.success(it) }
         } catch (e: Exception) {
             Result.failure(e)
         }

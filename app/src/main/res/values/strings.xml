@@ -123,7 +123,7 @@
     <string name="automatic_analysis">Analysis Result</string>
     <string name="automatic_analysis_button">Analyze with AI</string>
     <string name="long_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</string>
-    <string name="uploading_information_to_be_analyzed">Uploading information to be analyzed</string>
+    <string name="uploading_information_to_be_analyzed">Uploading information to be reviewed</string>
     <string name="ai_hint_1">- The collected data is too large to be sent to the AI model in its entirety, so only selected and filtered portions are transmitted.</string>
     <string name="ai_hint_2">- This provides a preliminary overview of the captive network, comprehensive analysis will be conducted by our researchers once you upload the session data for review.</string>
     <string name="here_is_the_result">Here is what AI found about the network:</string>
@@ -139,6 +139,10 @@
     <string name="theme_system">Same as system</string>
     <string name="select_theme">Select theme</string>
     <string name="how_to_create_a_good_report">How to create correctly inspect network?</string>
+    <string name="error_loading_session">Error loading session data</string>
+    <string name="error_uploading_session">Error uploading session</string>
+    <string name="thanks_for_uploading">Uploaded</string>
+    <string name="loading_session">Loading session information</string>
 
 
 </resources>

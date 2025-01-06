@@ -139,4 +139,9 @@
     <string name="theme_system">Gleich wie System</string>
     <string name="select_theme">Theme auswählen</string>
     <string name="how_to_create_a_good_report">Wie erstelle ich ein ordnungsgemäßes Inspektionsnetzwerk?</string>
+    <string name="error_loading_session">Fehler beim Laden der Sitzungsdaten</string>
+    <string name="error_uploading_session">Fehler beim Hochladen der Sitzung</string>
+    <string name="thanks_for_uploading">Hochgeladen</string>
+    <string name="loading_session">Sitzungsinformationen werden geladen</string>
+
 </resources>

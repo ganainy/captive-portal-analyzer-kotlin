@@ -6,18 +6,25 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
-import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
 import kotlinx.coroutines.Dispatchers
 
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+sealed class UploadState {
+    object Loading : UploadState() //loading session from repository to view in the screen
+    object NeverUploaded : UploadState() //session never uploaded to server
+    object Uploading : UploadState() // session is uploading to server
+    object AlreadyUploaded : UploadState() //session previously already uploaded to server
+    object Success : UploadState() //session uploaded to server successfully
+    data class Error(val message: String) : UploadState()
+}
 
 class SessionViewModel(
     application: Application,
@@ -25,9 +32,9 @@ class SessionViewModel(
     private val clickedSessionId: String,
 ) : AndroidViewModel(application) {
 
-    //is the session being uploaded to the server
-    private val _isUploading = MutableStateFlow<Boolean>(false)
-    val isUploading: StateFlow<Boolean> = _isUploading.asStateFlow()
+    // State holder
+    private val _uploadState = MutableStateFlow<UploadState>(UploadState.Loading)
+    val uploadState = _uploadState.asStateFlow()
 
     //keep getting any new changes to the session to view in the screen
     private val _sessionFlow = MutableStateFlow<SessionData?>(null)
@@ -44,12 +51,18 @@ class SessionViewModel(
                 clickedSessionId.let { sessionId ->
                     // Just collect the Flow from repository
                     repository.getCompleteSessionData(sessionId)
-                        .collect { session ->
-                            _sessionFlow.value = session
+                        .collect { sessionData ->
+                            _sessionFlow.value = sessionData
+                            if (sessionData.session.isUploadedToRemoteServer) {
+                                _uploadState.value = UploadState.AlreadyUploaded
+                            }else{
+                                _uploadState.value = UploadState.NeverUploaded
+                            }
                         }
                 }
             } catch (e: Exception) {
-                _sessionFlow.value = null
+                _uploadState.value = UploadState.Error(getApplication<Application>().getString( R.string.error_loading_session))
+
             }
         }
     }
@@ -68,14 +81,23 @@ class SessionViewModel(
         showToast: (message: String, style: ToastStyle) -> Unit,
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            _isUploading.value = true
-            repository.updateSession(sessionData.session.copy(isUploadedToRemoteServer = true))
+            _uploadState.value = UploadState.Uploading
+
             repository.uploadSessionData(sessionData.session.sessionId)
                 .onSuccess {
-                    _isUploading.value = false
+                    try {
+                        repository.updateSession(sessionData.session.copy(isUploadedToRemoteServer = true))
+                        _uploadState.value = UploadState.Success
+                    } catch (e: Exception) {
+                        _uploadState.value = UploadState.Error(e.localizedMessage ?:
+                        getApplication<Application>().getString(R.string.error_uploading_session))
+                        repository.updateSession(sessionData.session.copy(isUploadedToRemoteServer = false))
+                        return@launch
+                    }
                 }
                 .onFailure { apiResponse ->
-                    _isUploading.value = false
+                    _uploadState.value = UploadState.Error(apiResponse.localizedMessage ?:
+                    getApplication<Application>().getString(R.string.error_uploading_session))
                     withContext(Dispatchers.Main) {
                         repository.updateSession(sessionData.session.copy(isUploadedToRemoteServer = false))
                         apiResponse.message?.let { showToast(it, ToastStyle.ERROR) }

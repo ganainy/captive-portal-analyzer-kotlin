@@ -26,8 +26,8 @@ interface NetworkSessionDao {
     @Query("UPDATE network_sessions SET isCaptiveLocal = :isLocal WHERE sessionId = :sessionId")
     suspend fun updateIsCaptiveLocal(sessionId: String, isLocal: Boolean)
 
-    @Query("SELECT * FROM network_sessions WHERE bssid = :bssid ORDER BY timestamp DESC LIMIT 1")
-    suspend fun getSessionByBssid(bssid: String?): NetworkSessionEntity?
+    @Query("SELECT * FROM network_sessions WHERE ssid = :ssid LIMIT 1")
+    suspend fun getSessionBySsid(ssid: String?): NetworkSessionEntity?
 
     @Query("SELECT * FROM network_sessions")
     abstract fun getAllSessions(): List<NetworkSessionEntity>?

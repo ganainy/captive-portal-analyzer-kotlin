@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -60,8 +61,10 @@ import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
+import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.HintText
+import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
@@ -70,7 +73,6 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEnti
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
-import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -94,13 +96,12 @@ fun SessionScreen(
 
     val sessionData by sessionViewModel.sessionData.collectAsState()
 
-    val isUploading by sessionViewModel.isUploading.collectAsState()
+    val uploadState by sessionViewModel.uploadState.collectAsState()
 
     val isConnected by sharedViewModel.isConnected.collectAsState()
 
 
-
-    val showToast= { message:String, style: ToastStyle ->
+    val showToast = { message: String, style: ToastStyle ->
         sharedViewModel.showToast(
             message = message, style = style,
         )
@@ -110,37 +111,70 @@ fun SessionScreen(
 
     ) { paddingValues ->
 
+        when (uploadState) {
+            UploadState.Uploading -> {
+                LoadingIndicator(message = stringResource(R.string.uploading_information_to_be_analyzed))
+            }
+            UploadState.Loading -> {
+                LoadingIndicator(message = stringResource(R.string.loading_session))
+            }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-
-            sessionData?.let {
-                SessionDetail(
-                    clickedSessionData = sessionData!!,
-                    uploadSession = {
+            is UploadState.Error -> {
+                val errorMessage = (uploadState as UploadState.Error).message
+                ErrorComponent(
+                    error = errorMessage,
+                    showRetryButton = true,
+                    onRetryClick = {
                         sessionViewModel.uploadSession(
                             sessionData!!,
                             showToast,
                         )
-                    },
-                    isUploading = isUploading,
-                    switchScreenshotPrivacyOrToSrealted = sessionViewModel::toggleScreenshotPrivacyOrToSrelated,
-                    navigateToAutomaticAnalysis = navigateToAutomaticAnalysis
+                    }
                 )
             }
 
+            else -> {
+                if (uploadState is UploadState.AlreadyUploaded || uploadState is UploadState.Success || uploadState is UploadState.NeverUploaded) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                    ) {
 
-            HintInfoBox(
-                context = LocalContext.current,
-                modifier = Modifier.align(Alignment.Center),
-            )
 
-            AnimatedNoInternetBanner(isConnected = isConnected)
+                        SessionDetail(
+                            clickedSessionData = sessionData!!,
+                            uploadSession = {
+                                sessionViewModel.uploadSession(
+                                    sessionData!!,
+                                    showToast,
+                                )
+                            },
+                            switchScreenshotPrivacyOrToSrealted = sessionViewModel::toggleScreenshotPrivacyOrToSrelated,
+                            navigateToAutomaticAnalysis = navigateToAutomaticAnalysis,
+                            uploadState = uploadState
+                        )
+
+
+                        HintInfoBox(
+                            context = LocalContext.current,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+
+                        AnimatedNoInternetBanner(isConnected = isConnected)
+
+                    }
+
+                } else {
+                    throw Exception("Unexpected upload state: $uploadState")
+                }
+
+            }
+
 
         }
+
+
     }
 
 }
@@ -160,13 +194,14 @@ private fun HintInfoBox(
             }
     }
 
-    if (showInfoBox2 ) {
+    if (showInfoBox2) {
 
         NeverSeeAgainAlertDialog(
             title = stringResource(R.string.hint),
             message = stringResource(R.string.review_session_data),
             preferenceKey = "info_box_2",
-            onDismiss = { showInfoBox2 = false
+            onDismiss = {
+                showInfoBox2 = false
             },
             modifier = modifier
         )
@@ -179,7 +214,7 @@ private fun HintInfoBox(
 fun SessionDetail(
     clickedSessionData: SessionData,
     uploadSession: () -> Unit,
-    isUploading: Boolean,
+    uploadState: UploadState,
     switchScreenshotPrivacyOrToSrealted: (ScreenshotEntity) -> Unit,
     navigateToAutomaticAnalysis: () -> Unit,
 ) {
@@ -240,44 +275,81 @@ fun SessionDetail(
             when (selectedTab) {
                 0 -> RequestsList(clickedSessionData.requests)
                 1 -> ContentList(clickedSessionData.webpageContent)
-                2 -> ScreenshotsList(clickedSessionData.screenshots
-                    ,switchScreenshotPrivacyOrToSrealted,
-                    )
+                2 -> ScreenshotsList(
+                    clickedSessionData.screenshots,
+                    switchScreenshotPrivacyOrToSrealted,
+                )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        FlowRow(
-            modifier = Modifier
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            maxItemsInEachRow = Int.MAX_VALUE,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            RoundCornerButton(
-                onClick = { uploadSession() },
-                buttonText = if (clickedSessionData.session.isUploadedToRemoteServer) {
-                    stringResource(R.string.already_uploaded)
-                } else {
-                    stringResource(R.string.upload_session_for_analysis)
-                },
-                enabled = !clickedSessionData.session.isUploadedToRemoteServer,
-                isLoading = isUploading,
-                fillWidth = false
-            )
+        SessionActionButtons(
+            uploadState = uploadState,
+            onUploadClick = uploadSession,
+            onAnalysisClick = navigateToAutomaticAnalysis
+        )
+    }
+}
 
-            GhostButton(
-                onClick = navigateToAutomaticAnalysis,
-                text = stringResource(R.string.automatic_analysis_button)
-            )
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SessionActionButtons(
+    uploadState: UploadState,
+    onUploadClick: () -> Unit,
+    onAnalysisClick: () -> Unit,
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        maxItemsInEachRow = Int.MAX_VALUE,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        when (uploadState) {
+            UploadState.AlreadyUploaded -> {
+                RoundCornerButton(
+                    onClick = { },
+                    buttonText = stringResource(R.string.already_uploaded),
+                    enabled = false,
+                    fillWidth = false
+                )
+            }
+
+            UploadState.Success -> {
+                RoundCornerButton(
+                    onClick = { },
+                    buttonText = stringResource(R.string.thanks_for_uploading),
+                    enabled = false,
+                    fillWidth = false
+                )
+            }
+
+            UploadState.NeverUploaded -> {
+                RoundCornerButton(
+                    onClick =onUploadClick,
+                    buttonText = stringResource(R.string.upload_session_for_analysis),
+                    enabled = true,
+                    fillWidth = false
+                )
+            }
+
+            else -> {
+                throw IllegalStateException("Unexpected upload state: $uploadState")
+            }
+
         }
+
+        GhostButton(
+            onClick = onAnalysisClick,
+            text = stringResource(R.string.automatic_analysis_button)
+        )
     }
 }
 
 @Preview(name = "Pixel 5", device = "id:pixel_5", showBackground = true)
 @Preview(name = "Tablet", device = "id:Nexus 7", showBackground = true)
-@Preview(showBackground = true,)
+@Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun SessionDetailPreview() {
@@ -326,9 +398,10 @@ fun SessionDetailPreview() {
             )
         ),
         uploadSession = { },
-        isUploading = false,
         switchScreenshotPrivacyOrToSrealted = { },
-        navigateToAutomaticAnalysis = { }
+        navigateToAutomaticAnalysis = { },
+        uploadState = UploadState.NeverUploaded,
+
     )
 }
 
@@ -341,10 +414,11 @@ private fun formatDate(timestamp: Long): String {
 private fun RequestsList(requests: List<CustomWebViewRequestEntity>) {
 
 
-        if (requests.isEmpty()) {
-            EmptyListUi(R.string.no_requests_found)
+    if (requests.isEmpty()) {
+        EmptyListUi(R.string.no_requests_found)
+        return
     }
-    
+
 
     LazyColumn {
         items(requests) { request ->
@@ -382,6 +456,7 @@ private fun ContentList(content: List<WebpageContentEntity>) {
 
     if (content.isEmpty()) {
         EmptyListUi(R.string.no_webpages_found)
+        return
     }
 
     LazyColumn {
@@ -402,16 +477,25 @@ private fun ContentList(content: List<WebpageContentEntity>) {
 
 
 @Composable
-private fun ScreenshotsList(screenshots: List<ScreenshotEntity>, toggleScreenshotPrivacyOrToSrelated: (ScreenshotEntity) -> Unit,) {
+private fun ScreenshotsList(
+    screenshots: List<ScreenshotEntity>,
+    toggleScreenshotPrivacyOrToSrelated: (ScreenshotEntity) -> Unit,
+) {
 
     if (screenshots.isEmpty()) {
         EmptyListUi(R.string.no_screenshots_found)
+        return
     }
 
 
-    Column(){
+    Column() {
 
-        HintText(hint = stringResource(R.string.hint_select_privacy_images), modifier = Modifier.padding(8.dp))
+        Text(
+            text = stringResource(R.string.hint_select_privacy_images),
+            style = typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(8.dp)
+        )
 
         Card(
             modifier = Modifier

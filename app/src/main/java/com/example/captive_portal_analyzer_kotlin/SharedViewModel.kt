@@ -55,6 +55,19 @@ class SharedViewModel(
     private val _isConnected = MutableStateFlow(true)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
+    //settings related to app language
+
+    private val languageKey = stringPreferencesKey("app_language") // Keys for DataStore
+    private val _currentLocale = MutableStateFlow<Locale>(Locale("en"))
+    val currentLocale: StateFlow<Locale> get() = _currentLocale
+
+
+    //settings related to dark/light mode
+
+    private val themeModeKey = stringPreferencesKey("theme_mode")  // Keys for DataStore
+    private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
+    val themeMode = _themeMode.asStateFlow()
+
     init {
         getLocalePreference()
         getThemePreference()
@@ -67,11 +80,6 @@ class SharedViewModel(
     }
 
 
-    //settings related to app language
-
-    private val languageKey = stringPreferencesKey("app_language") // Keys for DataStore
-    private val _currentLocale = MutableStateFlow<Locale>(Locale.getDefault())
-    val currentLocale: StateFlow<Locale> get() = _currentLocale
 
     private fun getLocalePreference() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -103,11 +111,7 @@ class SharedViewModel(
     }
 
 
-    //settings related to dark/light mode
 
-    private val themeModeKey = stringPreferencesKey("theme_mode")  // Keys for DataStore
-    private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
-    val themeMode = _themeMode.asStateFlow()
 
     private fun getThemePreference() {
         viewModelScope.launch(Dispatchers.IO) {

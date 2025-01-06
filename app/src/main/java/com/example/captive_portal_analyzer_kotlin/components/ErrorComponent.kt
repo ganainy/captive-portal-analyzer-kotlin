@@ -35,7 +35,7 @@ sealed interface ErrorIcon {
 @Composable
 fun ErrorComponent(
     error: String,
-    icon: ErrorIcon = ErrorIcon.VectorIcon(Icons.Default.Search),
+    icon: ErrorIcon = ErrorIcon.ResourceIcon(R.drawable.error),
     modifier: Modifier = Modifier,
     showRetryButton: Boolean = false,
     onRetryClick: () -> Unit = {}
