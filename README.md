@@ -14,30 +14,8 @@ This app focuses on analyzing captive portals. It provides an interface for inte
 - Automatically capture screenshots of portal interactions.
 - Perform AI-powered privacy and data collection analysis.
 - Upload analyzed data for extended review by our team.
-
----
-
-## Preview
-
-### Video Demonstrations:
-
-#### Collecting information about a captive portal network:
-![Create Session](preview/gifs/create_session.gif)
-[Download video for better quality](preview/videos/create-session.mp4)
-
-#### Analyze collected data with AI:
-![Mark and Analyze with AI](preview/gifs/analyze_with_ai.gif)
-[Download video for better quality](preview/videos/mark-analyze-with-ai_blurred.mp4)
-
-### Screenshots:
-| Feature                                                                 | Screenshot                          |
-|-------------------------------------------------------------------------|-------------------------------------|
-| **Interacting with captive portal from the app**                        | ![2.png](preview/screenshots/2.png) |
-| **Detailed View of collected data**                                     | ![3.png](preview/screenshots/3.png) |
-| **AI Insights about the captive portal**                                | ![4.png](preview/screenshots/4.png) |
-| **Control language & theme**                                            | ![5.png](preview/screenshots/5.png) |
-| **Fetched request bodies saved to backend**                             | ![6.png](preview/screenshots/6.png) |
-| **Screenshots related to Privacy policy/ToS<br/> uploaded to back end for analysis** | ![7.png](preview/screenshots/7.png) |
+> All login/sign up data is stored locally and not sent to the backend unless users choose to upload,
+> nonetheless it is preferable to use fake data when signing up/logging in.
 ---
 
 ## Tech Stack
@@ -56,6 +34,33 @@ This app focuses on analyzing captive portals. It provides an interface for inte
     - Firebase Storage for image storage
 
 ---
+
+## Preview
+
+### Video Demonstrations:
+
+#### Collecting information about a captive portal network:
+![Create Session](preview/gifs/create_session.gif)
+<br>
+[Download video for better quality](preview/videos/create-session.mp4)
+
+#### Analyze collected data with AI:
+![Mark and Analyze with AI](preview/gifs/analyze_with_ai.gif)
+<br>
+[Download video for better quality](preview/videos/mark-analyze-with-ai_blurred.mp4)
+
+### Screenshots:
+| Feature                                                                 | Screenshot                          |
+|-------------------------------------------------------------------------|-------------------------------------|
+| **Interacting with captive portal from the app**                        | ![2.png](preview/screenshots/2.png) |
+| **Detailed View of collected data**                                     | ![3.png](preview/screenshots/3.png) |
+| **AI Insights about the captive portal**                                | ![4.png](preview/screenshots/4.png) |
+| **Control language & theme**                                            | ![5.png](preview/screenshots/5.png) |
+| **Fetched request bodies saved to backend**                             | ![6.png](preview/screenshots/6.png) |
+| **Screenshots related to Privacy policy/ToS<br/> uploaded to back end for analysis** | ![7.png](preview/screenshots/7.png) |
+---
+
+
 
 ## How to Run the App
 
@@ -80,6 +85,7 @@ This app focuses on analyzing captive portals. It provides an interface for inte
     - Place `google-services.json` in the `app` directory
 
 3. Build and run the project on a physical device.
+
 
 ---
 
