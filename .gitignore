@@ -13,6 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Ignore google firebase setup file
+google-services.json
+C:\Users\amr-PC\AndroidStudioProjects\captive-portal-analyzer-kotlin\app\google-services.json
 # Ignore secret files
 C:\Users\amr-PC\AndroidStudioProjects\captive-portal-analyzer-kotlin\app\src\main\java\com\example\captive_portal_analyzer_kotlin\secret\*
 app/src/main/java/com/example/captive_portal_analyzer_kotlin/secret/
