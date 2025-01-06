@@ -22,15 +22,14 @@ This app focuses on analyzing captive portals. It provides an interface for inte
 ### Video Demonstrations:
 
 #### Collecting information about a captive portal network:
-[![Create Session](preview/screenshots/1.png)](preview/videos/create-session.mp4)
-[Download Create Session Video](preview/videos/create-session.mp4)
+![Create Session](preview/gifs/create_session.gif)
+[Download video for better quality](preview/videos/create-session.mp4)
 
 #### Analyze collected data with AI:
-[![Mark and Analyze with AI](preview/screenshots/2.png)](preview/videos/mark-analyze-with-ai_blurred.mp4)
-[Download Mark Analyze with AI Video](preview/videos/mark-analyze-with-ai_blurred.mp4)
+![Mark and Analyze with AI](preview/gifs/analyze_with_ai.gif)
+[Download video for better quality](preview/videos/mark-analyze-with-ai_blurred.mp4)
 
 ### Screenshots:
-
 | Feature                                                                 | Screenshot                          |
 |-------------------------------------------------------------------------|-------------------------------------|
 | **Interacting with captive portal from the app**                        | ![2.png](preview/screenshots/2.png) |
@@ -39,8 +38,6 @@ This app focuses on analyzing captive portals. It provides an interface for inte
 | **Control language & theme**                                            | ![5.png](preview/screenshots/5.png) |
 | **Fetched request bodies saved to backend**                             | ![6.png](preview/screenshots/6.png) |
 | **Screenshots related to Privacy policy/ToS<br/> uploaded to back end for analysis** | ![7.png](preview/screenshots/7.png) |
-
-
 ---
 
 ## Tech Stack
