@@ -96,7 +96,7 @@ private fun SessionsContent(
         }
 
         is SessionListUiState.Error -> {
-            ErrorComponent( stringResource((uiState as SessionListUiState.Error).messageStringResource))
+            ErrorComponent(stringResource((uiState as SessionListUiState.Error).messageStringResource))
         }
 
         SessionListUiState.Empty -> {
@@ -108,7 +108,7 @@ private fun SessionsContent(
                 sessionDataList = sessionDataList,
                 paddingValues = paddingValues,
                 navigateToSessionScreen = navigateToSessionScreen,
-                updateClickedSessionId =updateClickedSessionId
+                updateClickedSessionId = updateClickedSessionId
 
             )
         }
@@ -140,9 +140,6 @@ private fun SessionsSuccessContent(
 }
 
 
-
-
-
 @Composable
 fun SessionsList(
     sessionDataList: List<SessionData>,
@@ -156,11 +153,11 @@ fun SessionsList(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(sortedSessionDataList) { sessionData ->
-            if (sessionData.requests.isNullOrEmpty() || sessionData.webpageContent.isNullOrEmpty() || sessionData.screenshots.isNullOrEmpty()){
+            if (sessionData.requests.isNullOrEmpty() || sessionData.webpageContent.isNullOrEmpty() || sessionData.screenshots.isNullOrEmpty()) {
                 NoCaptiveSessionCard(
                     sessionData = sessionData,
                 )
-            }else{
+            } else {
                 CaptiveSessionCard(
                     sessionData = sessionData,
                     onClick = { onSessionClick(sessionData) },
@@ -252,8 +249,12 @@ fun NoCaptiveSessionCard(
     sessionData: SessionData,
 ) {
     val isRecent = (System.currentTimeMillis() - sessionData.session.timestamp) < 10 * 60 * 1000L
-    val disabledColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f) // Light gray for disabled state
-    val textColor = if (isRecent) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+    val disabledColor =
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f) // Light gray for disabled state
+    val textColor =
+        if (isRecent) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(
+            alpha = 0.6f
+        )
 
     Card(
         modifier = Modifier
@@ -292,11 +293,11 @@ fun NoCaptiveSessionCard(
                 )
             }
             val colors = MaterialTheme.colorScheme
-                Text(
-                    text = stringResource(id = R.string.not_a_captive_portal_network),
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.padding(top = 8.dp),
-                )
+            Text(
+                text = stringResource(id = R.string.not_a_captive_portal_network),
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(top = 8.dp),
+            )
 
             if (isRecent) {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -358,23 +359,24 @@ fun CaptiveSessionCardPreview() {
 fun NoCaptiveSessionCardPreview() {
     AppTheme {
 
-        NoCaptiveSessionCard(SessionData(
-            session = NetworkSessionEntity(
-                ssid = "SSID",
-                bssid = "BSSID",
-                timestamp = System.currentTimeMillis(),
-                networkId = UUID.randomUUID().toString(),
-                isUploadedToRemoteServer = true,
-                captivePortalUrl = "TODO()",
-                ipAddress = "192.168.0.2",
-                gatewayAddress = "192.168.0.1",
-                securityType = "WPA2",
-                isCaptiveLocal = false
+        NoCaptiveSessionCard(
+            SessionData(
+                session = NetworkSessionEntity(
+                    ssid = "SSID",
+                    bssid = "BSSID",
+                    timestamp = System.currentTimeMillis(),
+                    networkId = UUID.randomUUID().toString(),
+                    isUploadedToRemoteServer = true,
+                    captivePortalUrl = "TODO()",
+                    ipAddress = "192.168.0.2",
+                    gatewayAddress = "192.168.0.1",
+                    securityType = "WPA2",
+                    isCaptiveLocal = false
+                ),
+                requests = emptyList(),
+                webpageContent = emptyList(),
+                screenshots = emptyList(),
             ),
-            requests = emptyList(),
-            webpageContent = emptyList(),
-            screenshots = emptyList(),
-        ),
         )
     }
 

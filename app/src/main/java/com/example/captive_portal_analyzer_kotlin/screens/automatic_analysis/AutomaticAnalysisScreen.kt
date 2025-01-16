@@ -106,7 +106,6 @@ fun AutomaticAnalysisContent(
             ErrorComponent(
                 error = uiState.errorMessage,
                 icon = ErrorIcon.ResourceIcon(R.drawable.robot),
-                showRetryButton = true,
                 onRetryClick = onRetryClick
             )
         }

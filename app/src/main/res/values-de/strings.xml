@@ -146,4 +146,8 @@
     <string name="connect_to_captive_portal">Bitte wählen Sie das Netzwerk mit Captive Portal</string>
     <string name="network_id">Netzwerk-ID: %1$s</string>
     <string name="not_a_captive_portal_network">Dies scheint ein normales Netzwerk ohne Captive Portal zu sein</string>
+    <string name="permissions_denied_message">Erforderliche Berechtigungen für die Anwendungsfunktionalität nicht erteilt.</string>
+    <string name="request_permissions">Berechtigungen angefordert</string>
+    <string name="need_location_and_internet_permissions_to_continue"><![CDATA[Die App benötigt ungefähre Standort- und Netzwerkberechtigungen, um ordnungsgemäß zu funktionieren. Bitte erlauben Sie Berechtigungen]]></string>
+    <string name="need_location_and_internet_permissions_to_continue_2">Die Berechtigungen sind wesentlich für die ordnungsgemäße Funktion der App und funktionieren sonst nicht. Wir benötigen Zugang zu WLAN und Standort, um sich mit Captive-Portal-Netzwerken zu verbinden</string>
 </resources>

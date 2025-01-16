@@ -146,6 +146,10 @@
     <string name="connect_to_captive_portal">Please select the network with captive portal</string>
     <string name="network_id">Network id: %1$s</string>
     <string name="not_a_captive_portal_network">This seems to be a normal network with no captive portal</string>
+    <string name="permissions_denied_message">Needed permissions for application functionality not granted.</string>
+    <string name="request_permissions">Permissions requested</string>
+    <string name="need_location_and_internet_permissions_to_continue"><![CDATA[The app needs approximate location & network permissions to work properly, please allow permissions]]></string>
+    <string name="need_location_and_internet_permissions_to_continue_2">The permissions are essential for the app to function properly and won\'t work otherwise, we need access to WiFi and location to connect to captive portal networks</string>
 
 
 </resources>

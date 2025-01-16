@@ -8,7 +8,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
-import com.example.captive_portal_analyzer_kotlin.screens.network_list.NetworkListScreen
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.captive_portal_analyzer_kotlin.R
@@ -20,6 +19,7 @@ import com.example.captive_portal_analyzer_kotlin.ThemeMode
 import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.AppToast
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
+import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.screens.SettingsScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
@@ -30,7 +30,6 @@ import java.util.Locale
 sealed class Screen(val route: String,@StringRes val titleStringResource: Int) {
     object Welcome : Screen("welcome", R.string.welcome_screen_title)
     object ManualConnect : Screen("manual_connect", R.string.manual_connect_screen_title)
-    object NetworkList : Screen("network_list", R.string.network_list_screen_title)
     object Analysis : Screen("analysis", R.string.analysis_screen_title)
     object SessionList : Screen("session_list", R.string.session_list_screen_title)
     object Session : Screen("session", R.string.session_screen_title)
@@ -55,6 +54,12 @@ fun AppNavGraph(
 
     val toastState by sharedViewModel.toastState.collectAsState()
 
+    val showToast = { message: String, style: ToastStyle ->
+        sharedViewModel.showToast(
+            message = message, style = style,
+        )
+    }
+
     AppToast(
         toastState = toastState,
         onDismissRequest = { sharedViewModel.hideToast() }
@@ -68,24 +73,17 @@ fun AppNavGraph(
     NavHost(navController = navController, startDestination = Screen.Welcome.route) {
         composable(route = Screen.Welcome.route) {
             WelcomeScreen(
-                navigateToNetworkList =actions.navigateToNetworkListScreen,
+                navigateToNetworkList =actions.navigateToManualConnectScreen,
 
             )
         }
         composable(route = Screen.ManualConnect.route) {
             ManualConnectScreen(
                 navigateToAnalysis =actions.navigateToAnalysisScreen,
-                navigateToNetworkList =actions.navigateToNetworkListScreen,
-                navigateToAbout = actions.navigateToAbout,
+                showToast = showToast,
             )
         }
-        composable(route = Screen.NetworkList.route) {
-            NetworkListScreen(
-                navigateToManualConnect = actions.navigateToManualConnectScreen,
-                navigateToAnalysis = actions.navigateToAnalysisScreen,
-                navigateToAbout = actions.navigateToAbout,
-            )
-        }
+
         composable(route = Screen.Analysis.route) {
             AnalysisScreen(
                 repository = repository,
@@ -160,9 +158,7 @@ class NavigationActions(private val navController: NavHostController) {
                 popUpTo(Screen.SignUp.route) { inclusive = true }
             }
         }*/
-    val navigateToNetworkListScreen: () -> Unit = {
-        navController.navigate(Screen.NetworkList.route)
-    }
+
     val navigateToManualConnectScreen: () -> Unit = {
         navController.navigate(Screen.ManualConnect.route)
     }

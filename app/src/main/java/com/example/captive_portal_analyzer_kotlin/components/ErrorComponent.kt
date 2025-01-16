@@ -39,8 +39,7 @@ fun ErrorComponent(
     error: String,
     icon: ErrorIcon = ErrorIcon.ResourceIcon(R.drawable.error),
     modifier: Modifier = Modifier,
-    showRetryButton: Boolean = false,
-    onRetryClick: () -> Unit = {}
+    onRetryClick: (() -> Unit)? = null
 ) {
     Column(
         modifier = modifier
@@ -77,12 +76,12 @@ fun ErrorComponent(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (showRetryButton) {
+        onRetryClick?.let {
             GhostButton(
-                onClick = onRetryClick,
+                onClick = it,
                 text = stringResource(R.string.retry)
             )
-    }
+        }
     }
 }
 
@@ -93,8 +92,7 @@ fun ErrorComponentPreviewWithVector() {
         ErrorComponent(
             error = "Something went wrong!",
             icon = ErrorIcon.VectorIcon(Icons.Default.Search),
-            showRetryButton = true,
-        )
+            onRetryClick = {})
     }
 }
 

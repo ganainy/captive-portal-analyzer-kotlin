@@ -1,7 +1,9 @@
 package com.example.captive_portal_analyzer_kotlin.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -27,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -50,12 +53,18 @@ data class DrawerMenuItem(
 @Composable
 fun AppScaffold(
     navController: NavHostController,
-    scope: CoroutineScope,
     content: @Composable () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-    var showMenu by remember { mutableStateOf(false) }
+    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route ?: ""
+
+    // Handle back press when drawer is open
+    BackHandler(enabled = drawerState.isOpen) {
+        scope.launch {
+            drawerState.close()
+        }
+    }
 
     val drawerMenuItems = remember(currentRoute) {
         listOf(
@@ -67,8 +76,22 @@ fun AppScaffold(
         ).filterNot { it.route == currentRoute }
     }
 
+    val onNavigate = remember(navController) { { route: String ->
+        scope.launch {
+            drawerState.close()
+            navController.navigate(route) {
+                popUpTo(navController.graph.startDestinationId) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }}
+
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = drawerState.isOpen,
         drawerContent = {
             ModalDrawerSheet {
                 Spacer(modifier = Modifier.height(12.dp))
@@ -82,18 +105,7 @@ fun AppScaffold(
                     NavigationDrawerItem(
                         label = { Text(stringResource(item.titleStringResource)) },
                         selected = currentRoute == item.route,
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.startDestinationId) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        },
+                        onClick = { onNavigate(item.route) },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
                 }
@@ -109,19 +121,25 @@ fun AppScaffold(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                        IconButton(
+                            onClick = {
+                                scope.launch { drawerState.open() }
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Menu,
+                                contentDescription = stringResource(R.string.menu)
+                            )
                         }
-                    },
-                    actions = {
-//                        if (currentRoute == Screen.Analysis.route) {
-//                        DropDownMenu(showMenu)
-//                    }
                     }
                 )
             }
         ) { paddingValues ->
-            Box(modifier = Modifier.padding(paddingValues)) {
+            Box(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize()
+            ) {
                 content()
             }
         }

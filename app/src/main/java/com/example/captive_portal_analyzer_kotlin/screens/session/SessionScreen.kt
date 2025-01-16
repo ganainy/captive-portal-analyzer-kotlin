@@ -122,7 +122,6 @@ fun SessionScreen(
                 val errorMessage = (uploadState as UploadState.Error).message
                 ErrorComponent(
                     error = errorMessage,
-                    showRetryButton = true,
                     onRetryClick = {
                         sessionViewModel.uploadSession(
                             sessionData!!,

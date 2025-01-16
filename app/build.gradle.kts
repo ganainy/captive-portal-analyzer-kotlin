@@ -80,8 +80,6 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     ksp("androidx.room:room-compiler:2.6.1")
 
-    //Toast
-    implementation ("com.github.Spikeysanju:MotionToast:1.4")
 
     //coil for image loading
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")

@@ -5,7 +5,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -16,13 +15,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.core.os.LocaleListCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.captive_portal_analyzer_kotlin.components.AppScaffold
+import com.example.captive_portal_analyzer_kotlin.datastore.settingsDataStore
 import com.example.captive_portal_analyzer_kotlin.navigation.AppNavGraph
 import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
@@ -34,7 +33,6 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
 
     private lateinit var sessionManager: NetworkSessionManager
-    private val dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,7 +61,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val sharedViewModel: SharedViewModel =
-                viewModel(factory = SharedViewModelFactory(connectivityObserver, dataStore))
+                viewModel(factory = SharedViewModelFactory(connectivityObserver, settingsDataStore))
             // Update app locale whenever language changes
             val currentLocale by sharedViewModel.currentLocale.collectAsState()
             LaunchedEffect(currentLocale) {
@@ -89,7 +87,6 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AppScaffold(
                         navController = navController,
-                        scope = scope
                     ) {
                         AppNavGraph(
                             navController = navController,
