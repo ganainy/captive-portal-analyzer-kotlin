@@ -143,5 +143,7 @@
     <string name="error_uploading_session">Fehler beim Hochladen der Sitzung</string>
     <string name="thanks_for_uploading">Hochgeladen</string>
     <string name="loading_session">Sitzungsinformationen werden geladen</string>
-
+    <string name="connect_to_captive_portal">Bitte wählen Sie das Netzwerk mit Captive Portal</string>
+    <string name="network_id">Netzwerk-ID: %1$s</string>
+    <string name="not_a_captive_portal_network">Dies scheint ein normales Netzwerk ohne Captive Portal zu sein</string>
 </resources>

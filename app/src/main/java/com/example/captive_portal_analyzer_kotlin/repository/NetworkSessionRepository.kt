@@ -32,6 +32,10 @@ class NetworkSessionRepository(
         sessionDao.insert(session)
     }
 
+    suspend fun getSessionByNetworkId(networkId: String): NetworkSessionEntity? {
+        return sessionDao.getSessionByNetworkId(networkId)
+    }
+
     suspend fun updateSession(session: NetworkSessionEntity) {
         sessionDao.update(session)
     }
@@ -190,7 +194,7 @@ class NetworkSessionRepository(
 
             // Convert list of sessions into list of SessionData
             val allSessionsData = allSessions.map { session ->
-                getCompleteSessionData(session.sessionId)
+                getCompleteSessionData(session.networkId)
             }
 
             // Combine all flows into a single flow of list
@@ -229,6 +233,7 @@ class NetworkSessionRepository(
             throw e
         }
     }
+
 
 }
 

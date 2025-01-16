@@ -5,7 +5,7 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "network_sessions")
 data class NetworkSessionEntity(
-    @PrimaryKey val sessionId: String,
+    @PrimaryKey val networkId: String,
     val ssid: String?,
     val bssid: String?,
     val timestamp: Long,

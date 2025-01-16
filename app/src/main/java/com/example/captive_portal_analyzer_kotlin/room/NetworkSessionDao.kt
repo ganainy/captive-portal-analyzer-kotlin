@@ -17,13 +17,13 @@ interface NetworkSessionDao {
     @Update
     suspend fun update(session: NetworkSessionEntity)
 
-    @Query("SELECT * FROM network_sessions WHERE sessionId = :sessionId")
+    @Query("SELECT * FROM network_sessions WHERE networkId = :sessionId")
     suspend fun getSession(sessionId: String):NetworkSessionEntity?
 
-    @Query("UPDATE network_sessions SET captivePortalUrl = :portalUrl WHERE sessionId = :sessionId")
+    @Query("UPDATE network_sessions SET captivePortalUrl = :portalUrl WHERE networkId = :sessionId")
     suspend fun updatePortalUrl(sessionId: String, portalUrl: String)
 
-    @Query("UPDATE network_sessions SET isCaptiveLocal = :isLocal WHERE sessionId = :sessionId")
+    @Query("UPDATE network_sessions SET isCaptiveLocal = :isLocal WHERE networkId = :sessionId")
     suspend fun updateIsCaptiveLocal(sessionId: String, isLocal: Boolean)
 
     @Query("SELECT * FROM network_sessions WHERE ssid = :ssid LIMIT 1")
@@ -32,9 +32,12 @@ interface NetworkSessionDao {
     @Query("SELECT * FROM network_sessions")
     abstract fun getAllSessions(): List<NetworkSessionEntity>?
 
-    @Query("UPDATE network_sessions SET isUploadedToRemoteServer = :isUploadedToRemoteServer WHERE sessionId = :sessionId")
+    @Query("UPDATE network_sessions SET isUploadedToRemoteServer = :isUploadedToRemoteServer WHERE networkId = :sessionId")
     abstract fun updateIsUploadedToRemoteServer(sessionId: String, isUploadedToRemoteServer: Boolean)
 
-    @Query("SELECT * FROM network_sessions WHERE sessionId = :sessionId")
+    @Query("SELECT * FROM network_sessions WHERE networkId = :sessionId")
     abstract fun getSessionFlow(sessionId: String): Flow<NetworkSessionEntity?>
+
+    @Query("SELECT * FROM network_sessions WHERE networkId = :networkId")
+    fun getSessionByNetworkId(networkId: String):NetworkSessionEntity?
 }

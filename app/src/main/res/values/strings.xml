@@ -143,6 +143,9 @@
     <string name="error_uploading_session">Error uploading session</string>
     <string name="thanks_for_uploading">Uploaded</string>
     <string name="loading_session">Loading session information</string>
+    <string name="connect_to_captive_portal">Please select the network with captive portal</string>
+    <string name="network_id">Network id: %1$s</string>
+    <string name="not_a_captive_portal_network">This seems to be a normal network with no captive portal</string>
 
 
 </resources>

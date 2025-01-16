@@ -15,7 +15,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.UUID
+
 class NetworkSessionManager(private val context: Context, private val repository: NetworkSessionRepository) {
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -29,12 +29,8 @@ class NetworkSessionManager(private val context: Context, private val repository
     // Keep track of current session to avoid unnecessary database queries
     private var currentSession: NetworkSessionEntity? = null
 
-    private fun generateSessionId(): String {
-        return UUID.randomUUID().toString()
-    }
-
     suspend fun getCurrentSessionId(): String? {
-        return getCurrentSession()?.sessionId
+        return getCurrentSession()?.networkId
     }
 
     private fun isValidWifiConnection(ssid: String, bssid: String): Boolean {
@@ -48,7 +44,6 @@ class NetworkSessionManager(private val context: Context, private val repository
     }
 
     private suspend fun getCurrentSession(): NetworkSessionEntity? {
-        // Use mutex to ensure thread-safety when checking/creating sessions
         return sessionMutex.withLock {
             val networkCapabilities = connectivityManager.getNetworkCapabilities(
                 connectivityManager.activeNetwork
@@ -59,42 +54,47 @@ class NetworkSessionManager(private val context: Context, private val repository
                 val ssid = wifiInfo.ssid.removeSurrounding("\"")
                 val bssid = wifiInfo.bssid
 
-                if (!isValidWifiConnection(ssid, bssid)) {
-                    return null
-                }
+                if (!isValidWifiConnection(ssid, bssid)) return null
 
-                // First check our cached session
-                if (currentSession?.ssid == ssid) {
+                val dhcpInfo = wifiManager.dhcpInfo
+                val gatewayAddress = intToIpAddress(dhcpInfo.gateway)
+                val dhcpServerAddress = intToIpAddress(dhcpInfo.serverAddress)
+
+                val networkId = generateNetworkIdentifier(ssid, bssid, gatewayAddress, dhcpServerAddress)
+
+                // Check cached session
+                if (currentSession?.networkId == networkId) {
                     return currentSession
                 }
 
-                // Then check the database
-                //todo find better approach to check if a network is unique or not
-                val existingSession = repository.getSessionBySsid(ssid)
+                // Check database
+                val existingSession = repository.getSessionByNetworkId(networkId)
                 if (existingSession != null) {
                     currentSession = existingSession
                     return existingSession
                 }
 
-                // Only create new session if none exists
-                val dhcpInfo = wifiManager.dhcpInfo
+                // Create new session
                 val newSession = NetworkSessionEntity(
-                    sessionId = generateSessionId(),
                     ssid = ssid,
                     bssid = bssid,
+                    networkId = networkId,
                     timestamp = System.currentTimeMillis(),
                     ipAddress = intToIpAddress(dhcpInfo.ipAddress),
-                    gatewayAddress = intToIpAddress(dhcpInfo.gateway),
-
+                    gatewayAddress = gatewayAddress
                 )
 
-                // Save new session to database
                 repository.insertSession(newSession)
                 currentSession = newSession
                 return newSession
             }
             null
         }
+    }
+
+    private fun generateNetworkIdentifier(ssid: String, bssid: String, gatewayAddress: String?, dhcpServerAddress: String?): String {
+        val rawIdentifier = "$ssid-$bssid-$gatewayAddress-$dhcpServerAddress"
+        return rawIdentifier.hashCode().toString()
     }
 
     private fun intToIpAddress(ip: Int): String {

@@ -83,7 +83,7 @@ class SessionViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             _uploadState.value = UploadState.Uploading
 
-            repository.uploadSessionData(sessionData.session.sessionId)
+            repository.uploadSessionData(sessionData.session.networkId)
                 .onSuccess {
                     try {
                         repository.updateSession(sessionData.session.copy(isUploadedToRemoteServer = true))

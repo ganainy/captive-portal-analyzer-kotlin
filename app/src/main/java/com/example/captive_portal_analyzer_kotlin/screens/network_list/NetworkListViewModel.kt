@@ -93,6 +93,7 @@ class NetworkListViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    //todo fix the network connects but behaves unexpectedly unlike when connected directly from phone
     fun connectToNetwork(ssid: String, password: String? = null) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // For API 29 and above

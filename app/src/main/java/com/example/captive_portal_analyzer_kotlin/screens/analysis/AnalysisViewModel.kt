@@ -35,6 +35,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlin.reflect.KFunction4
 
 
 sealed class AnalysisUiState {
@@ -58,6 +59,7 @@ class AnalysisViewModel(
     application: Application,
     private val sessionManager: NetworkSessionManager,
     private val repository: NetworkSessionRepository,
+    private val showToast: (title:String?, message:String, style:ToastStyle, duration:Long?) -> Unit,
 ) : AndroidViewModel(application) {
     private val context: Context get() = getApplication<Application>().applicationContext
 
@@ -102,7 +104,6 @@ class AnalysisViewModel(
                     }
                     detectLocalOrRemoteCaptivePortal(
                         context,
-                        showToast = showToast
                     )
 
                 } else {
@@ -121,7 +122,6 @@ class AnalysisViewModel(
 
     private fun detectLocalOrRemoteCaptivePortal(
         context: Context,
-        showToast: (message: String, style: ToastStyle) -> Unit
     ) {
         val analyzer = LocalOrRemoteCaptiveChecker(context)
 
@@ -136,7 +136,7 @@ class AnalysisViewModel(
                         sessionId = sessionId
                     )
                 } else {
-                    showToast(context.getString(R.string.unknown_session_id), ToastStyle.ERROR)
+                    showToast(null,context.getString(R.string.unknown_session_id), ToastStyle.ERROR,null)
                 }
             } catch (e: IOException) {
                 println("Failed to analyze portal: ${e.message}")
@@ -356,16 +356,22 @@ class AnalysisViewModel(
                             it.compress(Bitmap.CompressFormat.PNG, 100, out)
                             Log.i("WebViewScreenshot", "Screenshot saved to: ${file.absolutePath}")
                         }
+                        if(currentSessionId != null) {
 
                         // Insert into the database
                         val screenshotEntity = ScreenshotEntity(
-                            sessionId = currentSessionId!!,
+                            sessionId = currentSessionId,
                             timestamp = System.currentTimeMillis(),
                             path = file.absolutePath,
                             size = "${file.length()} bytes",
                             url = url
                         )
                         repository.insertScreenshot(screenshotEntity) // Already on IO thread
+                        }else{
+                            showToast(null,"Error saving screenshot: Session Id is null", ToastStyle.ERROR,null)
+                            Log.e("WebViewScreenshot", "currentSessionId is null")
+                        }
+
                     } catch (e: IOException) {
                         Log.e("WebViewScreenshot", "Error saving screenshot: ${e.message}")
                     }
@@ -400,6 +406,7 @@ class AnalysisViewModelFactory(
     private val application: Application,
     private val sessionManager: NetworkSessionManager,
     private val repository: NetworkSessionRepository,
+    private val showToast: KFunction4<String?, String, ToastStyle, Long?, Unit>,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AnalysisViewModel::class.java)) {
@@ -408,6 +415,7 @@ class AnalysisViewModelFactory(
                 application,
                 sessionManager,
                 repository,
+                showToast,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

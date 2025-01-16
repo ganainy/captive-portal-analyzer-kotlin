@@ -52,7 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
-import com.example.captive_portal_analyzer_kotlin.components.CustomSnackBar
+import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.HintText
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 
@@ -125,9 +125,11 @@ fun NetworkListScreen(
                     NetworksList(paddingValues, wifiNetworks, connectToNetwork = viewModel::connectToNetwork, navigateToManualConnect)
                 }
                 is NetworkListUiState.Error -> {
-                    CustomSnackBar(
-                        message = stringResource((uiState as NetworkListUiState.Error).messageStringResource)
-                    ) {}
+                    ErrorComponent(error= stringResource((uiState as NetworkListUiState.Error).messageStringResource),
+                        showRetryButton = true,
+                        onRetryClick = viewModel::scanOpenWifiNetworks,
+                        )
+
                 }
                 is NetworkListUiState.ConnectionSuccess -> {
                     AlertDialog(
@@ -238,23 +240,36 @@ private fun NetworksList(
             .fillMaxSize()
             .padding(paddingValues)
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            items(wifiNetworks) { networkInformation ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp, horizontal = 8.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            Text(
+                text = stringResource(id = R.string.connect_to_captive_portal),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    WifiItem(networkInformation, onClick = {
-                        connectToNetwork(networkInformation.scanResult.SSID)
-                    })
+                    items(wifiNetworks) { networkInformation ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp, horizontal = 8.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                            onClick = {
+                                connectToNetwork(networkInformation.scanResult.SSID)
+                            }
+                        ) {
+                            WifiItem(networkInformation, onClick = { connectToNetwork(networkInformation.scanResult.SSID) })
+                        }
+                    }
                 }
             }
-        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -262,16 +277,18 @@ private fun NetworksList(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            HintText(hint = stringResource(id = R.string.cannot_connect_automatically_tap_here_to_connect_manually))
-            Spacer(modifier = Modifier.height(8.dp))
+            HintText(
+                hint = stringResource(id = R.string.cannot_connect_automatically_tap_here_to_connect_manually),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             RoundCornerButton(
-                onClick = {
-                    navigateToManualConnect()
-                }, buttonText = stringResource(id = R.string.connect_manually)
+                onClick = { navigateToManualConnect() },
+                buttonText = stringResource(id = R.string.connect_manually)
             )
         }
     }
 }
+
 
 @Composable
 @Preview(showBackground = true)

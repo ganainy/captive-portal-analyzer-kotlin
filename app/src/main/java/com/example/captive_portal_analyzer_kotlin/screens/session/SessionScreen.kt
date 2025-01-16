@@ -63,7 +63,6 @@ import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
-import com.example.captive_portal_analyzer_kotlin.components.HintText
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
@@ -363,7 +362,7 @@ fun SessionDetailPreview() {
                 securityType = "test security",
                 captivePortalUrl = "test portal url",
                 timestamp = Date().time,
-                sessionId = 1.toString(),
+                networkId = 1.toString(),
                 isCaptiveLocal = true,
                 isUploadedToRemoteServer = false,
             ),

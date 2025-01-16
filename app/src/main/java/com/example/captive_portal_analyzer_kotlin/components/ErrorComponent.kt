@@ -21,7 +21,9 @@ import com.example.captive_portal_analyzer_kotlin.R
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -52,13 +54,15 @@ fun ErrorComponent(
                 Image(
                     painter = painterResource(id = icon.resourceId),
                     contentDescription = null,
-                    modifier = Modifier.size(256.dp)
+                    modifier = Modifier.size(256.dp),
+                    colorFilter = ColorFilter.tint(LocalContentColor.current) // Apply tint
                 )
             }
             is ErrorIcon.VectorIcon -> {
                 Icon(
                     imageVector = icon.imageVector,
                     contentDescription = null,
+                    tint = LocalContentColor.current,
                     modifier = Modifier.size(256.dp),
                 )
             }

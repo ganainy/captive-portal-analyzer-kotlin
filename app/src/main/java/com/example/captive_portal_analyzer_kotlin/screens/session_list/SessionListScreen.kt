@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -130,7 +131,7 @@ private fun SessionsSuccessContent(
             SessionsList(
                 sessionDataList = sessionDataList,
                 onSessionClick = { clickedSession ->
-                    updateClickedSessionId(clickedSession.session.sessionId)
+                    updateClickedSessionId(clickedSession.session.networkId)
                 },
                 navigateToSessionScreen = navigateToSessionScreen
             )
@@ -155,18 +156,25 @@ fun SessionsList(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(sortedSessionDataList) { sessionData ->
-            SessionCard(
-                sessionData = sessionData,
-                onClick = { onSessionClick(sessionData) },
-                navigateToSessionScreen = navigateToSessionScreen
-            )
+            if (sessionData.requests.isNullOrEmpty() || sessionData.webpageContent.isNullOrEmpty() || sessionData.screenshots.isNullOrEmpty()){
+                NoCaptiveSessionCard(
+                    sessionData = sessionData,
+                )
+            }else{
+                CaptiveSessionCard(
+                    sessionData = sessionData,
+                    onClick = { onSessionClick(sessionData) },
+                    navigateToSessionScreen = navigateToSessionScreen
+                )
+            }
+
         }
     }
 }
 
-
+//used to show session details of a network with captive portal
 @Composable
-fun SessionCard(
+fun CaptiveSessionCard(
     sessionData: SessionData,
     onClick: (SessionData) -> Unit,
     navigateToSessionScreen: () -> Unit
@@ -191,15 +199,15 @@ fun SessionCard(
 
 
             Text(
-                text = "Network Session: ${sessionData.session.sessionId}",
+                text = "Network Name: ${sessionData.session.ssid}",
                 style = MaterialTheme.typography.headlineSmall,
                 color = if (isRecent) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
 
-            sessionData.session.ssid?.let {
-                Text(stringResource(R.string.network_name, it))
+            sessionData.session.networkId.let {
+                Text(stringResource(R.string.network_id, it))
             }
             sessionData.session.timestamp.let {
                 Text(stringResource(R.string.date, formatDate(it)))
@@ -238,21 +246,90 @@ fun SessionCard(
     }
 }
 
+//used to show session details of a network with no captive portal (normal network)
+@Composable
+fun NoCaptiveSessionCard(
+    sessionData: SessionData,
+) {
+    val isRecent = (System.currentTimeMillis() - sessionData.session.timestamp) < 10 * 60 * 1000L
+    val disabledColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f) // Light gray for disabled state
+    val textColor = if (isRecent) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = disabledColor
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = "Network Name: ${sessionData.session.ssid}",
+                style = MaterialTheme.typography.headlineSmall,
+                color = textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            sessionData.session.networkId.let {
+                Text(
+                    text = stringResource(R.string.network_id, it),
+                    color = textColor
+                )
+            }
+
+            sessionData.session.timestamp.let {
+                Text(
+                    text = stringResource(R.string.date, formatDate(it)),
+                    color = textColor
+                )
+            }
+            val colors = MaterialTheme.colorScheme
+                Text(
+                    text = stringResource(id = R.string.not_a_captive_portal_network),
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+
+            if (isRecent) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Icon(
+                    painter = painterResource(id = R.drawable.resource_new),
+                    contentDescription = "New session",
+                    tint = colors.onPrimary,
+                    modifier = Modifier
+                        .width(96.dp)
+                        .height(48.dp)
+                )
+            }
+
+        }
+    }
+}
+
+
 @Preview(
     showBackground = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES
 )
 @Preview(showBackground = true)
 @Composable
-fun DefaultPreview() {
+fun CaptiveSessionCardPreview() {
     AppTheme {
 
-        SessionCard(SessionData(
+        CaptiveSessionCard(SessionData(
             session = NetworkSessionEntity(
                 ssid = "SSID",
                 bssid = "BSSID",
                 timestamp = System.currentTimeMillis(),
-                sessionId = UUID.randomUUID().toString(),
+                networkId = UUID.randomUUID().toString(),
                 isUploadedToRemoteServer = true,
                 captivePortalUrl = "TODO()",
                 ipAddress = "192.168.0.2",
@@ -270,6 +347,39 @@ fun DefaultPreview() {
     }
 
 }
+
+
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+@Preview(showBackground = true)
+@Composable
+fun NoCaptiveSessionCardPreview() {
+    AppTheme {
+
+        NoCaptiveSessionCard(SessionData(
+            session = NetworkSessionEntity(
+                ssid = "SSID",
+                bssid = "BSSID",
+                timestamp = System.currentTimeMillis(),
+                networkId = UUID.randomUUID().toString(),
+                isUploadedToRemoteServer = true,
+                captivePortalUrl = "TODO()",
+                ipAddress = "192.168.0.2",
+                gatewayAddress = "192.168.0.1",
+                securityType = "WPA2",
+                isCaptiveLocal = false
+            ),
+            requests = emptyList(),
+            webpageContent = emptyList(),
+            screenshots = emptyList(),
+        ),
+        )
+    }
+
+}
+
 
 private fun formatDate(timestamp: Long): String {
     return SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(timestamp))
