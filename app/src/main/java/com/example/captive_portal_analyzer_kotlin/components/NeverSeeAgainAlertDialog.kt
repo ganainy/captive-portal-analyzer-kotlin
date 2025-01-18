@@ -22,8 +22,19 @@ import kotlinx.coroutines.launch
 
 
 
+/**
+ * [AlertDialogState] handles storing and retrieving the "Never see again" state
+ * of an [AlertDialog] using the [alertDialogDataStore] DataStore.
+ */
 object AlertDialogState {
-    // Get the "Never see again" state for a specific preferenceKey
+    /**
+     * Returns a Flow of Boolean values representing the "Never see again"
+     * state for a specific preferenceKey.
+     *
+     * @param context the Android Context
+     * @param preferenceKey the key to store the value in the DataStore
+     * @return a Flow of Boolean values
+     */
     fun getNeverSeeAgainState(context: Context, preferenceKey: String): Flow<Boolean> {
         val key = booleanPreferencesKey(preferenceKey)
         return context.alertDialogDataStore.data.map { preferences ->
@@ -31,7 +42,13 @@ object AlertDialogState {
         }
     }
 
-    // Set the "Never see again" state for a specific preferenceKey
+    /**
+     * Sets the "Never see again" state for a specific preferenceKey.
+     *
+     * @param context the Android Context
+     * @param preferenceKey the key to store the value in the DataStore
+     * @param value the value to store
+     */
     suspend fun setNeverSeeAgainState(context: Context, preferenceKey: String, value: Boolean) {
         val key = booleanPreferencesKey(preferenceKey)
         context.alertDialogDataStore.edit { preferences ->
@@ -40,6 +57,16 @@ object AlertDialogState {
     }
 }
 
+/**
+ * A composable function to display an [AlertDialog] with the option to
+ * never show it again.
+ *
+ * @param title the title of the AlertDialog
+ * @param message the message of the AlertDialog
+ * @param preferenceKey the key to store the "Never see again" state in the DataStore
+ * @param onDismiss the callback to be invoked when the AlertDialog is dismissed
+ * @param modifier the modifier to be applied to the AlertDialog
+ */
 @Composable
 fun NeverSeeAgainAlertDialog(
     title: String,

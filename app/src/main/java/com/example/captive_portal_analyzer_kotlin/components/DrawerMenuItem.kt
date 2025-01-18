@@ -26,11 +26,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -39,7 +36,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.navigation.Screen
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 // Data class for drawer menu items
@@ -49,6 +45,13 @@ data class DrawerMenuItem(
     val icon: ImageVector? = null
 )
 
+/**
+ * Composable function for the main application scaffold with a navigation drawer.
+ * This scaffold controls the navigation between screens using the NavHostController.
+ *
+ * @param navController The NavHostController used for navigation.
+ * @param content The content to be displayed within the scaffold.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppScaffold(
@@ -146,35 +149,4 @@ fun AppScaffold(
     }
 }
 
-@Composable
-private fun DropDownMenu(showMenu: Boolean) {
-    var showMenu1 = showMenu
-    Box {
-        IconButton(onClick = { showMenu1 = true }) {
-            Icon(
-                Icons.Default.MoreVert,
-                contentDescription = "More options"
-            )
-        }
-        DropdownMenu(
-            expanded = showMenu1,
-            onDismissRequest = { showMenu1 = false }
-        ) {
-            DropdownMenuItem(
-                text = { Text("Settings") },
-                onClick = {
-                    showMenu1 = false
-                    // Add navigation or action here
-                }
-            )
-            DropdownMenuItem(
-                text = { Text("Help") },
-                onClick = {
-                    showMenu1 = false
-                    // Add navigation or action here
-                }
-            )
-            // Add more menu items as needed
-        }
-    }
-}
+

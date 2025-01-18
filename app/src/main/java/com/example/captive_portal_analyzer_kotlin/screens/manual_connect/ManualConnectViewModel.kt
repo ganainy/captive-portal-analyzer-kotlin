@@ -26,55 +26,116 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.datastore.preferencesDataStore
-
+/**
+ * Represents the UI state of the Manual Connect screen.
+ */
 sealed class ManualConnectUiState {
+    /**
+     * Represents the loading state.
+     */
     object Loading : ManualConnectUiState()
+
+    /**
+     * Represents the state where permissions are requested.
+     */
     object AskPermissions : ManualConnectUiState()
+
+    /**
+     * Represents the state where permissions have been granted.
+     */
     object PermissionsGranted : ManualConnectUiState()
+
+    /**
+     * Represents an error state with a message resource ID.
+     *
+     * @param messageStringResource The resource ID of the error message.
+     */
     data class Error(val messageStringResource: Int) : ManualConnectUiState()
 }
 
+/**
+ * Represents the state of permissions.
+ */
 sealed class PermissionState {
+    /**
+     * Represents the state where permissions are granted.
+     */
     object Granted : PermissionState()
+
+    /**
+     * Represents the state where permissions are denied.
+     */
     object Denied : PermissionState()
+
+    /**
+     * Represents the state where a rationale for permissions should be shown.
+     */
     object ShouldShowRationale : PermissionState()
+
+    /**
+     * Represents the state where permissions need to be requested.
+     */
     object NeedsRequest : PermissionState()
 }
-
+/**
+ * ViewModel for the Manual Connect screen.
+ *
+ * This ViewModel handles the state of the Manual Connect screen. It checks if the user has granted
+ * the necessary permissions and if Wi-Fi is enabled. It also checks if the user is connected to a
+ * Wi-Fi network.
+ *
+ * The ViewModel uses a MutableStateFlow to manage the state of the screen. The state is exposed as a
+ * StateFlow, which is a read-only flow that can be collected in a composable.
+ *
+ * The ViewModel also uses a MutableStateFlow to manage the state of the permissions. The state is
+ * exposed as a StateFlow, which is a read-only flow that can be collected in a composable.
+ */
 class ManualConnectViewModel(private val application: Application) : AndroidViewModel(application) {
 
+    // Data store for storing preferences
     private val dataStore = application.preferencesDataStore
 
     // Key for storing the welcome screen preference
     private val SHOW_WELCOME_SCREEN_KEY = booleanPreferencesKey("show_welcome_screen")
 
+    /**
+     * State of Wi-Fi being on/off.
+     */
     private val _isWifiOn = MutableStateFlow<Boolean>(false)
     val isWifiOn: StateFlow<Boolean> = _isWifiOn.asStateFlow()
 
+    /**
+     * State of cellular being on/off.
+     */
     private val _isCellularOn = MutableStateFlow<Boolean>(false)
     val isCellularOn: StateFlow<Boolean> = _isCellularOn.asStateFlow()
 
+    /**
+     * State of being connected to a Wi-Fi network or not.
+     */
     private val _isConnectedToWifiNetwork = MutableStateFlow<Boolean>(false)
     val isConnectedToWifiNetwork: StateFlow<Boolean> = _isConnectedToWifiNetwork.asStateFlow()
 
+    /**
+     * State of all requirements (cellular off/wifi on/connected to wifi network) being fulfilled.
+     */
     private val _areAllRequirementsFulfilled = MutableStateFlow<Boolean>(false)
     val areAllRequirementsFulfilled: StateFlow<Boolean> = _areAllRequirementsFulfilled.asStateFlow()
 
-    private val connectivityManager =
-        application.getSystemService(ConnectivityManager::class.java)
-
-    private val wifiManager =
-        application.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-
-
+    /**
+     * State of the UI.
+     */
     private val _uiState = MutableStateFlow<ManualConnectUiState>(ManualConnectUiState.Loading)
     val uiState: StateFlow<ManualConnectUiState> = _uiState.asStateFlow()
 
+    /**
+     * State of the permissions.
+     */
     private val _permissionState = MutableStateFlow<PermissionState>(PermissionState.NeedsRequest)
     val permissionState: StateFlow<PermissionState> = _permissionState.asStateFlow()
 
     /**
-     * Continuously check if Wi-Fi is enabled on the device.
+     * Continuously check if Wi-Fi is enabled on the device using a BroadcastReceiver.
      */
     private val wifiStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -89,7 +150,12 @@ class ManualConnectViewModel(private val application: Application) : AndroidView
             }
         }
     }
-
+    /**
+     * Inits the ViewModel.
+     *
+     * Checks the initial state of the permissions on screen open and registers a BroadcastReceiver to listen for
+     * Wi-Fi state changes. Also starts checking the network connection.
+     */
     init {
         checkPermissions()
         // Register the BroadcastReceiver to listen for Wi-Fi state changes
@@ -99,6 +165,8 @@ class ManualConnectViewModel(private val application: Application) : AndroidView
 
         //if everything is ready move to analysis page
         viewModelScope.launch {
+            // Combine the state of Wi-Fi being on, cellular being off, and connected to a Wi-Fi network
+            // into one flow that is true if all of them are true
             combine(
                 isWifiOn,
                 isCellularOn,
@@ -106,12 +174,21 @@ class ManualConnectViewModel(private val application: Application) : AndroidView
             ) { wifiOn, cellularOn, connectedToWifi ->
                 wifiOn && !cellularOn && connectedToWifi
             }.collect { allTrue ->
-                    _areAllRequirementsFulfilled.value = allTrue
+                // Update the state if all requirements are fulfilled
+                _areAllRequirementsFulfilled.value = allTrue
             }
         }
-
     }
 
+    /**
+     * Checks if the user has given all the required permissions.
+     *
+     * If all permissions are granted, updates the state to [PermissionState.Granted] and
+     * [ManualConnectUiState.PermissionsGranted].
+     *
+     * If all permissions are not granted, updates the state to [PermissionState.NeedsRequest]
+     * and [ManualConnectUiState.AskPermissions].
+     */
     fun checkPermissions() {
         val hasPermissions = hasRequiredPermissions()
         if (hasPermissions) {
@@ -128,6 +205,11 @@ class ManualConnectViewModel(private val application: Application) : AndroidView
         }
     }
 
+    /**
+     * Checks if the user has given all the required permissions.
+     *
+     * @return true if all permissions are granted, false otherwise
+     */
     private fun hasRequiredPermissions(): Boolean {
         return REQUIRED_PERMISSIONS.all { permission ->
             ContextCompat.checkSelfPermission(
@@ -136,15 +218,14 @@ class ManualConnectViewModel(private val application: Application) : AndroidView
             ) == PackageManager.PERMISSION_GRANTED
         }
     }
-
-    private fun isPermissionPermanentlyDenied(): Boolean {
-        val preferences = application.getSharedPreferences("permissions", Context.MODE_PRIVATE)
-        return REQUIRED_PERMISSIONS.any { permission ->
-            !hasRequiredPermissions() &&
-                    preferences.getBoolean("permission_requested_$permission", false)
-        }
-    }
-
+    /**
+     * If all permissions are granted, updates the state to [PermissionState.Granted] and
+     * [ManualConnectUiState.PermissionsGranted].
+     *
+     * If all permissions are not granted, updates the state to [PermissionState.Denied]
+     * and [ManualConnectUiState.Error] with a message indicating that the permissions were
+     * denied.
+     */
     fun onPermissionResult(permissions: Map<String, Boolean>) {
         val allGranted = permissions.values.all { it }
         if (allGranted) {
@@ -157,6 +238,12 @@ class ManualConnectViewModel(private val application: Application) : AndroidView
     }
 
     companion object {
+        /**
+         * The permissions required by the Captive Portal Analyzer app.
+         *
+         * This is a list of all the permissions required by the Captive Portal Analyzer app.
+         * * NEARBY_WIFI_DEVICES to detect nearby Wi-Fi devices (only on Android 12 and later)
+         */
         val REQUIRED_PERMISSIONS = mutableListOf(
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -170,6 +257,9 @@ class ManualConnectViewModel(private val application: Application) : AndroidView
         }.toTypedArray()
     }
 
+    /**
+     * Unregisters the BroadcastReceiver when the ViewModel is cleared.
+     */
     override fun onCleared() {
         super.onCleared()
         // Unregister the BroadcastReceiver when the ViewModel is cleared
@@ -179,7 +269,7 @@ class ManualConnectViewModel(private val application: Application) : AndroidView
 
     /**
      * Checks if the device is connected to a Wi-Fi network.
-     * This does not check for internet connectivity.
+     * Note: This does not check for internet connectivity.
      */
     private fun checkConnectionToNetwork() {
         val connectivityManager = application.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -202,27 +292,18 @@ class ManualConnectViewModel(private val application: Application) : AndroidView
         }
     }
 
+    /**
+     * Periodically checks the network connection status.
+     * This function launches a coroutine that runs in the ViewModel's scope.
+     * It checks the network status every 2 seconds.
+     */
     private fun startCheckingNetworkConnection() {
-        // Launch a coroutine in the ViewModel's scope
         viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
                 checkConnectionToNetwork()  // Check network status
-                delay(2000)  // Delay for 5 seconds before checking again
+                delay(2000)  // Delay for 2 seconds before checking again
             }
         }
     }
-
-    fun updateShowWelcomeScreen(showWelcomeScreen: Boolean) {
-        viewModelScope.launch {
-            dataStore.edit { preferences ->
-                preferences[SHOW_WELCOME_SCREEN_KEY] = showWelcomeScreen
-            }
-            if (showWelcomeScreen){
-                _uiState.value = ManualConnectUiState.AskPermissions
-            }
-        }
-    }
-
-
 
 }

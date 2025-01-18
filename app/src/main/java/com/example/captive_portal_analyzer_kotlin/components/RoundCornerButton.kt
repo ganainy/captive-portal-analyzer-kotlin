@@ -20,6 +20,19 @@ import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 
+
+
+/**
+ * A composable function that displays a round corner button with optional disabled or loading state.
+ *
+ * @param onClick the callback to be called when the button is clicked
+ * @param buttonText the text to be displayed on the button
+ * @param modifier the modifier to be applied to the button
+ * @param enabled whether the button is enabled or not
+ * @param isLoading whether the button should display a loading indicator instead of text
+ * @param fillWidth whether the button should fill the maximum width
+ * @param colors the color scheme to be applied to the button
+ */
 @Composable
 fun RoundCornerButton(
     onClick: () -> Unit,
@@ -61,13 +74,12 @@ fun RoundCornerButton(
                 textAlign = TextAlign.Center,
             )
         }
-
-
-
-
     }
 }
 
+/**
+ * A preview composable function for the [RoundCornerButton].
+ */
 @Preview
 @Composable
 private fun Preview() {

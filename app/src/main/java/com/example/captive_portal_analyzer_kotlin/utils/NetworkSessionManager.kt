@@ -59,7 +59,7 @@ class NetworkSessionManager(private val context: Context, private val repository
 
     private suspend fun getCurrentSession(): NetworkSessionEntity? {
         return sessionMutex.withLock {
-            try {
+                              try {
                 if (!hasRequiredPermissions()) {
                     Log.d("WiFiSession", "Missing required permissions")
                     return null

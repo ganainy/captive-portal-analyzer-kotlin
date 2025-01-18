@@ -72,19 +72,29 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEnti
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
+import com.example.captive_portal_analyzer_kotlin.utils.Utils.Companion.formatDate
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Composable function to display the session details of a network with captive portal.
+ *
+ * @param sharedViewModel The shared view model containing the clicked session ID and
+ * connectivity status.
+ * @param repository The repository to access network session data.
+ * @param navigateToAutomaticAnalysis A function that navigates to the automatic analysis screen.
+ */
 @Composable
 fun SessionScreen(
     sharedViewModel: SharedViewModel,
     repository: NetworkSessionRepository,
     navigateToAutomaticAnalysis: () -> Unit,
 ) {
-
+    // Collect the clicked session ID from the shared view model.
     val clickedSessionId by sharedViewModel.clickedSessionId.collectAsState()
 
+    // Create a view model for the session data.
     val sessionViewModel: SessionViewModel = viewModel(
         factory = SessionViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
@@ -93,23 +103,44 @@ fun SessionScreen(
         )
     )
 
+    // Collect the session data from the view model.
     val sessionData by sessionViewModel.sessionData.collectAsState()
 
+    // Collect the upload state from the view model.
     val uploadState by sessionViewModel.uploadState.collectAsState()
 
+    // Collect the connectivity status from the shared view model.
     val isConnected by sharedViewModel.isConnected.collectAsState()
 
-
+    // A function to show a toast message that will be passed to viewModel to show toast when needed.
     val showToast = { message: String, style: ToastStyle ->
         sharedViewModel.showToast(
             message = message, style = style,
         )
     }
-
+    /**
+     * The main composable function for the session screen.
+     *
+     * It uses a scaffold to display the session details and handles the upload state.
+     *
+     * @param paddingValues The padding values for the scaffold.
+     */
     Scaffold(
 
     ) { paddingValues ->
 
+        /**
+         * Handles the upload state.
+         *
+         * If the upload state is [UploadState.Uploading], it displays a loading indicator.
+         *
+         * If the upload state is [UploadState.Loading], it displays a loading indicator.
+         *
+         * If the upload state is [UploadState.Error], it displays an error component with a retry button.
+         *
+         * If the upload state is [UploadState.AlreadyUploaded], [UploadState.Success], or [UploadState.NeverUploaded],
+         * it displays the session details with only the button changed based on the three different states.
+         */
         when (uploadState) {
             UploadState.Uploading -> {
                 LoadingIndicator(message = stringResource(R.string.uploading_information_to_be_analyzed))
@@ -130,15 +161,16 @@ fun SessionScreen(
                     }
                 )
             }
-
             else -> {
+                // This branch is for all other UploadState values
+                // If the upload state is UploadState.AlreadyUploaded, UploadState.Success, or UploadState.NeverUploaded,
+                // it displays the session details with only the button changed based on the three different states.
                 if (uploadState is UploadState.AlreadyUploaded || uploadState is UploadState.Success || uploadState is UploadState.NeverUploaded) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
                     ) {
-
 
                         SessionDetail(
                             clickedSessionData = sessionData!!,
@@ -164,11 +196,11 @@ fun SessionScreen(
                     }
 
                 } else {
+                    // If the upload state is not recognized, throw an exception
                     throw Exception("Unexpected upload state: $uploadState")
                 }
 
             }
-
 
         }
 
@@ -177,7 +209,12 @@ fun SessionScreen(
 
 }
 
-
+/**
+ * A composable function to display a hint information box with a "Never see again" option.
+ *
+ * @param context The Android context for retrieving the "Never see again" state.
+ * @param modifier The modifier to be applied to the AlertDialog.
+ */
 @Composable
 private fun HintInfoBox(
     context: Context,
@@ -185,6 +222,7 @@ private fun HintInfoBox(
 ) {
     var showInfoBox2 by remember { mutableStateOf(false) }
 
+    // Launch a coroutine to collect the "Never see again" state from the DataStore
     LaunchedEffect(Unit) {
         AlertDialogState.getNeverSeeAgainState(context, "info_box_2")
             .collect { neverSeeAgain ->
@@ -206,8 +244,16 @@ private fun HintInfoBox(
     }
 }
 
-
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * A composable function to display a session detail page.
+ *
+ * @param clickedSessionData The SessionData of the clicked session.
+ * @param uploadSession A function to upload the session to the remote server.
+ * @param uploadState The state of the upload process.
+ * @param switchScreenshotPrivacyOrToSrealted A function to switch the privacy of a screenshot or to
+ * its related screenshot (as a reaction to user clicking the image).
+ * @param navigateToAutomaticAnalysis A function to navigate to the automatic AI analysis screen.
+ */
 @Composable
 fun SessionDetail(
     clickedSessionData: SessionData,
@@ -221,13 +267,14 @@ fun SessionDetail(
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        // Title for the session details section
         Text(
             text = "Session Details",
             style = MaterialTheme.typography.headlineMedium
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Network Details
+        // Card displaying network details
         Card(
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -244,7 +291,7 @@ fun SessionDetail(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Requests, Content, and Screenshots in TabRow
+        // TabRow for navigating between requests, content, and screenshots
         var selectedTab by remember { mutableIntStateOf(0) }
         TabRow(selectedTabIndex = selectedTab) {
             Tab(
@@ -264,7 +311,7 @@ fun SessionDetail(
             )
         }
 
-        // Scrollable content
+        // Box for displaying scrollable content based on selected tab
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -282,6 +329,7 @@ fun SessionDetail(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Action buttons for upload and analysis functionalities
         SessionActionButtons(
             uploadState = uploadState,
             onUploadClick = uploadSession,
@@ -290,7 +338,21 @@ fun SessionDetail(
     }
 }
 
-
+/**
+ * A composable function to display two buttons for a session detail page.
+ *
+ * One button is for uploading the session to the remote server for analysis, and the other
+ * button is for navigating to the automatic AI analysis screen.
+ *
+ * The button for uploading the session is only enabled if the session has not been uploaded
+ * before. If the session is already uploaded, the button is disabled and shows a message
+ * saying so. If the session is uploaded successfully, the button is also disabled and shows
+ * a message declaring that too.
+ *
+ * @param uploadState The state of the upload process.
+ * @param onUploadClick A function to upload the session to the remote server.
+ * @param onAnalysisClick A function to navigate to the automatic AI analysis screen.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SessionActionButtons(
@@ -325,7 +387,7 @@ private fun SessionActionButtons(
 
             UploadState.NeverUploaded -> {
                 RoundCornerButton(
-                    onClick =onUploadClick,
+                    onClick = onUploadClick,
                     buttonText = stringResource(R.string.upload_session_for_analysis),
                     enabled = true,
                     fillWidth = false
@@ -344,7 +406,15 @@ private fun SessionActionButtons(
         )
     }
 }
-
+/**
+ * A preview of the SessionDetail composable.
+ *
+ * This is a preview of what the SessionDetail composable will look like in different
+ * devices and screen sizes.
+ *
+ * @author Akshay Chordiya
+ * @since 1.0
+ */
 @Preview(name = "Pixel 5", device = "id:pixel_5", showBackground = true)
 @Preview(name = "Tablet", device = "id:Nexus 7", showBackground = true)
 @Preview(showBackground = true)
@@ -403,20 +473,21 @@ fun SessionDetailPreview() {
     )
 }
 
-
-private fun formatDate(timestamp: Long): String {
-    return SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(timestamp))
-}
-
+/**
+ * A composable function to display a list of web requests.
+ *
+ * If the list is empty, it shows a UI component indicating no requests are found.
+ * Otherwise, it displays each request in a card format, including URL, method, and type.
+ *
+ * @param requests A list of CustomWebViewRequestEntity to display.
+ */
 @Composable
 private fun RequestsList(requests: List<CustomWebViewRequestEntity>) {
-
 
     if (requests.isEmpty()) {
         EmptyListUi(R.string.no_requests_found)
         return
     }
-
 
     LazyColumn {
         items(requests) { request ->
@@ -434,7 +505,14 @@ private fun RequestsList(requests: List<CustomWebViewRequestEntity>) {
         }
     }
 }
-
+/**
+ * A composable function to display an empty list message.
+ *
+ * This function takes in a string resource and displays it in a
+ * centered box, filling the maximum size of its parent.
+ *
+ * @param stringRes The string resource to display.
+ */
 @Composable
 private fun EmptyListUi(@StringRes stringRes: Int) {
     Box(
@@ -449,6 +527,13 @@ private fun EmptyListUi(@StringRes stringRes: Int) {
     }
 }
 
+/**
+ * A composable function to display a list of webpage content.
+ * If the content list is empty, a message is displayed indicating no content is found.
+ * Otherwise, each item in the content list is displayed in a card format.
+ *
+ * @param content A list of WebpageContentEntity to display.
+ */
 @Composable
 private fun ContentList(content: List<WebpageContentEntity>) {
 
@@ -473,21 +558,30 @@ private fun ContentList(content: List<WebpageContentEntity>) {
     }
 }
 
-
+/**
+ * A composable function to display a list of screenshots.
+ * If the list is empty, a message is displayed indicating no screenshots are found.
+ * Otherwise, each screenshot item in the list is displayed in a card format.
+ *
+ * @param screenshots A list of ScreenshotEntity to display.
+ * @param toggleScreenshotPrivacyOrToSrelated A function to call when the user wants
+ * to toggle whether a screenshot is privacy-related or related to terms of service.
+ */
 @Composable
 private fun ScreenshotsList(
     screenshots: List<ScreenshotEntity>,
     toggleScreenshotPrivacyOrToSrelated: (ScreenshotEntity) -> Unit,
 ) {
 
+    // Check if the screenshots list is empty and display a message if true
     if (screenshots.isEmpty()) {
         EmptyListUi(R.string.no_screenshots_found)
         return
     }
 
+    Column {
 
-    Column() {
-
+        // Display a hint text for selecting privacy-related images
         Text(
             text = stringResource(R.string.hint_select_privacy_images),
             style = typography.bodyMedium,
@@ -495,16 +589,19 @@ private fun ScreenshotsList(
             modifier = Modifier.padding(8.dp)
         )
 
+        // Card to contain the grid of screenshots
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
+            // LazyVerticalGrid to display screenshots in a grid layout
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 300.dp), // Adjust number of columns as needed
+                columns = GridCells.Adaptive(minSize = 300.dp),
                 modifier = Modifier.padding(16.dp)
             ) {
+                // Iterate over each screenshot and display it using ImageItem
                 items(
                     items = screenshots,
                     key = { it.screenshotId } // Add key for better performance
@@ -520,13 +617,18 @@ private fun ScreenshotsList(
                 }
             }
         }
-
     }
-
-
 }
 
-
+/**
+ * A composable function to display a single image with a border and a background
+ * that can be clicked to toggle whether it is selected or not.
+ *
+ * @param imagePath The path of the image to display.
+ * @param isSelected Whether the image is currently selected.
+ * @param onImageClick A function to call when the image is clicked, passing the new
+ * value of isSelected.
+ */
 @Composable
 fun ImageItem(
     imagePath: String,
@@ -534,6 +636,7 @@ fun ImageItem(
     onImageClick: (Boolean) -> Unit
 ) {
     Box(
+        // Outer container with aspect ratio and padding
         modifier = Modifier
             .aspectRatio(1f)
             .padding(8.dp)
@@ -543,7 +646,7 @@ fun ImageItem(
             )
             .clickable { onImageClick(!isSelected) }
     ) {
-        // Display the image
+        // Image display
         Image(
             painter = rememberAsyncImagePainter(
                 ImageRequest.Builder(LocalContext.current)
@@ -555,7 +658,7 @@ fun ImageItem(
             contentScale = ContentScale.Crop
         )
 
-        // Display the filled box with text when selected
+        // Overlay with text for selected images
         if (isSelected) {
             Box(
                 modifier = Modifier
@@ -567,6 +670,7 @@ fun ImageItem(
                     .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
+                // Text indicating the image is related to ToS/Privacy
                 Text(
                     text = "ToS/Privacy related screenshot",
                     color = MaterialTheme.colorScheme.onPrimary,
@@ -578,6 +682,9 @@ fun ImageItem(
     }
 }
 
+/**
+ * A preview of the ImageItem composable function.
+ */
 @Preview(showBackground = true)
 @Composable
 fun ImageItemPreview() {

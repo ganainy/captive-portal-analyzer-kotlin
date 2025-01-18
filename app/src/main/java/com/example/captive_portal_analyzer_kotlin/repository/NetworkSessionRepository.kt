@@ -18,51 +18,95 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 import java.io.File
 
+/**
+ * Repository class for handling Session related operations both locally and remotely.
+ * This class is used to abstract away the underlying database operations from the UI.
+ * It provides a single point of entry for all operations related to Session management.
+ */
 class NetworkSessionRepository(
+    /**
+     * The DAO for handling NetworkSession database operations.
+     */
     private val sessionDao: NetworkSessionDao,
+    /**
+     * The DAO for handling CustomWebViewRequest database operations.
+     */
     private val requestDao: CustomWebViewRequestDao,
+    /**
+     * The DAO for handling Screenshot database operations.
+     */
     private val screenshotDao: ScreenshotDao,
+    /**
+     * The DAO for handling WebpageContent database operations.
+     */
     private val webpageContentDao: WebpageContentDao
 ) {
+    /**
+     * Firebase Firestore instance for storing/retrieving data on the Firebase server.
+     */
     private val firestore = FirebaseFirestore.getInstance()
+
+    /**
+     * Firebase Storage instance for storing/retrieving files (images) on the Firebase server.
+     */
     private val storage = FirebaseStorage.getInstance()
 
     // Network Session Operations
+    // ---------------------------
+
+    /**
+     * Inserts a NetworkSessionEntity into the Room database.
+     */
     suspend fun insertSession(session: NetworkSessionEntity) {
         sessionDao.insert(session)
     }
 
+    /**
+     * Retrieves a NetworkSessionEntity from the Room database by its networkId.
+     */
     suspend fun getSessionByNetworkId(networkId: String): NetworkSessionEntity? {
         return sessionDao.getSessionByNetworkId(networkId)
     }
 
+    /**
+     * Updates a NetworkSessionEntity in the Room database.
+     */
     suspend fun updateSession(session: NetworkSessionEntity) {
         sessionDao.update(session)
     }
 
+    /**
+     * Updates the portalUrl of a NetworkSessionEntity in the Room database.
+     */
     suspend fun updatePortalUrl(sessionId: String, portalUrl: String) {
         sessionDao.updatePortalUrl(sessionId, portalUrl)
     }
 
+    /**
+     * Updates the isCaptiveLocal flag of a NetworkSessionEntity in the Room database.
+     */
     suspend fun updateIsCaptiveLocal(sessionId: String, isLocal: Boolean) {
         sessionDao.updateIsCaptiveLocal(sessionId, isLocal)
     }
 
-    suspend fun getSessionBySsid(bssid: String?): NetworkSessionEntity? {
-        return sessionDao.getSessionBySsid(bssid)
-    }
 
-    suspend fun getAllSessions(): List<NetworkSessionEntity>? {
-        return sessionDao.getAllSessions()
-    }
-
-    // Custom WebView Request Operations
-    fun getAllRequests(): Flow<List<CustomWebViewRequestEntity>> =
-        requestDao.getAllCustomWebViewRequest()
-
+    /**
+     * Retrieves a list of CustomWebViewRequestEntity associated with a network session
+     * from the Room database.
+     */
     fun getSessionRequests(sessionId: String):  Flow<List<CustomWebViewRequestEntity>> =
         requestDao.getSessionRequestsList(sessionId)
 
+    /**
+     * Inserts a CustomWebViewRequestEntity into the Room database, but only if it is
+     * unique based on the following criteria:
+     *  - request.sessionId
+     *  - request.type
+     *  - request.url
+     *  - request.method
+     *  - request.body
+     *  - request.headers
+     */
     suspend fun insertRequest(request: CustomWebViewRequestEntity) {
         val isUnique = requestDao.isRequestUnique(
             request.sessionId,
@@ -77,11 +121,16 @@ class NetworkSessionRepository(
         }
     }
 
-
-    suspend fun deleteRequest(request: CustomWebViewRequestEntity) =
-        requestDao.delete(request)
-
     // Screenshot Operations
+    // ---------------------
+    // These functions manage the ScreenshotEntity dataclass in the Room database.
+
+    /**
+     * Inserts a screenshot into the Room database if it is unique.
+     * A screenshot is considered unique if there is no existing entry with the same URL, size, and sessionId.
+     *
+     * @param screenshot The screenshot entity to be inserted.
+     */
     suspend fun insertScreenshot(screenshot: ScreenshotEntity) {
         val isUnique = screenshotDao.isScreenshotUnique(
             screenshot.url,
@@ -93,16 +142,34 @@ class NetworkSessionRepository(
         }
     }
 
+    /**
+     * Updates an existing screenshot in the Room database.
+     *
+     * @param screenshotEntity The screenshot entity with updated information.
+     */
     suspend fun updateScreenshot(screenshotEntity: ScreenshotEntity) =
         screenshotDao.update(screenshotEntity)
 
-    fun getScreenshot(screenshotId: String): Flow<ScreenshotEntity?> =
-        screenshotDao.getScreenshot(screenshotId)
-
-    fun getSessionScreenshots(sessionId: String): Flow<List<ScreenshotEntity>> =
+    /**
+     * Retrieves a list of screenshots associated with a specific session from the Room database.
+     *
+     * @param sessionId The ID of the session for which screenshots are to be retrieved.
+     * @return A Flow emitting a list of screenshots for the specified session.
+     */
+    private fun getSessionScreenshots(sessionId: String): Flow<List<ScreenshotEntity>> =
         screenshotDao.getSessionScreenshotsList(sessionId)
 
     // Webpage Content Operations
+    // --------------------------
+    // These functions manage the WebpageContentEntity dataclass in the Room database.
+
+    /**
+     * Inserts a webpage content (HTML and JS) into the Room database if it is unique.
+     * A webpage content is considered unique if there is no existing entry with the same HTML content,
+     * JS content, and sessionId.
+     *
+     * @param content The webpage content entity to be inserted.
+     */
     suspend fun insertWebpageContent(content: WebpageContentEntity) {
         val isUnique = webpageContentDao.isWebpageContentUnique(
             content.htmlContent,
@@ -114,10 +181,26 @@ class NetworkSessionRepository(
         }
     }
 
+    /**
+     * Retrieves a list of webpage content associated with a specific session from the Room database.
+     *
+     * @param sessionId The ID of the session for which webpage content are to be retrieved.
+     * @return A Flow emitting a list of webpage content for the specified session.
+     */
     fun getSessionWebpageContent(sessionId: String): Flow<List<WebpageContentEntity>> =
         webpageContentDao.getSessionWebpageContentList(sessionId)
 
     // Remote Operations
+    // -----------------
+    // These functions manage the communication with the Firebase Remote database.
+    // They take care of uploading the session data/screenshots to the remote database.
+
+    /**
+     * Uploads session data to the remote Firestore database.
+     *
+     * @param sessionId The ID of the session to be uploaded.
+     * @return A Result wrapping a Unit in case of success or an Exception in case of failure.
+     */
     suspend fun uploadSessionData(sessionId: String): Result<Unit> {
         return try {
             // 1. Collect all session data
@@ -162,6 +245,13 @@ class NetworkSessionRepository(
         }
     }
 
+    /**
+     * Uploads a single screenshot to the Storage and returns the download URL.
+     *
+     * @param screenshot The screenshot entity to be uploaded.
+     * @param sessionId The ID of the session to which the screenshot belongs.
+     * @return A Result wrapping the download URL of the uploaded screenshot or an Exception in case of failure.
+     */
     private suspend fun uploadScreenshot(
         screenshot: ScreenshotEntity,
         sessionId: String
@@ -182,7 +272,13 @@ class NetworkSessionRepository(
         }
     }
 
-
+    /**
+     * Returns a Flow of List of SessionData that contains all session data from the local Room database.
+     *
+     * The Flow is a combination of all the flows returned by [getCompleteSessionData] for each session.
+     *
+     * @return A Flow of List of SessionData
+     */
     suspend fun getCompleteSessionDataList(): Flow<List<SessionData>> = flow {
         try {
             val allSessions = sessionDao.getAllSessions() // Assuming this returns List<Session>
@@ -208,7 +304,17 @@ class NetworkSessionRepository(
         }
     }
 
-    // Utility function to get complete session data
+    /**
+     * Returns a Flow of Complete SessionData/Request/Screenshot/WebpageContent for the given session.
+     *
+     * The Flow is a combination of the flows returned by:
+     * - [getSessionRequests]
+     * - [getSessionScreenshots]
+     * - [getSessionWebpageContent]
+     *
+     * @param sessionId The ID of the session
+     * @return A Flow of SessionData
+     */
     suspend fun getCompleteSessionData(sessionId: String): Flow<SessionData> = flow {
         try {
             val session = sessionDao.getSession(sessionId) ?: throw Exception("Session not found")

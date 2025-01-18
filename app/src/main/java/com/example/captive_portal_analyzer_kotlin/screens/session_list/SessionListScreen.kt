@@ -43,11 +43,20 @@ import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
+import com.example.captive_portal_analyzer_kotlin.utils.Utils
+import com.example.captive_portal_analyzer_kotlin.utils.Utils.Companion.formatDate
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
-
+/**
+ * Composable screen to show a list of network sessions.
+ *
+ * @param navigateToWelcome a callback that is called when the user clicks the back button
+ * @param updateClickedSessionId a callback that is called when the user clicks on a session
+ * @param repository the repository that provides the data for the sessions
+ * @param navigateToSessionScreen a callback that is called when the user clicks on a session
+ */
 @Composable
 fun SessionListScreen(
     navigateToWelcome: () -> Unit,
@@ -55,20 +64,24 @@ fun SessionListScreen(
     repository: NetworkSessionRepository,
     navigateToSessionScreen: () -> Unit
 ) {
+    // Create the view model for the session list screen
     val sessionListViewModel: SessionListViewModel = viewModel(
         factory = SessionListViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
             repository = repository,
         )
     )
+
+    // Collect the ui state and session data list from the view model as state
     val uiState by sessionListViewModel.uiState.collectAsState()
     val sessionDataList by sessionListViewModel.sessionDataList.collectAsState()
 
-    // Handle back button to navigate to menu screen instead of last screen (which might be analysis screen)
+    // Handle back button press to navigate to the welcome screen instead of the last screen
     BackHandler {
         navigateToWelcome()
     }
 
+    // Create the scaffold for the screen and pass the padding values and content to it
     Scaffold { paddingValues ->
         SessionsContent(
             uiState = uiState,
@@ -81,7 +94,15 @@ fun SessionListScreen(
 
 
 }
-
+/**
+ * A composable function that displays a list of sessions based on the [uiState].
+ *
+ * @param uiState the ui state that determines what to display
+ * @param sessionDataList the list of session data to display
+ * @param paddingValues the padding values for the composable
+ * @param navigateToSessionScreen a callback that is called when the user clicks on a session
+ * @param updateClickedSessionId a callback that is called when the user clicks on a session
+ */
 @Composable
 private fun SessionsContent(
     uiState: SessionListUiState,
@@ -90,31 +111,46 @@ private fun SessionsContent(
     navigateToSessionScreen: () -> Unit,
     updateClickedSessionId: (String) -> Unit
 ) {
+    // Handle different ui states
     when (uiState) {
+        // show loading indicator when loading sessions
         SessionListUiState.Loading -> {
             LoadingIndicator()
         }
 
+        // show error message if there is an error
         is SessionListUiState.Error -> {
+            // show error text from the ui state
             ErrorComponent(stringResource((uiState as SessionListUiState.Error).messageStringResource))
         }
 
+        // show empty list text if there are no sessions
         SessionListUiState.Empty -> {
+            // show text that there are no sessions
             ErrorComponent(stringResource(R.string.no_sessions_detected))
         }
 
+        // show the list of sessions if there are sessions
         SessionListUiState.Success -> {
+            // show the list of sessions
             SessionsSuccessContent(
                 sessionDataList = sessionDataList,
                 paddingValues = paddingValues,
                 navigateToSessionScreen = navigateToSessionScreen,
                 updateClickedSessionId = updateClickedSessionId
-
             )
         }
     }
 }
 
+/**
+ * A composable function that displays a list of sessions when the data is successfully loaded.
+ *
+ * @param sessionDataList The list of session data to display.
+ * @param paddingValues The padding values to apply to the content.
+ * @param navigateToSessionScreen A lambda function to navigate to the session screen.
+ * @param updateClickedSessionId A lambda function to update the clicked session ID.
+ */
 @Composable
 private fun SessionsSuccessContent(
     sessionDataList: List<SessionData>?,
@@ -139,7 +175,13 @@ private fun SessionsSuccessContent(
     }
 }
 
-
+/**
+ * A composable function that displays a list of sessions. The list is sorted in descending order by session timestamp.
+ *
+ * @param sessionDataList The list of session data to display.
+ * @param onSessionClick A lambda function to call when a session is clicked.
+ * @param navigateToSessionScreen A lambda function to navigate to the session screen.
+ */
 @Composable
 fun SessionsList(
     sessionDataList: List<SessionData>,
@@ -154,10 +196,12 @@ fun SessionsList(
     ) {
         items(sortedSessionDataList) { sessionData ->
             if (sessionData.requests.isNullOrEmpty() || sessionData.webpageContent.isNullOrEmpty() || sessionData.screenshots.isNullOrEmpty()) {
+                // if a session doesn't have any requests, webpage content or screenshots, show a NoCaptiveSessionCard
                 NoCaptiveSessionCard(
                     sessionData = sessionData,
                 )
             } else {
+                // else show a CaptiveSessionCard
                 CaptiveSessionCard(
                     sessionData = sessionData,
                     onClick = { onSessionClick(sessionData) },
@@ -169,14 +213,22 @@ fun SessionsList(
     }
 }
 
-//used to show session details of a network with captive portal
+/**
+ * A composable function that displays a clickable card for a captive session.
+ *
+ * @param sessionData The session data to display.
+ * @param onClick A lambda function to call when the card is clicked.
+ * @param navigateToSessionScreen A lambda function to navigate to the session screen.
+ */
 @Composable
 fun CaptiveSessionCard(
     sessionData: SessionData,
     onClick: (SessionData) -> Unit,
     navigateToSessionScreen: () -> Unit
 ) {
+    // Check if the session is recent (created in latest 10 minutes)
     val isRecent = (System.currentTimeMillis() - sessionData.session.timestamp) < 10 * 60 * 1000L
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -194,7 +246,7 @@ fun CaptiveSessionCard(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
 
-
+            // Show network name
             Text(
                 text = "Network Name: ${sessionData.session.ssid}",
                 style = MaterialTheme.typography.headlineSmall,
@@ -203,15 +255,26 @@ fun CaptiveSessionCard(
                 overflow = TextOverflow.Ellipsis
             )
 
+            // Show network ID
             sessionData.session.networkId.let {
                 Text(stringResource(R.string.network_id, it))
             }
+
+            // Show date
             sessionData.session.timestamp.let {
                 Text(stringResource(R.string.date, formatDate(it)))
             }
+
+            // Show number of requests
             Text(stringResource(R.string.requests, sessionData.requests.size))
+
+            // Show number of webpages
             Text(stringResource(R.string.webpages, sessionData.webpageContent.size))
+
+            // Show number of screenshots
             Text(stringResource(R.string.screenshots, sessionData.screenshots.size))
+
+            // Show indicator if session is remote or new using different icons
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -226,6 +289,7 @@ fun CaptiveSessionCard(
                         .height(24.dp)
                 )
 
+                //show indicator if session is recent by giving it a new icon and different color
                 if (isRecent) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Icon(
@@ -244,13 +308,22 @@ fun CaptiveSessionCard(
 }
 
 //used to show session details of a network with no captive portal (normal network)
+/**
+ * A composable that shows a card for a session that does not have a captive portal aka normal network
+ * with full internet access.
+ *
+ * @param sessionData the session data associated with the network, including the network session,
+ * webpages and screenshots
+ */
 @Composable
 fun NoCaptiveSessionCard(
     sessionData: SessionData,
 ) {
+    //flag to check if the session is recent (created in latest 10 minutes)
     val isRecent = (System.currentTimeMillis() - sessionData.session.timestamp) < 10 * 60 * 1000L
+    //give greyed out color for the card and text to indicate that it is not clickable
     val disabledColor =
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f) // Light gray for disabled state
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
     val textColor =
         if (isRecent) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(
             alpha = 0.6f
@@ -271,14 +344,17 @@ fun NoCaptiveSessionCard(
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+            // show network name
+            sessionData.session.ssid.let {
             Text(
-                text = "Network Name: ${sessionData.session.ssid}",
+                text = stringResource(R.string.network_name, it?:"Unknown Network"),
                 style = MaterialTheme.typography.headlineSmall,
                 color = textColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-
+            }
+            // show network id
             sessionData.session.networkId.let {
                 Text(
                     text = stringResource(R.string.network_id, it),
@@ -286,19 +362,22 @@ fun NoCaptiveSessionCard(
                 )
             }
 
+            // show session timestamp
             sessionData.session.timestamp.let {
                 Text(
-                    text = stringResource(R.string.date, formatDate(it)),
+                    text = stringResource(R.string.date, Utils.formatDate(it)),
                     color = textColor
                 )
             }
             val colors = MaterialTheme.colorScheme
+            // show a hint that this is not a captive portal
             Text(
                 text = stringResource(id = R.string.not_a_captive_portal_network),
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.padding(top = 8.dp),
             )
 
+            // show indicator if session is recent
             if (isRecent) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Icon(
@@ -315,7 +394,10 @@ fun NoCaptiveSessionCard(
     }
 }
 
-
+/**
+ * Preview composable for a captive session card in light and dark modes.
+ * @see CaptiveSessionCard
+ */
 @Preview(
     showBackground = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES
@@ -324,32 +406,39 @@ fun NoCaptiveSessionCard(
 @Composable
 fun CaptiveSessionCardPreview() {
     AppTheme {
-
-        CaptiveSessionCard(SessionData(
-            session = NetworkSessionEntity(
-                ssid = "SSID",
-                bssid = "BSSID",
-                timestamp = System.currentTimeMillis(),
-                networkId = UUID.randomUUID().toString(),
-                isUploadedToRemoteServer = true,
-                captivePortalUrl = "TODO()",
-                ipAddress = "192.168.0.2",
-                gatewayAddress = "192.168.0.1",
-                securityType = "WPA2",
-                isCaptiveLocal = false
+        // example of a mock captive session card
+        CaptiveSessionCard(
+            SessionData(
+                // session data
+                session = NetworkSessionEntity(
+                    ssid = "SSID",
+                    bssid = "BSSID",
+                    timestamp = System.currentTimeMillis(),
+                    networkId = UUID.randomUUID().toString(),
+                    isUploadedToRemoteServer = true,
+                    captivePortalUrl = "TODO()",
+                    ipAddress = "192.168.0.2",
+                    gatewayAddress = "192.168.0.1",
+                    securityType = "WPA2",
+                    isCaptiveLocal = false
+                ),
+                // empty list of requests
+                requests = emptyList(),
+                // empty list of webpage content
+                webpageContent = emptyList(),
+                // empty list of screenshots
+                screenshots = emptyList(),
             ),
-            requests = emptyList(),
-            webpageContent = emptyList(),
-            screenshots = emptyList(),
-        ),
             onClick = {},
             navigateToSessionScreen = {}
         )
     }
-
 }
 
-
+/**
+ * Preview composable for a no captive session card in light and dark modes.
+ * @see NoCaptiveSessionCard
+ */
 @Preview(
     showBackground = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES
@@ -381,11 +470,5 @@ fun NoCaptiveSessionCardPreview() {
     }
 
 }
-
-
-private fun formatDate(timestamp: Long): String {
-    return SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(timestamp))
-}
-
 
 

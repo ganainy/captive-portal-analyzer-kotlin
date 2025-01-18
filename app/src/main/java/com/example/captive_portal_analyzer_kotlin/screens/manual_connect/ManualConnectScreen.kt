@@ -69,21 +69,42 @@ import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 
-
+/**
+ * The composable function for the manual connect screen.
+ *
+ * The page is responsible for requesting permission needed for app functionality and navigating
+ * to analysis screen when permissions are granted and all requirements are fulfilled
+ * (e.g. device data is turned off, wifi is on and connected to a network).
+ *
+ * @param navigateToAnalysis A function that navigates to the analysis screen.
+ */
 @Composable
 fun ManualConnectScreen(
     navigateToAnalysis: () -> Unit,
-    showToast: (message: String, style: ToastStyle) -> Unit
 ) {
-
+    // Get the context for launching the permission request
     val context = LocalContext.current
+
+    // Get the view model for this screen
     val manualConnectViewModel: ManualConnectViewModel = viewModel()
 
+    // Get the lifecycle owner for observing the lifecycle events
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    // Get the UI state and permission state from the view model
     val uiState by manualConnectViewModel.uiState.collectAsState()
     val permissionState by manualConnectViewModel.permissionState.collectAsState()
 
+    // Request multiple permissions using the ActivityResultContracts.RequestMultiplePermissions
+    // and store the result in the permissionLauncher. This is used to request permissions
+    // when the user clicks on the "Grant permissions" button.
+    //
+    // The permissions that are requested are defined in the ManualConnectViewModel and
+    // are the permissions that are required for the app to function.
+    //
+    // When the user grants or denies the permissions, the result is passed to the
+    // onPermissionResult function in the view model, which updates the uiState and
+    // permissionState accordingly.
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -96,7 +117,9 @@ fun ManualConnectScreen(
         },
     ) { paddingValues ->
 
-        // Check permissions on initial composition and when resuming (for example after user granted permissions from settings)
+        // Check permissions when the composition is created and when the app is resumed (for example after user granted permissions from settings)
+        // This is done by observing the lifecycle events of the activity and calling checkPermissions() when the app is resumed.
+        // The lifecycle event observer is added when the composition is created and removed when the composition is disposed.
         DisposableEffect(lifecycleOwner) {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
@@ -108,15 +131,27 @@ fun ManualConnectScreen(
                 lifecycleOwner.lifecycle.removeObserver(observer)
             }
         }
-
+        // Depending on the uiState, show a different screen to the user
+        // uiState can be:
+        //  - Loading: show a loading indicator
+        //  - Error: show an error message with a retry button
+        //  - AskPermissions: show a screen asking the user to grant permissions
+        //  - PermissionsGranted: show a screen that checks if all the requirements are fulfilled
+        //      and if they are, navigate to the analysis screen
         when (uiState) {
+            // Show a loading indicator
             is ManualConnectUiState.Loading -> {
                 LoadingIndicator()
             }
 
+            // Show an error message with a retry button
             is ManualConnectUiState.Error -> {
                 ErrorComponent(
+                    // Get the error message from the uiState
                     error = stringResource((uiState as ManualConnectUiState.Error).messageStringResource),
+                    // When the user clicks on the retry button, check the permission state
+                    // and either open the app settings if the permission was denied or
+                    // check the permissions again if the user hasn't granted/denied them yet
                     onRetryClick  = {
                         when (permissionState) {
                             is PermissionState.Denied -> {
@@ -132,34 +167,44 @@ fun ManualConnectScreen(
                 )
             }
 
+            // Show a screen asking the user to grant permissions
             ManualConnectUiState.AskPermissions -> {
                 when (permissionState) {
+                    // If the permission needs to be requested, show a screen asking the user to grant permissions
                     PermissionState.NeedsRequest -> {
                         PermissionRequestScreen(
+                            // When the user clicks on the button, request the permissions
                             onRequestPermission = {
                                 permissionLauncher.launch(ManualConnectViewModel.REQUIRED_PERMISSIONS)
                             }
                         )
                     }
+                    // If the permission should show a rationale, show a screen explaining why the permission is needed
                     PermissionState.ShouldShowRationale -> {
                         PermissionRationaleScreen(
+                            // When the user clicks on the button, request the permissions
                             onRequestPermission = {
                                 permissionLauncher.launch(ManualConnectViewModel.REQUIRED_PERMISSIONS)
                             }
                         )
                     }
+                    // If the permission is already granted or denied, check the permissions again
                     else -> {
                         manualConnectViewModel.checkPermissions()
                     }
                 }
             }
 
+            // Show a screen that checks if all the requirements are fulfilled
+            // and if they are, navigate to the analysis screen
             ManualConnectUiState.PermissionsGranted -> {
+                // Get the state of wifi and cellular from the view model
                 val isWifiOn by manualConnectViewModel.isWifiOn.collectAsState()
                 val isCellularOn by  manualConnectViewModel.isCellularOn.collectAsState()
                 val isConnectedToWifiNetwork by manualConnectViewModel.isConnectedToWifiNetwork.collectAsState()
                 val areAllRequirementsFulfilled by manualConnectViewModel.areAllRequirementsFulfilled.collectAsState()
 
+                // Show the content of the screen
                 ManualConnectContent(
                     paddingValues = paddingValues,
                     isWifiOn = isWifiOn,
@@ -175,7 +220,17 @@ fun ManualConnectScreen(
 
     }
 
-
+/**
+ * A composable that shows a screen that explains to user why the app needs internet,wifi and
+ * location permissions and ask user to grant them again.
+ *
+ * The screen is displayed when the user clicks on the "Enable
+ * Location" button in the [ManualConnectScreen].
+ *
+ * @param onRequestPermission A callback function that is called when the user
+ * clicks on the "Grant Permissions" button. The function should request the
+ * required permissions using the [Activity.requestPermissions] method.
+ */
 @Composable
 fun PermissionRationaleScreen(onRequestPermission: () -> Unit) {
     val typography = MaterialTheme.typography
@@ -189,7 +244,7 @@ fun PermissionRationaleScreen(onRequestPermission: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        //  Title
+        //  Title: permission request
         Text(
             text = stringResource(R.string.request_permissions),
             style = typography.titleLarge.copy(fontWeight = FontWeight.Bold),
@@ -197,7 +252,7 @@ fun PermissionRationaleScreen(onRequestPermission: () -> Unit) {
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 16.dp)
         )
-        //  Description
+        //  Description: why app needs those permissions
         Text(
             text = stringResource(R.string.need_location_and_internet_permissions_to_continue_2),
             style = typography.bodyMedium,
@@ -209,7 +264,7 @@ fun PermissionRationaleScreen(onRequestPermission: () -> Unit) {
         Spacer(modifier = Modifier.height(24.dp))
 
 
-        // Start app button
+        // grant permissions button
         RoundCornerButton(
             onClick = onRequestPermission,
             buttonText = stringResource(R.string.grant_permissions),
@@ -217,10 +272,13 @@ fun PermissionRationaleScreen(onRequestPermission: () -> Unit) {
     }
 }
 
-
+/**
+ * A composable function that displays a screen requesting the user to grant necessary permissions.
+ *
+ * @param onRequestPermission A callback function to invoke when the user clicks the "Grant Permissions" button.
+ */
 @Composable
 fun PermissionRequestScreen(onRequestPermission: () -> Unit) {
-
     val typography = MaterialTheme.typography
     val colors = MaterialTheme.colorScheme
 
@@ -232,7 +290,7 @@ fun PermissionRequestScreen(onRequestPermission: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        //  Title
+        // Title: Request Permissions
         Text(
             text = stringResource(R.string.request_permissions),
             style = typography.titleLarge.copy(fontWeight = FontWeight.Bold),
@@ -240,7 +298,7 @@ fun PermissionRequestScreen(onRequestPermission: () -> Unit) {
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 16.dp)
         )
-        //  Description
+        // Description: Explanation for the need of permissions
         Text(
             text = stringResource(R.string.need_location_and_internet_permissions_to_continue),
             style = typography.bodyMedium,
@@ -249,22 +307,29 @@ fun PermissionRequestScreen(onRequestPermission: () -> Unit) {
             modifier = Modifier.padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
         )
 
-
-
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Start app button
+        // Button to trigger permission request
         RoundCornerButton(
             onClick = onRequestPermission,
             buttonText = stringResource(R.string.grant_permissions),
         )
     }
-
 }
 
 
 
-
+/**
+ * A composable that shows a screen that explains to user how to connect to a network and
+ * check if the device is connected to a network and if the cellular is off.
+ *
+ * @param paddingValues The padding values of the composable.
+ * @param isWifiOn Whether the wifi is on.
+ * @param isCellularOff Whether the cellular is off.
+ * @param isConnectedToWifiNetwork Whether the device is connected to a network.
+ * @param navigateToAnalysis A callback function to navigate to the analysis screen.
+ * @param areAllRequirementsFulfilled Whether all the requirements are fulfilled.
+ */
 @Composable
 private fun ManualConnectContent(
     paddingValues: PaddingValues,
@@ -324,6 +389,10 @@ private fun ManualConnectContent(
     }
 }
 
+/**
+ * A preview function for the ManualConnectContent composable.
+ * Demonstrates the UI when all network requirements are fulfilled.
+ */
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -340,7 +409,13 @@ private fun ManualConnectContentPreview() {
     }
 }
 
-
+/**
+ * A composable function that displays a status text with a checkmark or close icon, depending
+ * on the [isSuccess] parameter.
+ *
+ * @param text the text to be displayed
+ * @param isSuccess whether the status is successful or not
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun StatusTextWithIcon(text: String, isSuccess: Boolean) {
@@ -371,26 +446,10 @@ fun StatusTextWithIcon(text: String, isSuccess: Boolean) {
     }
 }
 
-
-@Preview(showBackground = true)
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun PreviewSuccessDialog() {
-    AppTheme {
-        AlertDialog(
-            onDismissRequest = { },
-            title = { Text(stringResource(id = R.string.connected_to_wifi)) },
-            text = { Text(stringResource(id = R.string.please_proceed_to_next_step)) },
-            confirmButton = {
-                TextButton(onClick = { }) {
-                    Text(stringResource(id = R.string.next))
-                }
-            },
-        )
-    }
-}
-
-
+/**
+ * Preview function for the [GrantPermissionsScreen] composable.
+ * This preview shows the screen in both light and dark modes.
+ */
 @Composable
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -405,9 +464,16 @@ private fun GrantPermissionsScreenPreview() {
             )
         )
     }
-
 }
 
+/**
+ * A composable function that displays a screen asking the user to grant the necessary permissions
+ * in order to analyze captive networks.
+ *
+ * @param paddingValues the padding values to be used for the screen
+ * @param permissionLauncher the managed activity result launcher for requesting multiple permissions
+ * @param permissions the permissions to be requested
+ */
 @Composable
 private fun GrantPermissionsScreen(
     paddingValues: PaddingValues,
@@ -422,19 +488,23 @@ private fun GrantPermissionsScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Set the text color to white if the system is in dark theme, otherwise use the on surface color
         val textColor = if (isSystemInDarkTheme()) {
             Color.White
         } else {
             MaterialTheme.colorScheme.onSurface
         }
 
+        // Display the text indicating that location and other permissions are required
         Text(
             text = stringResource(id = R.string.location_and_other_permissions_are_required_for_analyzing_captive_networks),
             style = MaterialTheme.typography.titleLarge,
             color = textColor,
             textAlign = TextAlign.Center
         )
+        // Add a spacer to separate the text and the button
         Spacer(modifier = Modifier.height(24.dp))
+        // Display a round corner button for granting the permissions
         RoundCornerButton(
             onClick = { permissionLauncher.launch(permissions) },
             buttonText = stringResource(id = R.string.grant_permissions),
@@ -444,6 +514,10 @@ private fun GrantPermissionsScreen(
 }
 
 
+/**
+ * A preview composable function for the [PermissionDeniedDialog].
+ * This preview demonstrates the UI in both light and dark modes.
+ */
 @Composable
 @Preview
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -461,7 +535,17 @@ fun PermissionDeniedDialogPreview() {
         )
     }
 }
-
+/**
+ * A composable function that displays a dialog that shows a list of permissions that are missing.
+ *
+ * The dialog displays the title, the list of permissions, and two buttons: retry and dismiss.
+ * The retry button calls the [onRetry] lambda when clicked, and the dismiss button calls the [onDismiss] lambda when clicked.
+ *
+ * @param missingPermissions a list of permissions that are missing
+ * @param onRetry a lambda that is called when the retry button is clicked
+ * @param onDismiss a lambda that is called when the dismiss button is clicked
+ * @param context the context to use to get the string resources
+ */
 @Composable
 fun PermissionDeniedDialog(
     missingPermissions: List<String>,
@@ -496,6 +580,17 @@ fun PermissionDeniedDialog(
     )
 }
 
+/**
+ * Returns a string that describes the permission to explain to user why such permission is needed.
+ *
+ * This function takes a context and a permission string as parameters and returns a string that
+ * describes the permission. The string is obtained from the string resources and is specific to
+ * the permission.
+ *
+ * @param context the context to use to get the string resources
+ * @param permission the permission string to get the description for
+ * @return a string that describes the permission
+ */
 fun getPermissionDescription(context: Context, permission: String): String {
     return when (permission) {
         Manifest.permission.ACCESS_COARSE_LOCATION -> context.getString(R.string.access_coarse_location_required_to_detect_nearby_wi_fi_networks)

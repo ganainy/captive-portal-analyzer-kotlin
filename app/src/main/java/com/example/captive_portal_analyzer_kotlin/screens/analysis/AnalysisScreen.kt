@@ -61,16 +61,26 @@ import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-
+/**
+ * A composable function representing the analysis screen in the app.
+ *
+ * @param repository The repository for managing network session data.
+ * @param navigateToSessionList A lambda function to navigate to the session list screen.
+ * @param navigateToManualConnect A lambda function to navigate to the manual connect screen.
+ * @param sessionManager The session manager for handling network sessions.
+ * @param sharedViewModel The shared view model for managing shared state between screens.
+ */
 @Composable
 fun AnalysisScreen(
-    repository :  NetworkSessionRepository,
+    repository: NetworkSessionRepository,
     navigateToSessionList: () -> Unit,
     navigateToManualConnect: () -> Unit,
     sessionManager: NetworkSessionManager,
     sharedViewModel: SharedViewModel,
 ) {
+    // Initialize the AnalysisViewModel with the necessary dependencies
     val analysisViewModel: AnalysisViewModel = viewModel(
         factory = AnalysisViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
@@ -80,25 +90,35 @@ fun AnalysisScreen(
         )
     )
 
+    // Collect the UI state from the analysisViewModel
     val uiState by analysisViewModel.uiState.collectAsState()
+
+    // Retrieve the current context
     val context = LocalContext.current
+
+    // Remember a coroutine scope for launching coroutines
     val coroutineScope = rememberCoroutineScope()
 
+    // Collect the portal URL and WebView type state from the analysisViewModel
     val portalUrl by analysisViewModel.portalUrl.collectAsState()
     val webViewType by analysisViewModel.webViewType.collectAsState()
     val showedHint by analysisViewModel.showedHint.collectAsState()
 
+    // a lambda function to show toast messages using the sharedViewModel
     val showToast = { message: String, style: ToastStyle ->
         sharedViewModel.showToast(
             message = message, style = style,
         )
     }
+    // Request the captive portal address on screen start, providing the showToast function to show toast if needed
     analysisViewModel.getCaptivePortalAddress(showToast)
 
+    // Remember a WebView instance with the current context to keep webView state across recompositions
     val webView = remember {
         WebView(context)
     }
 
+    // Clean up the WebView when it is no longer needed
     DisposableEffect(webView) {
         onDispose {
             webView.destroy()
@@ -112,6 +132,7 @@ fun AnalysisScreen(
 
         when (uiState) {
 
+            // while loading the captive portal URL, show a loading indicator
             is AnalysisUiState.Loading -> {
                 LoadingIndicator(
                     message = stringResource((uiState as AnalysisUiState.Loading).messageStringResource),
@@ -119,137 +140,25 @@ fun AnalysisScreen(
                 )
             }
 
+            // if the captive portal URL is not null, show the captive portal website content
             is AnalysisUiState.CaptiveUrlDetected -> {
 
-                Column(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    // WebView container with weight to take all available space
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .border(
-                                width = 2.dp,
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            .background(
-                                color = MaterialTheme.colorScheme.surface,
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            .padding(1.dp)
-                    ) {
-
-                        when (webViewType) {
-                            WebViewType.NormalWebView -> {
-
-                                NormalWebView(
-                                    portalUrl = portalUrl,
-                                    webView = webView,
-                                    saveWebRequest = { request ->
-                                        coroutineScope.launch {
-                                            analysisViewModel.saveWebResourceRequest(request)
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(contentPadding),
-                                    captureAndSaveContent = { webView, content ->
-                                        coroutineScope.launch {
-                                            analysisViewModel.saveWebpageContent(
-                                                webView,
-                                                content,
-                                                showToast
-                                            )
-                                        }
-                                    },
-                                    takeScreenshot = analysisViewModel::takeScreenshot
-                                )
-
-
-                            }
-
-                            WebViewType.CustomWebView -> {
-
-                                CustomWebView(
-                                    portalUrl = portalUrl,
-                                    webView = webView,
-                                    saveWebRequest = { request ->
-                                        coroutineScope.launch {
-                                            analysisViewModel.saveWebViewRequest(request)
-                                        }
-                                    },
-                                    takeScreenshot = analysisViewModel::takeScreenshot,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(contentPadding),
-                                    captureAndSaveContent = { webView, content ->
-                                        coroutineScope.launch {
-                                            analysisViewModel.saveWebpageContent(
-                                                webView,
-                                                content,
-                                                showToast
-                                            )
-                                        }
-                                    },
-                                    showedHint = showedHint,
-                                    updateShowedHint = analysisViewModel::updateShowedHint
-                                )
-
-                            }
-                            }
-                        }
-
-
-
-                    // Other elements will wrap their content
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .wrapContentHeight()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            RoundCornerButton(
-                                modifier = Modifier
-                                    .weight(2f)
-                                    .padding(start = 8.dp),
-                                onClick = {
-                                    analysisViewModel.stopAnalysis(onUncompletedAnalysis = {
-                                        showUncompletedAnalysisDialog(
-                                            context = context,
-                                            hideDialog = sharedViewModel::hideDialog,
-                                            showDialog = sharedViewModel::showDialog,
-                                            navigateToSessionList = navigateToSessionList
-                                        )
-                                    })
-                                },
-                                buttonText = stringResource(id = R.string.end_analysis)
-                            )
-
-                            GhostButton(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(end = 8.dp),
-                                onClick = {
-                                    analysisViewModel.switchWebViewType(
-                                        showToast = showToast
-                                    )
-                                },
-                                text = stringResource(id = R.string.switch_browser_type)
-                            )
-                        }
-                    }
-                }
+                CaptivePortalWebsiteContent(
+                    webViewType,
+                    portalUrl,
+                    webView,
+                    coroutineScope,
+                    analysisViewModel,
+                    contentPadding,
+                    showToast,
+                    showedHint,
+                    context,
+                    sharedViewModel,
+                    navigateToSessionList
+                )
             }
 
+            // if something went wrong, show an error message and a button to retry loading captive portal URL
             is AnalysisUiState.Error -> {
                 AnalysisError(
                     contentPadding,
@@ -260,14 +169,181 @@ fun AnalysisScreen(
                 )
             }
 
+            // if the analysis is complete, navigate to the session list
             AnalysisUiState.AnalysisComplete -> navigateToSessionList()
+        }
+    }
+}
+/**
+ * A composable function to display the captive portal website content.
+ *
+ * @param webViewType The type of the WebView being used (Normal: no request body interception or Custom with request body interception).
+ * @param portalUrl The URL of the portal to display in the WebView.
+ * @param webView The WebView instance to display the content.
+ * @param coroutineScope The CoroutineScope for launching asynchronous tasks.
+ * @param analysisViewModel The ViewModel for handling analysis logic.
+ * @param contentPadding The padding values for the content.
+ * @param showToast A lambda function to show toast messages.
+ * @param showedHint Boolean indicating if the hint has been shown.
+ * @param context The context of the current state of the application.
+ * @param sharedViewModel The shared ViewModel for managing shared state.
+ * @param navigateToSessionList A lambda function to navigate to the session list screen once the analysis is complete.
+ */
+@Composable
+private fun CaptivePortalWebsiteContent(
+    webViewType: WebViewType,
+    portalUrl: String?,
+    webView: WebView,
+    coroutineScope: CoroutineScope,
+    analysisViewModel: AnalysisViewModel,
+    contentPadding: PaddingValues,
+    showToast: (String, ToastStyle) -> Unit,
+    showedHint: Boolean,
+    context: Context,
+    sharedViewModel: SharedViewModel,
+    navigateToSessionList: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // WebView container with weight to take all available space
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(8.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .border(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .background(
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(1.dp)
+        ) {
+
+            when (webViewType) {
+                // this is the backup webView type, it will not intercept the request body,
+                // it is only used as a fallback if custom webView fails
+                WebViewType.NormalWebView -> {
+
+                    NormalWebView(
+                        portalUrl = portalUrl,
+                        webView = webView,
+                        saveWebRequest = { request ->
+                            coroutineScope.launch {
+                                analysisViewModel.saveWebResourceRequest(request)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(contentPadding),
+                        captureAndSaveContent = { webView, content ->
+                            coroutineScope.launch {
+                                analysisViewModel.saveWebpageContent(
+                                    webView,
+                                    content,
+                                    showToast
+                                )
+                            }
+                        },
+                        takeScreenshot = analysisViewModel::takeScreenshot
+                    )
+
+
+                }
+                //this is the default webView type, it will intercept the request body, but if there is
+                // an issue loading the website, it will fall back to the normal webView
+                WebViewType.CustomWebView -> {
+                    CustomWebView(
+                        portalUrl = portalUrl,
+                        webView = webView,
+                        saveWebRequest = { request ->
+                            coroutineScope.launch {
+                                analysisViewModel.saveWebViewRequest(request)
+                            }
+                        },
+                        takeScreenshot = analysisViewModel::takeScreenshot,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(contentPadding),
+                        captureAndSaveContent = { webView, content ->
+                            coroutineScope.launch {
+                                analysisViewModel.saveWebpageContent(
+                                    webView,
+                                    content,
+                                    showToast
+                                )
+                            }
+                        },
+                        showedHint = showedHint,
+                        updateShowedHint = analysisViewModel::updateShowedHint
+                    )
+
+                }
+            }
+        }
+
+
+        // this column is used to display the end analysis button and switch webView type button
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                RoundCornerButton(
+                    modifier = Modifier
+                        .weight(2f)
+                        .padding(start = 8.dp),
+                    onClick = {
+                        analysisViewModel.stopAnalysis(onUncompletedAnalysis = {
+                            showUncompletedAnalysisDialog(
+                                context = context,
+                                hideDialog = sharedViewModel::hideDialog,
+                                showDialog = sharedViewModel::showDialog,
+                                navigateToSessionList = navigateToSessionList
+                            )
+                        })
+                    },
+                    buttonText = stringResource(id = R.string.end_analysis)
+                )
+
+                GhostButton(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp),
+                    onClick = {
+                        analysisViewModel.switchWebViewType(
+                            showToast = showToast
+                        )
+                    },
+                    text = stringResource(id = R.string.switch_browser_type)
+                )
+            }
         }
     }
 }
 
 
-
-// Extract dialog configuration into a separate function
+/**
+ * This function is used to display a warning dialog when the user wants to stop the analysis
+ * before completing the login process of the captive portal.
+ *
+ * The dialog asks the user if they want to stop the analysis anyway.
+ *
+ * If the user confirms, the analysis is stopped and the user is navigated to the session list.
+ *
+ * If the user dismisses the dialog, the dialog is hidden.
+ */
 private fun showUncompletedAnalysisDialog(context: Context,hideDialog: () -> Unit,
                                           showDialog: (title: String, message: String, confirmText: String, dismissText: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit, navigateToSessionList: () -> Unit) {
     showDialog(
@@ -280,6 +356,11 @@ private fun showUncompletedAnalysisDialog(context: Context,hideDialog: () -> Uni
     )
 }
 
+/**
+* Preview function for AnalysisError composable
+* This function is used to generate a preview of the AnalysisError composable
+* in the Android Studio preview panel.
+*/
 @Composable
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Preview(showBackground = true)
@@ -295,6 +376,19 @@ private fun AnalysisErrorPreview() {
     }
 }
 
+/**
+ * A composable function that displays an error message and two buttons.
+ *
+ * The UI state is passed in as a parameter, which can be one of the following:
+ * - [AnalysisUiState.ErrorType.CannotDetectCaptiveUrl]: The app failed to detect the captive portal URL.
+ * - [AnalysisUiState.ErrorType.Unknown]: An unknown error occurred.
+ *
+ * The [getCaptivePortalAddress] function is called when the "Retry" button is clicked.
+ * The [showToast] function is called to display a toast message if the retry button is clicked.
+ * The [navigateToManualConnect] function is called when the "Connect to another network" button is clicked.
+ *
+ * The content padding is used to add padding to the outside of the Box.
+ */
 @Composable
 private fun AnalysisError(
     contentPadding: PaddingValues,
@@ -367,8 +461,17 @@ private fun AnalysisError(
         }
     }
 }
-
-/*WebView that intercepts request body using JS injection*/
+/**
+ * A composable function to render a normal WebView, this is used as a backup in case the custom WebView fails
+ * since it doesn't have the ability to access the request body.
+ *
+ * @param portalUrl The URL of the portal to test.
+ * @param webView The WebView to use to show the website.
+ * @param saveWebRequest A function to save the custom WebView request.
+ * @param captureAndSaveContent A function to capture and save the webpage content (HTML + JS).
+ * @param takeScreenshot A function to capture a screenshot of the webpage.
+ * @param modifier The modifier to be applied to the [Box] that contains the [WebView].
+ */
 @Composable
 private fun NormalWebView(
     portalUrl: String?,
@@ -384,6 +487,7 @@ private fun NormalWebView(
             factory = {
                 webView.apply {
                     webViewClient = object : WebViewClient() {
+                        // Intercept requests to save them
                         override fun shouldInterceptRequest(
                             view: WebView?,
                             request: WebResourceRequest?
@@ -428,8 +532,18 @@ private fun NormalWebView(
     }
 }
 
-
-/*WebView that intercepts request body using JS injection*/
+/**
+ * A composable function to render a custom WebView which intercepts the request body using JS injection.
+ *
+ * @param portalUrl The URL of the portal to test.
+ * @param webView The WebView to use to show the website.
+ * @param saveWebRequest A function to save the custom WebView request.
+ * @param captureAndSaveContent A function to capture and save the webpage content (HTML + JS).
+ * @param takeScreenshot A function to capture a screenshot of the webpage.
+ * @param updateShowedHint A callback to update the state of the "Never see again" preference for the hint box.
+ * @param showedHint A boolean indicating whether the hint has been shown.
+ * @param modifier The modifier to be applied to the Box.
+ */
 @Composable
 private fun CustomWebView(
     portalUrl: String?,
@@ -438,8 +552,8 @@ private fun CustomWebView(
     captureAndSaveContent: (WebView, String) -> Unit,
     takeScreenshot: (WebView, String) -> Unit,
     updateShowedHint: (Boolean) -> Unit,
+    showedHint: Boolean,
     modifier: Modifier,
-    showedHint: Boolean
 ) {
 
     Box(
@@ -464,6 +578,19 @@ private fun CustomWebView(
     }
 }
 
+/**
+ * A composable function to display a hint info box.
+ *
+ * This function checks the "Never see again" state for the info box and displays
+ * a `NeverSeeAgainAlertDialog` if the box should be shown and the hint hasn't been shown yet.
+ *
+ * The hint includes information on how to login to the captive portal and end the analysis process.
+ *
+ * @param context The Android context to use for retrieving the preferences.
+ * @param modifier The modifier to be applied to the AlertDialog.
+ * @param updateShowedHint A callback to update the hint state.
+ * @param showedHint A boolean indicating whether the hint has been shown.
+ */
 @Composable
 private fun HintInfoBox(
     context: Context,
@@ -481,20 +608,35 @@ private fun HintInfoBox(
     }
 
     if (showInfoBox1 && !showedHint) {
-
         NeverSeeAgainAlertDialog(
             title = stringResource(R.string.hint),
             message = stringResource(R.string.login_to_captive_then_click_end_analysis),
             preferenceKey = "info_box_1",
-            onDismiss = { showInfoBox1 = false
+            onDismiss = {
+                showInfoBox1 = false
                 updateShowedHint(true)
-                        },
+            },
             modifier = modifier
         )
     }
 }
 
-
+/**
+ * A composable that takes a [WebView] and a [String] portal url.
+ * It sets up a [RequestInspectorWebViewClient] that will capture all web requests made by the [WebView]. including any request body.
+ * It will also be notified when a page finishes loading and will take a screenshot of the [WebView] and capture the HTML and JS content.
+ * It will also save all web requests made by the [WebView] to the local db.
+ *
+ * @param portalUrl The url of the captive portal.
+ * @param webView The [WebView] that will be used to load the captive portal.
+ * @param saveWebRequest A function that will be called with each web request made by the [WebView].
+ * @param captureAndSaveContent A function that will be called when a page finishes loading. It will be passed the [WebView] and the url of the page.
+ * @param takeScreenshot A function that will be called when a page finishes loading. It will be passed the [WebView] and the url of the page.
+ * @param modifier The modifier to be applied to the [Box] that contains the [WebView].
+ *
+ * Note: the [RequestInspectorWebViewClient] can cause the [WebView] to malfunction sometimes, this is why another [CustomWebView] is used in function
+ * private fun CustomWebView as a backup to load the captive portal.
+ */
 @Composable
 private fun WebViewWithCustomClient(
     portalUrl: String?,
@@ -545,8 +687,6 @@ private fun WebViewWithCustomClient(
                         loadsImagesAutomatically = true
                     }
 
-
-
                     setWebContentsDebuggingEnabled(true)
                     webView
                 }
@@ -561,4 +701,3 @@ private fun WebViewWithCustomClient(
 
     }
 }
-

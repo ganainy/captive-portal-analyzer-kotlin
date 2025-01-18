@@ -27,6 +27,15 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
+/**
+ * A button with a ghost (transparent) background and a scale animation.
+ *
+ * @param onClick the callback to be called when the button is clicked
+ * @param text the text to be displayed on the button
+ * @param modifier the modifier to be applied to the button
+ * @param enabled whether the button is enabled or not
+ * @param contentPadding the padding to be applied to the content of the button
+ */
 @Composable
 fun GhostButton(
     onClick: () -> Unit,

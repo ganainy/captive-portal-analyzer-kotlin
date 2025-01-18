@@ -19,6 +19,11 @@ import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.R
 
 
+/**
+ * A composable function that displays a banner when there is no internet connection.
+ *
+ * @param modifier The modifier to apply to the Surface composable.
+ */
 @Composable
 fun NoInternetBanner(
     modifier: Modifier = Modifier
@@ -39,20 +44,28 @@ fun NoInternetBanner(
     }
 }
 
+/**
+ * A composable function that displays an animated banner (slide in effect) when there is no internet connection.
+ *
+ * @param isConnected Whether the device is connected to the internet.
+ */
 @Composable
 fun AnimatedNoInternetBanner(isConnected: Boolean){
-AnimatedVisibility(
-visible = !isConnected,
-enter = slideInVertically(initialOffsetY = { -it }),
-exit = slideOutVertically(targetOffsetY = { -it }),
-modifier = Modifier
-    .fillMaxWidth()
-    .wrapContentHeight(Alignment.Top)
-) {
-    NoInternetBanner()
-}
+    AnimatedVisibility(
+        visible = !isConnected,
+        enter = slideInVertically(initialOffsetY = { -it }),
+        exit = slideOutVertically(targetOffsetY = { -it }),
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(Alignment.Top)
+    ) {
+        NoInternetBanner()
+    }
 }
 
+/**
+ * A preview of the NoInternetBanner composable function.
+ */
 @Preview(showBackground = true)
 @Composable
 fun NoInternetBannerPreview() {

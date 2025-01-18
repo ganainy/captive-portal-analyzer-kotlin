@@ -9,6 +9,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import com.example.captive_portal_analyzer_kotlin.R
 
+/**
+ * A composable function to display a hint text.
+ *
+ * @param hint the hint text to display
+ * @param modifier the modifier to use for the text
+ * @param textAlign the text alignment. Defaults to center
+ */
 @Composable
 fun HintText(hint:String, modifier: Modifier = Modifier,textAlign: TextAlign= TextAlign.Center) {
     Text(

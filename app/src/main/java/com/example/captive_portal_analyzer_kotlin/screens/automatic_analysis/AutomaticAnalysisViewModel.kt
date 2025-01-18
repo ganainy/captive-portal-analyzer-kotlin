@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionDataDTO
 import com.example.captive_portal_analyzer_kotlin.secret.Secret
+import com.example.captive_portal_analyzer_kotlin.secret.Secret.apiKey
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
 import com.google.ai.client.generativeai.type.generationConfig
@@ -29,14 +30,8 @@ import kotlinx.coroutines.runBlocking
  * A sealed hierarchy describing the state of the text generation.
  */
 sealed interface AutomaticAnalysisUiState {
-
     /**
-     * Empty state when the screen is first shown
-     */
-    data object Initial : AutomaticAnalysisUiState
-
-    /**
-     * Still loading
+     * Text generation is loading
      */
     data object Loading : AutomaticAnalysisUiState
 
@@ -55,7 +50,13 @@ sealed interface AutomaticAnalysisUiState {
     ) : AutomaticAnalysisUiState
 }
 
-
+/**
+ * A [ViewModel] that generates text based on a given [SessionData] using a generative AI model.
+ *
+ * @param generativeModel the generative AI model to use for generating text
+ * @param application the application context
+ * @param repository the repository of network sessions
+ */
 class AutomaticAnalysisViewModel(
     private val generativeModel: GenerativeModel,
     application: Application,
@@ -63,15 +64,17 @@ class AutomaticAnalysisViewModel(
 ) : AndroidViewModel(application) {
 
 
-
-    init {
-    }
-
     private val _uiState: MutableStateFlow<AutomaticAnalysisUiState> =
-        MutableStateFlow(AutomaticAnalysisUiState.Initial)
+        MutableStateFlow(AutomaticAnalysisUiState.Loading)
     val uiState: StateFlow<AutomaticAnalysisUiState> =
         _uiState.asStateFlow()
 
+    /**
+     * Analyzes the given session data using AI to generate a report about collected data, data privacy and ToS
+     * of the captive portal. It updates the UI state based on the analysis result.
+     *
+     * @param sessionDataDTO the session data transfer object containing relevant information
+     */
     fun analyzeWithAi(
         sessionDataDTO: SessionDataDTO
     ) {
@@ -105,6 +108,12 @@ class AutomaticAnalysisViewModel(
         }
     }
 
+    /**
+     * Loads the session data for the given [clickedSessionId] from the database.
+     *
+     * @param clickedSessionId the id of the session to load
+     * @return the loaded session data or null if an exception occurred
+     */
     fun loadSessionData(clickedSessionId: String): SessionData? = runBlocking(Dispatchers.IO) {
         return@runBlocking try {
             clickedSessionId.let { sessionId ->
@@ -117,25 +126,36 @@ class AutomaticAnalysisViewModel(
 
 
 }
-
+    /**
+     * Decodes a file path into a Bitmap because the AI server expects a Bitmap.
+     *
+     * @param path the file path of the image
+     * @return the decoded Bitmap
+     */
     private fun pathToBitmap(path: String): Bitmap {
         val bitmap = BitmapFactory.decodeFile(path)
         return bitmap
     }
-
+/**
+ * A factory for creating [AutomaticAnalysisViewModel] instances.
+ *
+ * @param application the application context
+ * @param repository the repository of network sessions
+ */
 class AutomaticAnalysisViewModelFactory(
     private val application: Application,
     private val repository: NetworkSessionRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AutomaticAnalysisViewModel::class.java)) {
+            // set up the generative model with the current API key
             val config = generationConfig {
                 temperature = 0.7f
             }
             val generativeModel = GenerativeModel(
-                modelName = "gemini-1.5-flash-latest",
-                apiKey = Secret.apiKey, //todo replace with BuildConfig.apiKey
-                generationConfig = config
+                modelName = "gemini-1.5-flash-latest", // Specifies the name of the generative model to be used for analysis
+                apiKey = Secret.apiKey,//apiKey to authenticate requests //todo replace with BuildConfig.apiKey
+                generationConfig = config // Applies the configuration settings for generation
             )
             @Suppress("UNCHECKED_CAST")
             return AutomaticAnalysisViewModel(

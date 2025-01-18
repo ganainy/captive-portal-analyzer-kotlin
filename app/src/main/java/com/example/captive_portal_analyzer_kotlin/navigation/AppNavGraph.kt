@@ -20,24 +20,77 @@ import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.AppToast
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
-import com.example.captive_portal_analyzer_kotlin.screens.SettingsScreen
+import com.example.captive_portal_analyzer_kotlin.screens.settings.SettingsScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
 import com.example.captive_portal_analyzer_kotlin.screens.welcome.WelcomeScreen
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import java.util.Locale
 
-sealed class Screen(val route: String,@StringRes val titleStringResource: Int) {
+/**
+ * A sealed class representing the possible screens in the app. This class is used as a navigation
+ * graph, and the [route] property is used as the route for the NavHost.
+ *
+ * @property route The route for the NavHost.
+ * @property titleStringResource The string resource id for the title of the screen.
+ */
+sealed class Screen(val route: String, @StringRes val titleStringResource: Int) {
+    /**
+     * The welcome screen.
+     */
     object Welcome : Screen("welcome", R.string.welcome_screen_title)
+
+    /**
+     * The manual connect screen.
+     */
     object ManualConnect : Screen("manual_connect", R.string.manual_connect_screen_title)
+
+    /**
+     * The analysis screen.
+     */
     object Analysis : Screen("analysis", R.string.analysis_screen_title)
+
+    /**
+     * The session list screen.
+     */
     object SessionList : Screen("session_list", R.string.session_list_screen_title)
+
+    /**
+     * The session screen.
+     */
     object Session : Screen("session", R.string.session_screen_title)
+
+    /**
+     * The about screen.
+     */
     object About : Screen("about", R.string.about_screen_title)
+
+    /**
+     * The automatic analysis screen.
+     */
     object AutomaticAnalysis : Screen("automatic_analysis", R.string.automatic_analysis)
+
+    /**
+     * The settings screen.
+     */
     object Settings : Screen("settings", R.string.settings)
 }
 
+/**
+ * A composable function that sets up the navigation graph for the app. This function is responsible for
+ * setting up the navigation graph, and for handling the navigation between the different screens in
+ * the app.
+ *
+ * @param navController The navController to use for navigating between screens.
+ * @param sessionManager The sessionManager to use for managing the network sessions.
+ * @param sharedViewModel The sharedViewModel to use for shared state between screens.
+ * @param dialogState The dialogState to use for showing and hiding dialogs.
+ * @param repository The repository to use for storing and retrieving data both locally and remotely.
+ * @param themeMode The theme mode to use for the app.
+ * @param currentLanguage The current language to use for the app.
+ * @param onThemeChanged A function to call when the theme is changed.
+ * @param onLocalChanged A function to call when the locale is changed.
+ */
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
@@ -47,40 +100,45 @@ fun AppNavGraph(
     repository: NetworkSessionRepository,
     themeMode: ThemeMode,
     currentLanguage: String,
-    onThemeChanged:(mode: ThemeMode) -> Unit,
+    onThemeChanged: (mode: ThemeMode) -> Unit,
     onLocalChanged: (locale: Locale) -> Unit,
 ) {
+    // Remember navigation actions for the navController
     val actions = remember(navController) { NavigationActions(navController) }
 
+    // Collect the current toast state from the shared ViewModel
     val toastState by sharedViewModel.toastState.collectAsState()
 
+    // Lambda function to show a toast with a message and style
     val showToast = { message: String, style: ToastStyle ->
         sharedViewModel.showToast(
             message = message, style = style,
         )
     }
 
+    // Passed to screens to give the ability to display a toast notification
     AppToast(
         toastState = toastState,
         onDismissRequest = { sharedViewModel.hideToast() }
     )
 
+    // Passed to screens to give the ability to display an alert dialog
     ActionAlertDialog(
         dialogState = dialogState,
         onDismissRequest = { sharedViewModel.hideDialog() }
     )
 
+    //Setup the navigation graph,parameters needed for each screen and which screen to use when the app starts
     NavHost(navController = navController, startDestination = Screen.Welcome.route) {
         composable(route = Screen.Welcome.route) {
             WelcomeScreen(
-                navigateToNetworkList =actions.navigateToManualConnectScreen,
+                navigateToNetworkList = actions.navigateToManualConnectScreen,
 
-            )
+                )
         }
         composable(route = Screen.ManualConnect.route) {
             ManualConnectScreen(
-                navigateToAnalysis =actions.navigateToAnalysisScreen,
-                showToast = showToast,
+                navigateToAnalysis = actions.navigateToAnalysisScreen,
             )
         }
 
@@ -96,12 +154,12 @@ fun AppNavGraph(
         composable(
             route = Screen.SessionList.route,
         ) {
-                SessionListScreen(
-                    repository = repository,
-                    navigateToWelcome = actions.navigateToWelcomeScreen,
-                    updateClickedSessionId = sharedViewModel::updateClickedSessionId,
-                    navigateToSessionScreen = actions.navigateToSessionScreen
-                )
+            SessionListScreen(
+                repository = repository,
+                navigateToWelcome = actions.navigateToWelcomeScreen,
+                updateClickedSessionId = sharedViewModel::updateClickedSessionId,
+                navigateToSessionScreen = actions.navigateToSessionScreen
+            )
         }
         composable(
             route = Screen.Session.route,
@@ -110,14 +168,12 @@ fun AppNavGraph(
                 repository = repository,
                 sharedViewModel = sharedViewModel,
                 navigateToAutomaticAnalysis = actions.navigateToAutomaticAnalysisScreen,
-               )
+            )
         }
         composable(
             route = Screen.About.route,
         ) {
-            AboutScreen(
-                navigateBack = actions.navigateBack,
-            )
+            AboutScreen()
         }
 
         composable(
@@ -140,54 +196,62 @@ fun AppNavGraph(
             )
         }
 
-
-
-
-
-
-
     }
 }
 
+/**
+ * Class to hold navigation actions for the app. This class is used to create actions which can be used to
+ * navigate between different screens in the app.
+ *
+ * @param navController The navController to use for navigating between screens.
+ */
 class NavigationActions(private val navController: NavHostController) {
-    val navigateToAbout: () -> Unit = {
-        navController.navigate(Screen.About.route)
-    }
-    /*val navigateToSignUp: () -> Unit = {
-            navController.navigate(Screen.SignUp.route) {
-                popUpTo(Screen.SignUp.route) { inclusive = true }
-            }
-        }*/
 
+    /**
+     * Navigate to the ManualConnectScreen.
+     */
     val navigateToManualConnectScreen: () -> Unit = {
         navController.navigate(Screen.ManualConnect.route)
     }
 
+    /**
+     * Navigate to the AnalysisScreen.
+     */
     val navigateToAnalysisScreen: () -> Unit = {
         navController.navigate(Screen.Analysis.route)
     }
 
+    /**
+     * Navigate to the WelcomeScreen.
+     */
     val navigateToWelcomeScreen: () -> Unit = {
         navController.navigate(Screen.Welcome.route)
     }
 
+    /**
+     * Navigate to the SessionListScreen.
+     */
     val navigateToSessionListScreen: () -> Unit = {
         navController.navigate(Screen.SessionList.route)
     }
 
+    /**
+     * Navigate to the SessionScreen.
+     */
     val navigateToSessionScreen: () -> Unit = {
         navController.navigate(Screen.Session.route)
     }
 
+    /**
+     * Navigate to the AutomaticAnalysisScreen.
+     */
     val navigateToAutomaticAnalysisScreen: () -> Unit = {
         navController.navigate(Screen.AutomaticAnalysis.route)
     }
 
-    val navigateToSettingsScreen: () -> Unit = {
-        navController.navigate(Screen.Settings.route)
-    }
-
-
+    /**
+     * Navigate back to the previous screen.
+     */
     val navigateBack: () -> Unit = {
         navController.popBackStack()
     }

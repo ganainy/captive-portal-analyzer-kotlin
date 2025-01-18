@@ -24,6 +24,14 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
 
+/**
+ * A composable function that displays a loading indicator. It displays a circular
+ * progress indicator and optional message. The message is updated every 500ms
+ * to create a "..." effect.
+ *
+ * @param message the message to display while loading. If null, no message is displayed.
+ * @param modifier the modifier to apply to the indicator.
+ */
 @Composable
 fun LoadingIndicator(message: String? = null, modifier: Modifier=Modifier) {
     var loadingMessage by remember { mutableStateOf("${message}.") }

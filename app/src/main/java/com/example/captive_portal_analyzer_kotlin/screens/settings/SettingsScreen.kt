@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.screens
+package com.example.captive_portal_analyzer_kotlin.screens.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,13 +20,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.ThemeMode
 import java.util.Locale
 
+/**
+ * SettingsScreen is a composable that displays a column with two sections.
+ * The first section is for selecting the language of the app and the second
+ * section is for selecting the theme of the app.
+ *
+ * @param onLocalChanged a callback that is called when the language is changed
+ * @param onThemeChange a callback that is called when the theme is changed
+ * @param themeMode the current theme mode
+ * @param currentLanguage the current language
+ */
 @Composable
 fun SettingsScreen(
     onLocalChanged: (Locale) -> Unit,
@@ -74,6 +83,12 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * ThemeDropDown is a composable that displays a dropdown menu for selecting the theme.
+ *
+ * @param themeMode the current theme mode
+ * @param onThemeModeChanged a callback that is called when the theme is changed
+ */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun ThemeDropDown(themeMode: ThemeMode, onThemeModeChanged: (ThemeMode) -> Unit) {
@@ -122,6 +137,12 @@ private fun ThemeDropDown(themeMode: ThemeMode, onThemeModeChanged: (ThemeMode) 
     }
 }
 
+/**
+ * LanguageDropdown is a composable that displays a dropdown menu for selecting the language.
+ *
+ * @param currentLanguage the current language
+ * @param onLocalChanged a callback that is called when the language is changed
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LanguageDropdown(

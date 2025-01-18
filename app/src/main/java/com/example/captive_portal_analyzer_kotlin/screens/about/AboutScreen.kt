@@ -31,11 +31,12 @@ import androidx.compose.ui.unit.sp
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 
-
+/**
+ * Simple screen that shows a list of common questions and answers that can help users understand
+ * how the app works.
+ * */
 @Composable
-fun AboutScreen(
-    navigateBack: () -> Unit,
-) {
+fun AboutScreen() {
 
     Scaffold(
 
@@ -90,6 +91,12 @@ fun AboutScreen(
 }
 
 
+/**
+ * A composable function that displays a Question and Answer pair.
+ *
+ * @param question The text displayed as the question.
+ * @param answer The text displayed as the answer.
+ * */
 @Composable
 fun FAQItem(question: String, answer: AnnotatedString) {
     val context = LocalContext.current
@@ -118,6 +125,13 @@ fun FAQItem(question: String, answer: AnnotatedString) {
         )
     }
 }
+
+/**
+ * Opens a website in the default browser.
+ *
+ * @param url The website to open.
+ * @param context The context of the calling Activity.
+ * */
 fun openExternalWebsite(url: String, context: Context) {
     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
     context.startActivity(intent)
@@ -147,7 +161,6 @@ fun FAQItemPreview() {
         )
     }
 }
-
 
 
 
