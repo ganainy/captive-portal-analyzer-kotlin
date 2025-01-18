@@ -2,40 +2,118 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
 
-fun detectCaptivePortal(context: Context): String? {
-    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    val activeNetwork: Network = connectivityManager.activeNetwork ?: return null
+sealed class CaptivePortalResult {
+    data class Portal(val url: String): CaptivePortalResult()
+    object NoPortal: CaptivePortalResult()
+    data class Error(val type: ErrorType, val message: String): CaptivePortalResult()
 
-    val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-    if (networkCapabilities == null || !networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
-        return null
+    enum class ErrorType {
+        NO_INTERNET,
+        TIMEOUT,
+        NETWORK_ERROR,
+        UNKNOWN
+    }
+}
+
+class CaptivePortalDetector(private val context: Context) {
+    companion object {
+        private const val TIMEOUT_MS = 5000
+        private val TEST_URLS = listOf(
+            "http://clients3.google.com/generate_204",
+            "http://connectivitycheck.gstatic.com/generate_204",
+            "http://www.google.com/generate_204"
+        )
     }
 
-    try {
-        // URL commonly used to detect captive portals
-        val url = URL("http://clients3.google.com/generate_204") //http://connectivitycheck.gstatic.com/generate_204
-        val connection = url.openConnection() as HttpURLConnection
-        connection.setRequestProperty("User-Agent", "Android")
-        connection.connectTimeout = 5000
-        connection.readTimeout = 5000
-        connection.instanceFollowRedirects = false // Do not follow redirects
+    fun detectCaptivePortal(): CaptivePortalResult {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetwork: Network = connectivityManager.activeNetwork
+            ?: return CaptivePortalResult.Error(
+                CaptivePortalResult.ErrorType.NO_INTERNET,
+                "No active network connection"
+            )
 
-        val responseCode = connection.responseCode
-        val locationHeader = connection.getHeaderField("Location")
-
-        // Check if the response code is not 204 (no content)
-        if (responseCode != 204) {
-            // Captive portal detected
-            // Return the URL to which the request was redirected
-            return locationHeader ?: "Unknown Captive Portal URL"
+        val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+        if (networkCapabilities == null || !networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+            return CaptivePortalResult.Error(
+                CaptivePortalResult.ErrorType.NO_INTERNET,
+                "No internet capability"
+            )
         }
-    } catch (e: Exception) {
-        e.printStackTrace()
+
+        // Try each URL in sequence until one works
+        for (testUrl in TEST_URLS) {
+            try {
+                val result = checkUrl(testUrl, activeNetwork)
+                if (result != null) {
+                    return result
+                }
+            } catch (e: Exception) {
+                // Continue to next URL if one fails
+                continue
+            }
+        }
+
+        // If all URLs failed, return the last error
+        return CaptivePortalResult.Error(
+            CaptivePortalResult.ErrorType.NETWORK_ERROR,
+            "All portal detection attempts failed"
+        )
     }
 
-    // No captive portal detected
-    return null
+    private fun checkUrl(urlString: String, network: Network): CaptivePortalResult? {
+        return try {
+            val url = URL(urlString)
+            val connection = network.openConnection(url) as HttpURLConnection
+
+            connection.apply {
+                setRequestProperty("User-Agent", "Android")
+                connectTimeout = TIMEOUT_MS
+                readTimeout = TIMEOUT_MS
+                instanceFollowRedirects = false
+
+                // Add additional headers that some captive portals might expect
+                setRequestProperty("Connection", "close")
+                setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+            }
+
+            try {
+                val responseCode = connection.responseCode
+                val locationHeader = connection.getHeaderField("Location")
+
+                when {
+                    responseCode == 204 -> CaptivePortalResult.NoPortal
+                    responseCode in 300..399 && !locationHeader.isNullOrBlank() ->
+                        CaptivePortalResult.Portal(locationHeader)
+                    responseCode != 204 && !locationHeader.isNullOrBlank() ->
+                        CaptivePortalResult.Portal(locationHeader)
+                    responseCode != 204 ->
+                        CaptivePortalResult.Portal(urlString)
+                    else -> null
+                }
+            } finally {
+                connection.disconnect()
+            }
+        } catch (e: SocketTimeoutException) {
+            CaptivePortalResult.Error(
+                CaptivePortalResult.ErrorType.TIMEOUT,
+                "Connection timed out: ${e.localizedMessage}"
+            )
+        } catch (e: IOException) {
+            CaptivePortalResult.Error(
+                CaptivePortalResult.ErrorType.NETWORK_ERROR,
+                "Network error: ${e.localizedMessage}"
+            )
+        } catch (e: Exception) {
+            CaptivePortalResult.Error(
+                CaptivePortalResult.ErrorType.UNKNOWN,
+                "Unknown error: ${e.localizedMessage}"
+            )
+        }
+    }
 }

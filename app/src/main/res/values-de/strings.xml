@@ -150,4 +150,11 @@
     <string name="request_permissions">Berechtigungen angefordert</string>
     <string name="need_location_and_internet_permissions_to_continue"><![CDATA[Die App benötigt ungefähre Standort- und Netzwerkberechtigungen, um ordnungsgemäß zu funktionieren. Bitte erlauben Sie Berechtigungen]]></string>
     <string name="need_location_and_internet_permissions_to_continue_2">Die Berechtigungen sind wesentlich für die ordnungsgemäße Funktion der App und funktionieren sonst nicht. Wir benötigen Zugang zu WLAN und Standort, um sich mit Captive-Portal-Netzwerken zu verbinden</string>
+    <string name="no_internet_connection_detected">Keine Internetverbindung erkannt. Bitte überprüfen Sie Ihre Netzwerkeinstellungen und versuchen Sie es erneut.</string>
+    <string name="timeout_while_loading_captive_portal">Verbindungstimeout aufgetreten, während versucht wurde, das Captive-Portal zu laden. Bitte versuchen Sie es erneut.</string>
+    <string name="network_error_while_loading_captive_portal">Ein Netzwerkfehler ist aufgetreten, während versucht wurde, das Captive-Portal zu laden. Bitte überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.</string>
+    <string name="permission_error_while_loading_captive_portal">Zugriff verweigert. Bitte erteilen Sie die erforderlichen Netzwerkberechtigungen und versuchen Sie es erneut.</string>
+    <string name="invalid_state_error_while_loading_captive_portal">Ein unerwarteter Fehler ist aufgetreten. Bitte starten Sie die App neu und versuchen Sie es erneut.</string>
+    <string name="permission_denied_error">Erforderliche Berechtigungen wurden verweigert. Bitte erteilen Sie die Berechtigungen in den Einstellungen.</string>
+
 </resources>

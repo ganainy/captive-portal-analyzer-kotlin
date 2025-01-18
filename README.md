@@ -5,6 +5,8 @@
 This app focuses on analyzing captive portals. It provides an interface for interacting with captive portals directly through the app by gathering POST request bodies, headers, creating sessions, capturing screenshots, and analyzing their data collection and privacy using AI-powered analysis. Additionally, the app allows uploading analyzed data for further examination by our team.
 
 ---
+## Project Structure
+For detailed information about the project files structure and architecture, see [Project Structure](APP_STRUCTURE.md).
 
 ## Features
 

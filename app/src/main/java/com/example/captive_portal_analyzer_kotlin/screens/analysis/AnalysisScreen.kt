@@ -63,6 +63,7 @@ import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+
 /**
  * A composable function representing the analysis screen in the app.
  *
@@ -174,6 +175,7 @@ fun AnalysisScreen(
         }
     }
 }
+
 /**
  * A composable function to display the captive portal website content.
  *
@@ -344,23 +346,27 @@ private fun CaptivePortalWebsiteContent(
  *
  * If the user dismisses the dialog, the dialog is hidden.
  */
-private fun showUncompletedAnalysisDialog(context: Context,hideDialog: () -> Unit,
-                                          showDialog: (title: String, message: String, confirmText: String, dismissText: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit, navigateToSessionList: () -> Unit) {
+private fun showUncompletedAnalysisDialog(
+    context: Context,
+    hideDialog: () -> Unit,
+    showDialog: (title: String, message: String, confirmText: String, dismissText: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
+    navigateToSessionList: () -> Unit
+) {
     showDialog(
         context.getString(R.string.warning),
         context.getString(R.string.it_looks_like_you_still_have_no_full_internet_connection_please_complete_the_login_process_of_the_captive_portal_before_stopping_the_analysis),
         context.getString(R.string.stop_analysis_anyway),
-         context.getString(R.string.dismiss),
-         navigateToSessionList,
+        context.getString(R.string.dismiss),
+        navigateToSessionList,
         hideDialog,
     )
 }
 
 /**
-* Preview function for AnalysisError composable
-* This function is used to generate a preview of the AnalysisError composable
-* in the Android Studio preview panel.
-*/
+ * Preview function for AnalysisError composable
+ * This function is used to generate a preview of the AnalysisError composable
+ * in the Android Studio preview panel.
+ */
 @Composable
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Preview(showBackground = true)
@@ -410,6 +416,7 @@ private fun AnalysisError(
             val error = uiState as AnalysisUiState.Error
             var text = ""
             var hint = ""
+            //in case of error detecting captive url show different error text depending on the error that happened
             when (error.type) {
                 AnalysisUiState.ErrorType.CannotDetectCaptiveUrl -> {
                     text = stringResource(R.string.couldnt_detect_captive_url)
@@ -419,6 +426,18 @@ private fun AnalysisError(
                 AnalysisUiState.ErrorType.Unknown -> {
                     text = stringResource(R.string.something_went_wrong)
                 }
+
+                AnalysisUiState.ErrorType.NoInternet -> text =
+                    stringResource(R.string.no_internet_connection_detected)
+
+                AnalysisUiState.ErrorType.Timeout -> text =
+                    stringResource(R.string.timeout_while_loading_captive_portal)
+
+                AnalysisUiState.ErrorType.NetworkError -> text =
+                    stringResource(R.string.network_error_while_loading_captive_portal)
+
+                AnalysisUiState.ErrorType.PermissionDenied -> stringResource(R.string.permission_error_while_loading_captive_portal)
+                AnalysisUiState.ErrorType.InvalidState -> stringResource(R.string.invalid_state_error_while_loading_captive_portal)
             }
             Text(
                 text = text,
@@ -461,6 +480,7 @@ private fun AnalysisError(
         }
     }
 }
+
 /**
  * A composable function to render a normal WebView, this is used as a backup in case the custom WebView fails
  * since it doesn't have the ability to access the request body.
@@ -573,7 +593,7 @@ private fun CustomWebView(
             context = LocalContext.current,
             modifier = Modifier.align(Alignment.Center),
             showedHint = showedHint,
-            updateShowedHint =updateShowedHint
+            updateShowedHint = updateShowedHint
         )
     }
 }

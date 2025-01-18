@@ -1,5 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.screens.analysis
 
+import CaptivePortalDetector
 import NetworkSessionRepository
 import android.app.Application
 import android.content.Context
@@ -8,6 +9,7 @@ import android.graphics.Canvas
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
+import android.os.NetworkOnMainThreadException
 import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -23,7 +25,6 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.utils.LocalOrRemoteCaptiveChecker
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
-import detectCaptivePortal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -65,6 +66,11 @@ sealed class AnalysisUiState {
     enum class ErrorType {
         CannotDetectCaptiveUrl,
         Unknown,
+        NoInternet,
+        Timeout,
+        NetworkError,
+        PermissionDenied,
+        InvalidState
     }
 
     /**
@@ -74,6 +80,7 @@ sealed class AnalysisUiState {
      */
     data class Error(val type: ErrorType) : AnalysisUiState()
 }
+
 /**
  * Enum class to represent the type of the WebView. The WebView can be of type
  * NormalWebView which is the default WebView type or CustomWebView which is
@@ -83,6 +90,7 @@ enum class WebViewType {
     NormalWebView,
     CustomWebView
 }
+
 /**
  * The ViewModel for the analysis screen.
  *
@@ -96,7 +104,7 @@ class AnalysisViewModel(
     application: Application,
     private val sessionManager: NetworkSessionManager,
     private val repository: NetworkSessionRepository,
-    private val showToast: (title:String?, message:String, style:ToastStyle, duration:Long?) -> Unit,
+    private val showToast: (title: String?, message: String, style: ToastStyle, duration: Long?) -> Unit,
 ) : AndroidViewModel(application) {
     /**
      * Gets the application context.
@@ -146,38 +154,116 @@ class AnalysisViewModel(
      * @param showToast a lambda to show a toast message.
      */
     fun getCaptivePortalAddress(showToast: (message: String, style: ToastStyle) -> Unit) {
+        // Launch coroutine in IO dispatcher for network operations
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val portalUrl = detectCaptivePortal(context)
-                if (portalUrl != null) {
-                    _uiState.value = AnalysisUiState.CaptiveUrlDetected
-                    updateUrl(portalUrl)
-                    val sessionId = sessionManager.getCurrentSessionId()
-                    if (sessionId != null) {
-                        sessionManager.savePortalUrl(
-                            portalUrl = portalUrl,
-                            sessionId = sessionId
-                        )
-                    } else {
-                        showToast(context.getString(R.string.unknown_session_id), ToastStyle.ERROR)
-                    }
-                    detectLocalOrRemoteCaptivePortal(
-                        context,
-                    )
-
-                } else {
-                    _uiState.value =
-                        AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl)
+                val detector = CaptivePortalDetector(context)
+                // Attempt to detect captive portal and handle different results
+                when (val result = detector.detectCaptivePortal()) {
+                    is CaptivePortalResult.Portal -> handlePortalDetected(result.url, showToast)
+                    is CaptivePortalResult.NoPortal -> handleNoPortal()
+                    is CaptivePortalResult.Error -> handlePortalError(result)
+                    else -> handleUnknownError()
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    _uiState.value =
-                        AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl)
+                handleException(e, showToast)
+            }
+        }
+    }
+
+    // Handle successful portal detection
+    private suspend fun handlePortalDetected(
+        portalUrl: String,
+        showToast: (message: String, style: ToastStyle) -> Unit
+    ) {
+        _uiState.value = AnalysisUiState.CaptiveUrlDetected
+        updateUrl(portalUrl)
+
+        // Save portal URL to current session
+        sessionManager.getCurrentSessionId()?.let { sessionId ->
+            sessionManager.savePortalUrl(
+                portalUrl = portalUrl,
+                sessionId = sessionId
+            )
+        } ?: run {
+            // Show error if session ID is missing
+            withContext(Dispatchers.Main) {
+                showToast(
+                    context.getString(R.string.unknown_session_id),
+                    ToastStyle.ERROR
+                )
+            }
+        }
+
+        detectLocalOrRemoteCaptivePortal(context)
+    }
+
+    // Handle case when no portal is detected
+    private fun handleNoPortal() {
+        _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl)
+    }
+
+    // Handle different types of portal detection errors
+    private fun handlePortalError(result: CaptivePortalResult.Error) {
+        _uiState.value = when (result.type) {
+            CaptivePortalResult.ErrorType.NO_INTERNET -> AnalysisUiState.Error(
+                AnalysisUiState.ErrorType.NoInternet
+            ).also { Log.e("AnalysisViewModel", "No internet connection detected") }
+
+            CaptivePortalResult.ErrorType.TIMEOUT -> AnalysisUiState.Error(
+                AnalysisUiState.ErrorType.Timeout
+            ).also { Log.e("AnalysisViewModel","Connection timed out: ${result.message}") }
+
+            CaptivePortalResult.ErrorType.NETWORK_ERROR -> AnalysisUiState.Error(
+                AnalysisUiState.ErrorType.NetworkError
+            ).also { Log.e("AnalysisViewModel","Network error occurred: ${result.message}") }
+
+            CaptivePortalResult.ErrorType.UNKNOWN -> AnalysisUiState.Error(
+                AnalysisUiState.ErrorType.Unknown
+            ).also {Log.e("AnalysisViewModel","Unknown error occurred: ${result.message}") }
+        }
+    }
+
+    // Handle unknown portal detection result
+    private fun handleUnknownError() {
+        _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.Unknown)
+        Log.e("AnalysisViewModel","Received unexpected portal detection result")
+    }
+
+    // Handle exceptions during portal detection
+    private suspend fun handleException(
+        exception: Exception,
+        showToast: (message: String, style: ToastStyle) -> Unit
+    ) {
+        // Log the full stack trace
+        Log.e("AnalysisViewModel", "Exception during portal detection: ${exception.message}")
+
+        withContext(Dispatchers.Main) {
+            // Show appropriate error message based on exception type
+            when (exception) {
+                is SecurityException -> {
+                    _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.PermissionDenied)
+                    showToast(
+                        context.getString(R.string.permission_denied_error),
+                        ToastStyle.ERROR
+                    )
+                }
+                is NetworkOnMainThreadException -> {
+                    _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.NetworkError)
+                    Log.e("AnalysisViewModel","Network operation attempted on main thread")
+                }
+                is IllegalStateException -> {
+                    _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.InvalidState)
+                    Log.e("AnalysisViewModel","Invalid state: ${exception.message}")
+                }
+                else -> {
+                    _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl)
+                    Log.e("AnalysisViewModel","Unhandled exception: ${exception.message}")
                 }
             }
         }
     }
+
     /**
      * Detects whether the captive portal is local or remote.
      *
@@ -202,7 +288,12 @@ class AnalysisViewModel(
                         sessionId = sessionId
                     )
                 } else {
-                    showToast(null,context.getString(R.string.unknown_session_id), ToastStyle.ERROR,null)
+                    showToast(
+                        null,
+                        context.getString(R.string.unknown_session_id),
+                        ToastStyle.ERROR,
+                        null
+                    )
                 }
             } catch (e: IOException) {
                 println("Failed to analyze portal: ${e.message}")
@@ -240,6 +331,7 @@ class AnalysisViewModel(
             customWebViewRequest
         )
     }
+
     /**
      * Converts a [WebViewRequest] to a [CustomWebViewRequestEntity].
      *
@@ -306,6 +398,7 @@ class AnalysisViewModel(
             headers = request.requestHeaders.toString(),
         )
     }
+
     /**
      * Switches the type of the WebView used in the analysis screen.
      *
@@ -331,6 +424,7 @@ class AnalysisViewModel(
         }
         showToast(context.getString(R.string.switched_detection_method), ToastStyle.SUCCESS)
     }
+
     /**
      * Saves the content of the given [WebView] to the local database.
      *
@@ -392,6 +486,7 @@ class AnalysisViewModel(
             }
         }
     }
+
     /**
      * Checks if the device has a full internet connection.
      * This method checks if the device is connected to a network and if that network has internet access.
@@ -436,6 +531,7 @@ class AnalysisViewModel(
             false // If any error occurs (no internet, timeout, etc.), return false
         }
     }
+
     /**
      * This function is triggered when the user clicks the stop analysis button.
      *
@@ -511,7 +607,10 @@ class AnalysisViewModel(
             withContext(Dispatchers.IO) {
                 bitmap?.let {
                     val directory =
-                        File(webView.context.getExternalFilesDir(null), "$currentSessionId/screenshots")
+                        File(
+                            webView.context.getExternalFilesDir(null),
+                            "$currentSessionId/screenshots"
+                        )
                     if (!directory.exists()) {
                         directory.mkdirs()
                     }
@@ -524,19 +623,24 @@ class AnalysisViewModel(
                             it.compress(Bitmap.CompressFormat.PNG, 100, out)
                             Log.i("WebViewScreenshot", "Screenshot saved to: ${file.absolutePath}")
                         }
-                        if(currentSessionId != null) {
+                        if (currentSessionId != null) {
 
-                        // Insert into the database
-                        val screenshotEntity = ScreenshotEntity(
-                            sessionId = currentSessionId,
-                            timestamp = System.currentTimeMillis(),
-                            path = file.absolutePath,
-                            size = "${file.length()} bytes",
-                            url = url
-                        )
-                        repository.insertScreenshot(screenshotEntity) // Already on IO thread
-                        }else{
-                            showToast(null,"Error saving screenshot: Session Id is null", ToastStyle.ERROR,null)
+                            // Insert into the database
+                            val screenshotEntity = ScreenshotEntity(
+                                sessionId = currentSessionId,
+                                timestamp = System.currentTimeMillis(),
+                                path = file.absolutePath,
+                                size = "${file.length()} bytes",
+                                url = url
+                            )
+                            repository.insertScreenshot(screenshotEntity) // Already on IO thread
+                        } else {
+                            showToast(
+                                null,
+                                "Error saving screenshot: Session Id is null",
+                                ToastStyle.ERROR,
+                                null
+                            )
                             Log.e("WebViewScreenshot", "currentSessionId is null")
                         }
 
@@ -559,6 +663,7 @@ class AnalysisViewModel(
 
 
 }
+
 /**
  * Unescape a string that was escaped for JSON to make the HTML and JS content stored more readable.
  *

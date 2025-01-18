@@ -150,6 +150,12 @@
     <string name="request_permissions">Permissions requested</string>
     <string name="need_location_and_internet_permissions_to_continue"><![CDATA[The app needs approximate location & network permissions to work properly, please allow permissions]]></string>
     <string name="need_location_and_internet_permissions_to_continue_2">The permissions are essential for the app to function properly and won\'t work otherwise, we need access to WiFi and location to connect to captive portal networks</string>
+    <string name="no_internet_connection_detected">No internet connection detected. Please check your network settings and try again.</string>
+    <string name="timeout_while_loading_captive_portal">Connection timed out while trying to load the captive portal. Please try again.</string>
+    <string name="network_error_while_loading_captive_portal">Network error occurred while loading the captive portal. Please check your connection and try again.</string>
+    <string name="permission_error_while_loading_captive_portal">Permission denied. Please grant the required network permissions and try again.</string>
+    <string name="invalid_state_error_while_loading_captive_portal">An unexpected error occurred. Please restart the app and try again.</string>
+    <string name="permission_denied_error">Required permissions were denied. Please grant the permissions in settings.</string>
 
 
 </resources>
