@@ -75,10 +75,10 @@
     <string name="my_sessions">Meine Sitzungen</string>
     <string name="create_session">Sitzung erstellen</string>
     <string name="welcome_to_app_2">Willkommen! Vielen Dank, dass Sie helfen, das Internet sicherer zu machen. Starten Sie eine Sitzung, um einen Bericht über das nächstgelegene Captive Portal für die Analyse zu erstellen.</string>
-    <string name="upload_session_for_analysis">Sitzung für Analyse hochladen</string>
+    <string name="upload_session_for_analysis">Sitzung hochladen</string>
     <string name="already_uploaded">Bereits hochgeladen</string>
-        <string name="network_name">Netzwerkname: %1$s</string>
-        <string name="date">Datum: %1$s</string>
+        <string name="network_name">Netzwerk: %1$s</string>
+        <string name="created">erstellt %1$s</string>
         <string name="requests">Anfragen: %1$s</string>
         <string name="webpages">Webseiten: %1$s</string>
         <string name="screenshots">Screenshots: %1$s</string>
@@ -145,7 +145,7 @@
     <string name="loading_session">Sitzungsinformationen werden geladen</string>
     <string name="connect_to_captive_portal">Bitte wählen Sie das Netzwerk mit Captive Portal</string>
     <string name="network_id">Netzwerk-ID: %1$s</string>
-    <string name="not_a_captive_portal_network">Dies scheint ein normales Netzwerk ohne Captive Portal zu sein</string>
+    <string name="not_a_captive_portal_network">Dies scheint entweder ein normales Netzwerk ohne Captive Portal oder ein Captive Portal-Netzwerk nach dem Internetzugang zu sein</string>
     <string name="permissions_denied_message">Erforderliche Berechtigungen für die Anwendungsfunktionalität nicht erteilt.</string>
     <string name="request_permissions">Berechtigungen angefordert</string>
     <string name="need_location_and_internet_permissions_to_continue"><![CDATA[Die App benötigt ungefähre Standort- und Netzwerkberechtigungen, um ordnungsgemäß zu funktionieren. Bitte erlauben Sie Berechtigungen]]></string>
@@ -156,5 +156,16 @@
     <string name="permission_error_while_loading_captive_portal">Zugriff verweigert. Bitte erteilen Sie die erforderlichen Netzwerkberechtigungen und versuchen Sie es erneut.</string>
     <string name="invalid_state_error_while_loading_captive_portal">Ein unerwarteter Fehler ist aufgetreten. Bitte starten Sie die App neu und versuchen Sie es erneut.</string>
     <string name="permission_denied_error">Erforderliche Berechtigungen wurden verweigert. Bitte erteilen Sie die Berechtigungen in den Einstellungen.</string>
-
+    <string name="webpage_content">"Inhalt der Webseite "</string>
+    <string name="error_parsing_the_webpage_content">Fehler beim Parsen des Webseiteninhalts</string>
+    <string name="hint_parse_html">- Die App wird versuchen, den HTML-Inhalt neu zu erstellen, der von der Seite extrahiert wurde, die Sie ausgewählt haben</string>
+    <string name="hint_parse_html2">- Dies kann fehlschlagen, wenn einige erforderliche Komponenten der Seite fehlen</string>
+    <string name="hint_click_to_view_content">Tippen Sie auf die Karte, um den HTML-Inhalt anzuzeigen, der von der Seite extrahiert wurde</string>
+    <string name="thanks_for_uploading_network_data_for_further_analysis">Danke für das Hochladen von Netzwerkdaten für weitere Analysen.</string>
+    <string name="please_review_and_upload_collected_data_to_help_us_research_this_network">Bitte überprüfen und hochladen Sie die gesammelten Daten, um uns bei der Forschung zu diesem Netzwerk zu helfen.</string>
+    <string name="this_is_new_session">Diese Sitzung wurde vor %1$s Minuten erstellt.</string>
+    <string name="hint_backup_webview">Bitte versuchen Sie die Backup-Webansicht, wenn die Website nicht geladen wird, indem Sie auf "Browser wechseln" klicken</string>
+    <string name="hint_custom_webview">Bitte verwenden Sie diese Webansicht nur, wenn die Website in der Original-Webansicht nicht geladen wird, ansonsten bitte erneut auf \"Browser wechseln\" klicken</string>
+    <string name="custom_webview">Custom Webview (Empfohlen)</string>
+    <string name="normal_webview">Normale Webview (Backup)</string>
 </resources>

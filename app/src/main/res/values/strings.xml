@@ -75,10 +75,10 @@
     <string name="my_sessions">My sessions</string>
     <string name="create_session">Create session</string>
     <string name="welcome_to_app_2">Welcome! Thank you for helping make the internet safer. Start a session to generate a report on the nearest captive portal for analysis.</string>
-    <string name="upload_session_for_analysis">Upload Session for Analysis</string>
+    <string name="upload_session_for_analysis">Upload Session</string>
     <string name="already_uploaded">Already uploaded</string>
-    <string name="network_name">Network name: %1$s</string>
-    <string name="date">Date: %1$s</string>
+    <string name="network_name">Network: %1$s</string>
+    <string name="created">created %1$s</string>
     <string name="requests">Requests: %1$s</string>
     <string name="webpages">Webpages: %1$s</string>
     <string name="screenshots">Screenshots: %1$s</string>
@@ -145,7 +145,7 @@
     <string name="loading_session">Loading session information</string>
     <string name="connect_to_captive_portal">Please select the network with captive portal</string>
     <string name="network_id">Network id: %1$s</string>
-    <string name="not_a_captive_portal_network">This seems to be a normal network with no captive portal</string>
+    <string name="not_a_captive_portal_network">This seems to be either a normal network with no captive portal or captive portal network after access to internet</string>
     <string name="permissions_denied_message">Needed permissions for application functionality not granted.</string>
     <string name="request_permissions">Permissions requested</string>
     <string name="need_location_and_internet_permissions_to_continue"><![CDATA[The app needs approximate location & network permissions to work properly, please allow permissions]]></string>
@@ -156,6 +156,18 @@
     <string name="permission_error_while_loading_captive_portal">Permission denied. Please grant the required network permissions and try again.</string>
     <string name="invalid_state_error_while_loading_captive_portal">An unexpected error occurred. Please restart the app and try again.</string>
     <string name="permission_denied_error">Required permissions were denied. Please grant the permissions in settings.</string>
+    <string name="webpage_content">"Web Page Content "</string>
+    <string name="error_parsing_the_webpage_content">Error parsing the webpage content</string>
+    <string name="hint_parse_html">- App will try to recreate the HTML content that was extracted from the page you selected</string>
+    <string name="hint_parse_html2">- This can fail if some needed component of the page are missing</string>
+    <string name="hint_click_to_view_content">Tap card to view the HTML content exracted from page</string>
+    <string name="thanks_for_uploading_network_data_for_further_analysis">Thanks for uploading network data for further analysis.</string>
+    <string name="please_review_and_upload_collected_data_to_help_us_research_this_network">Please review and upload collected data to help us research this network.</string>
+    <string name="this_is_new_session">This session was created in the last %1$s minutes.</string>
+    <string name="hint_backup_webview">Please try backup Webview if website fails to load by clicking \"Switch browser\"</string>
+    <string name="hint_custom_webview">Please use this Webview only if website fails to load in original Web, otherwise please \"Switch browser\" again</string>
+    <string name="custom_webview">Custom Webview (Recommended)</string>
+    <string name="normal_webview">Normal Webview (Backup)</string>
 
 
 </resources>

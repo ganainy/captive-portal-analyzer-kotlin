@@ -88,10 +88,12 @@ class AutomaticAnalysisViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val inputContent = content {
+                    if (!sessionDataDTO.privacyOrTosRelatedScreenshots.isNullOrEmpty()) {
                     for (screenshot in sessionDataDTO.privacyOrTosRelatedScreenshots) {
                         val bitmap = pathToBitmap(screenshot.path)
                         image(bitmap)
                     }
+                }
                     text(prompt)
                 }
 

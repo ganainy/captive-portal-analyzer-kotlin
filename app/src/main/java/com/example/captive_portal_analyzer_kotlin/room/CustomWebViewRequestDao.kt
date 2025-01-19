@@ -77,4 +77,12 @@ interface CustomWebViewRequestDao {
         body: String?,
         headers: String?
     ): Int
+
+
+    /**
+     * Retrieves the count of CustomWebViewRequestEntity associated with a network session
+     * from the database.
+     */
+    @Query("SELECT COUNT(*) from custom_webview_request WHERE sessionId = :sessionId")
+    suspend fun getSessionRequestsCount(sessionId: String): Int
 }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,8 +28,13 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Scaffold
@@ -63,6 +69,8 @@ import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
+import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
+import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
@@ -73,9 +81,7 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.utils.Utils.Companion.formatDate
-import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 /**
  * Composable function to display the session details of a network with captive portal.
@@ -90,6 +96,7 @@ fun SessionScreen(
     sharedViewModel: SharedViewModel,
     repository: NetworkSessionRepository,
     navigateToAutomaticAnalysis: () -> Unit,
+    navigateToWebpageContentScreen: () -> Unit,
 ) {
     // Collect the clicked session ID from the shared view model.
     val clickedSessionId by sharedViewModel.clickedSessionId.collectAsState()
@@ -169,7 +176,6 @@ fun SessionScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(paddingValues)
                     ) {
 
                         SessionDetail(
@@ -182,7 +188,11 @@ fun SessionScreen(
                             },
                             switchScreenshotPrivacyOrToSrealted = sessionViewModel::toggleScreenshotPrivacyOrToSrelated,
                             navigateToAutomaticAnalysis = navigateToAutomaticAnalysis,
-                            uploadState = uploadState
+                            uploadState = uploadState,
+                            onContentItemClick = {
+                                sharedViewModel.updateClickedContent(it)
+                                navigateToWebpageContentScreen()
+                            }
                         )
 
 
@@ -261,33 +271,15 @@ fun SessionDetail(
     uploadState: UploadState,
     switchScreenshotPrivacyOrToSrealted: (ScreenshotEntity) -> Unit,
     navigateToAutomaticAnalysis: () -> Unit,
+    onContentItemClick: (WebpageContentEntity) -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Title for the session details section
-        Text(
-            text = "Session Details",
-            style = MaterialTheme.typography.headlineMedium
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
         // Card displaying network details
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                clickedSessionData.session.ssid?.let { Text("SSID: $it") }
-                clickedSessionData.session.bssid?.let { Text("BSSID: $it") }
-                clickedSessionData.session.ipAddress?.let { Text("IP: $it") }
-                clickedSessionData.session.gatewayAddress?.let { Text("Gateway: $it") }
-                clickedSessionData.session.securityType?.let { Text("Security: $it") }
-                clickedSessionData.session.captivePortalUrl?.let { Text("Portal URL: $it") }
-            }
-        }
+        SessionGeneralDetails(clickedSessionData)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -297,17 +289,17 @@ fun SessionDetail(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("Requests (${clickedSessionData.requests.size})") }
+                text = { Text("Requests (${clickedSessionData.requests?.size?:0})") }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("Content (${clickedSessionData.webpageContent.size})") }
+                text = { Text("Content (${clickedSessionData.webpageContent?.size?:0})") }
             )
             Tab(
                 selected = selectedTab == 2,
                 onClick = { selectedTab = 2 },
-                text = { Text("Screenshots (${clickedSessionData.screenshots.size})") }
+                text = { Text("Screenshots (${clickedSessionData.screenshots?.size?:0})") }
             )
         }
 
@@ -319,7 +311,7 @@ fun SessionDetail(
         ) {
             when (selectedTab) {
                 0 -> RequestsList(clickedSessionData.requests)
-                1 -> ContentList(clickedSessionData.webpageContent)
+                1 -> ContentList(clickedSessionData.webpageContent, onContentItemClick)
                 2 -> ScreenshotsList(
                     clickedSessionData.screenshots,
                     switchScreenshotPrivacyOrToSrealted,
@@ -335,6 +327,94 @@ fun SessionDetail(
             onUploadClick = uploadSession,
             onAnalysisClick = navigateToAutomaticAnalysis
         )
+    }
+}
+
+@Composable
+private fun SessionGeneralDetails(clickedSessionData: SessionData) {
+    var isExpanded by remember { mutableStateOf(false) }
+    val maxHeight = 85.dp
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Expand/Collapse Icon Button in top-right corner
+            IconButton(
+                onClick = { isExpanded = !isExpanded },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+            ) {
+                Icon(
+                    imageVector = if (isExpanded)
+                        Icons.Filled.KeyboardArrowUp
+                    else
+                        Icons.Filled.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand"
+                )
+            }
+
+            // Content with max height constraint
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .padding(end = 48.dp) // Add padding to prevent text from going under the icon
+                    .then(
+                        if (!isExpanded) {
+                            Modifier.heightIn(max = maxHeight)
+                        } else {
+                            Modifier
+                        }
+                    )
+            ) {
+                clickedSessionData.session.apply {
+                    ssid?.let {
+                        Text(
+                            "SSID: $it",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                    }
+                    bssid?.let {
+                        Text(
+                            "BSSID: $it",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                    }
+                    ipAddress?.let {
+                        Text(
+                            "IP: $it",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                    }
+                    gatewayAddress?.let {
+                        Text(
+                            "Gateway: $it",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                    }
+                    securityType?.let {
+                        Text(
+                            "Security: $it",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                    }
+                    captivePortalUrl?.let {
+                        Text(
+                            "Portal URL: $it",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -469,7 +549,7 @@ fun SessionDetailPreview() {
         switchScreenshotPrivacyOrToSrealted = { },
         navigateToAutomaticAnalysis = { },
         uploadState = UploadState.NeverUploaded,
-
+        onContentItemClick = { }
     )
 }
 
@@ -482,9 +562,9 @@ fun SessionDetailPreview() {
  * @param requests A list of CustomWebViewRequestEntity to display.
  */
 @Composable
-private fun RequestsList(requests: List<CustomWebViewRequestEntity>) {
+private fun RequestsList(requests: List<CustomWebViewRequestEntity>?) {
 
-    if (requests.isEmpty()) {
+    if (requests.isNullOrEmpty()) {
         EmptyListUi(R.string.no_requests_found)
         return
     }
@@ -535,25 +615,36 @@ private fun EmptyListUi(@StringRes stringRes: Int) {
  * @param content A list of WebpageContentEntity to display.
  */
 @Composable
-private fun ContentList(content: List<WebpageContentEntity>) {
+private fun ContentList(content: List<WebpageContentEntity>?,  onContentItemClick: (WebpageContentEntity) -> Unit) {
 
-    if (content.isEmpty()) {
+    if (content.isNullOrEmpty()) {
         EmptyListUi(R.string.no_webpages_found)
         return
     }
 
     LazyColumn {
         items(content) { item ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    item.url?.let { Text("URL: $it") }
-                    Text("Timestamp: ${formatDate(item.timestamp)}")
-                }
-            }
+            ContentItem(item,onContentItemClick)
+        }
+    }
+}
+
+@Composable
+private fun ContentItem(
+    item: WebpageContentEntity,
+    onContentItemClick: (WebpageContentEntity) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onContentItemClick(item) }
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            item.url?.let { Text("URL: $it") }
+            Text("Timestamp: ${formatDate(item.timestamp)}")
+            HintTextWithIcon(hint = stringResource(R.string.hint_click_to_view_content),
+                iconResId = R.drawable.tap)
         }
     }
 }
@@ -569,12 +660,12 @@ private fun ContentList(content: List<WebpageContentEntity>) {
  */
 @Composable
 private fun ScreenshotsList(
-    screenshots: List<ScreenshotEntity>,
+    screenshots: List<ScreenshotEntity>?,
     toggleScreenshotPrivacyOrToSrelated: (ScreenshotEntity) -> Unit,
 ) {
 
     // Check if the screenshots list is empty and display a message if true
-    if (screenshots.isEmpty()) {
+    if (screenshots.isNullOrEmpty()) {
         EmptyListUi(R.string.no_screenshots_found)
         return
     }

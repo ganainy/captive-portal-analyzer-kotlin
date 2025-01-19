@@ -63,9 +63,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
-import com.example.captive_portal_analyzer_kotlin.components.HintText
+import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
+import com.example.captive_portal_analyzer_kotlin.components.StatusTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 
@@ -377,7 +378,7 @@ private fun ManualConnectContent(
 
 
         Spacer(modifier = Modifier.height(16.dp))
-        HintText(stringResource(R.string.hint1))
+        HintTextWithIcon(stringResource(R.string.hint1),rowAllignment = Alignment.Center)
         Spacer(modifier = Modifier.height(16.dp))
 
 
@@ -406,43 +407,6 @@ private fun ManualConnectContentPreview() {
             navigateToAnalysis = {},
             areAllRequirementsFulfilled = true
         )
-    }
-}
-
-/**
- * A composable function that displays a status text with a checkmark or close icon, depending
- * on the [isSuccess] parameter.
- *
- * @param text the text to be displayed
- * @param isSuccess whether the status is successful or not
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun StatusTextWithIcon(text: String, isSuccess: Boolean) {
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = text,
-            style = if (isSuccess) {
-                MaterialTheme.typography.bodyLarge.copy(
-                    textDecoration = TextDecoration.LineThrough
-                )
-            } else {
-                MaterialTheme.typography.bodyLarge
-            }
-        )
-        Spacer(modifier = Modifier.width(8.dp))  // Space between text and icon
-        if (isSuccess) {
-            Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = "Success",
-                tint = Color.Green
-            )
-        } else {
-            Icon(imageVector = Icons.Filled.Close, contentDescription = "Failure", tint = Color.Red)
-        }
     }
 }
 

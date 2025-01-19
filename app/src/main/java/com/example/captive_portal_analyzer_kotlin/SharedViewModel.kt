@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
 import com.example.captive_portal_analyzer_kotlin.components.ToastState
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
+import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,6 +68,10 @@ class SharedViewModel(
     private val themeModeKey = stringPreferencesKey("theme_mode")  // Keys for DataStore
     private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
     val themeMode = _themeMode.asStateFlow()
+
+    //the clicked webpage content to show in the WebpageContent screen
+    private val _clickedWebpageContent = MutableStateFlow<WebpageContentEntity?>(null)
+    val clickedWebpageContent: StateFlow<WebpageContentEntity?> = _clickedWebpageContent.asStateFlow()
 
     init {
         getLocalePreference()
@@ -174,6 +179,15 @@ class SharedViewModel(
 
     fun hideToast() {
         _toastState.value = ToastState.Hidden
+    }
+
+
+    /**
+     * Updates the clicked content to show in the WebpageContent screen.
+     * @param webpageContentEntity the webpage content entity to be updated.
+     */
+    fun updateClickedContent(webpageContentEntity: WebpageContentEntity) {
+        _clickedWebpageContent.value = webpageContentEntity
     }
 
 }

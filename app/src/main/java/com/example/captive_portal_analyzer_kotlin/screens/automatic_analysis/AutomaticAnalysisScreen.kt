@@ -37,7 +37,7 @@ import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.ErrorIcon
-import com.example.captive_portal_analyzer_kotlin.components.HintText
+import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.dataclasses.toSessionDataDTO
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
@@ -91,9 +91,8 @@ fun AutomaticAnalysisScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
         ) {
-        AutomaticAnalysisContent(uiState = uiState, modifier = Modifier.padding(paddingValues), onRetryClick = { automaticAnalysisViewModel.analyzeWithAi(sessionDataDTO) })
+        AutomaticAnalysisContent(uiState = uiState, modifier = Modifier, onRetryClick = { automaticAnalysisViewModel.analyzeWithAi(sessionDataDTO) })
         AnimatedNoInternetBanner(isConnected = isConnected)
     }
     }
@@ -214,13 +213,13 @@ private fun AutomaticAnalysisResult(uiState: AutomaticAnalysisUiState.Success) {
             modifier = Modifier.fillMaxWidth()
         ) {
             // This text is used for showing the first hint.
-            HintText(hint = stringResource(R.string.ai_hint_1), textAlign = TextAlign.Start)
+            HintTextWithIcon(hint = stringResource(R.string.ai_hint_1), textAlign = TextAlign.Start)
             Spacer(modifier = Modifier.height(4.dp))
             // This text is used for showing the second hint.
-            HintText(hint = stringResource(R.string.ai_hint_2), textAlign = TextAlign.Start)
+            HintTextWithIcon(hint = stringResource(R.string.ai_hint_2), textAlign = TextAlign.Start)
             Spacer(modifier = Modifier.height(4.dp))
             // This text is used for showing the third hint.
-            HintText(hint = stringResource(R.string.hint_network), textAlign = TextAlign.Start)
+            HintTextWithIcon(hint = stringResource(R.string.hint_network), textAlign = TextAlign.Start)
             Spacer(modifier = Modifier.height(16.dp))
         }
     }

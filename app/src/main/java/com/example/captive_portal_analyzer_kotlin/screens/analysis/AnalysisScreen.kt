@@ -10,6 +10,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebView.setWebContentsDebuggingEnabled
 import android.webkit.WebViewClient
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -21,11 +22,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -53,10 +56,9 @@ import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertD
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 
-
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
-import com.example.captive_portal_analyzer_kotlin.components.HintText
+import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
@@ -208,6 +210,12 @@ private fun CaptivePortalWebsiteContent(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
+        //hint text to ask user to use backup webview if webView fails to load
+        HintTextWithIcon(
+            hint = if (webViewType == WebViewType.CustomWebView)
+                stringResource(R.string.hint_backup_webview)
+            else stringResource(R.string.hint_custom_webview),
+        )
         // WebView container with weight to take all available space
         Box(
             modifier = Modifier
@@ -226,6 +234,17 @@ private fun CaptivePortalWebsiteContent(
                 )
                 .padding(1.dp)
         ) {
+
+            // Label in top right corner
+            Text(
+                text = if (webViewType == WebViewType.CustomWebView) stringResource(R.string.custom_webview)
+                else stringResource(R.string.normal_webview),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
 
             when (webViewType) {
                 // this is the backup webView type, it will not intercept the request body,
@@ -445,7 +464,7 @@ private fun AnalysisError(
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(8.dp))
-            HintText(
+            HintTextWithIcon(
                 hint = hint,
             )
             Spacer(Modifier.height(8.dp))

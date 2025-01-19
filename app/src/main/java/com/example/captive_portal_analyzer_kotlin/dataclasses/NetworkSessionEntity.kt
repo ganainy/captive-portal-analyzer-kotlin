@@ -25,10 +25,10 @@ data class NetworkSessionEntity(
     val ssid: String?,
     val bssid: String?,
     val timestamp: Long,
-    val captivePortalUrl: String?=null,
+    val captivePortalUrl: String? = null,
     val ipAddress: String?,
     val gatewayAddress: String?,
-    val securityType: String?=null,
-    val isCaptiveLocal: Boolean?=null,
-    val isUploadedToRemoteServer: Boolean=false
+    val securityType: String? = null,
+    val isCaptiveLocal: Boolean? = null,
+    val isUploadedToRemoteServer: Boolean = false,
 )

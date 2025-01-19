@@ -3,9 +3,12 @@ package com.example.captive_portal_analyzer_kotlin.dataclasses
 // Data class to hold complete session data
 data class SessionData(
     val session: NetworkSessionEntity,
-    val requests: List<CustomWebViewRequestEntity>,
-    val screenshots: List<ScreenshotEntity>,
-    val webpageContent: List<WebpageContentEntity>
+    val requests: List<CustomWebViewRequestEntity>?=null,
+    val screenshots: List<ScreenshotEntity>?=null,
+    val webpageContent: List<WebpageContentEntity>?=null,
+    val requestsCount: Int =0,
+    val screenshotsCount: Int=0,
+    val webpageContentCount: Int=0
 )
 
 /**
@@ -19,10 +22,11 @@ fun SessionData.toSessionDataDTO(): SessionDataDTO {
     val isCaptiveLocal = session.isCaptiveLocal
     val ipAddress = session.ipAddress
     val gatewayAddress = session.gatewayAddress
-    val privacyOrTosRelatedScreenshots = screenshots.filter { it.isPrivacyOrTosRelated } // get only privacy or tos related screenshots
+    val privacyOrTosRelatedScreenshots =
+        screenshots?.filter { it.isPrivacyOrTosRelated } // get only privacy or tos related screenshots
 
     val requestsDTO =
-        requests.map { "request url:" + it.url + ",request type:" + it.type + ",request method: " + it.method + ",request body: " + it.body + ",request headers: " + it.headers }
+        requests?.map { "request url:" + it.url + ",request type:" + it.type + ",request method: " + it.method + ",request body: " + it.body + ",request headers: " + it.headers }
     return SessionDataDTO(
         prompt = "is captive portal hosted only locally: $isCaptiveLocal ," +
                 " my ip address on captive portal:" +

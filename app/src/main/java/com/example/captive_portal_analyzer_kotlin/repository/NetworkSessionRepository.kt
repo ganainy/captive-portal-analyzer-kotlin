@@ -290,7 +290,19 @@ class NetworkSessionRepository(
 
             // Convert list of sessions into list of SessionData
             val allSessionsData = allSessions.map { session ->
-                getCompleteSessionData(session.networkId)
+                flow {
+                    val requestsCount = requestDao.getSessionRequestsCount(session.networkId)
+                    val screenshotsCount = screenshotDao.getSessionScreenshotsCount(session.networkId)
+                    val webpageContentCount = webpageContentDao.getWebpageContentCountForSession(session.networkId)
+                    emit(
+                        SessionData(
+                            session = session,
+                            requestsCount = requestsCount,
+                            screenshotsCount = screenshotsCount,
+                            webpageContentCount = webpageContentCount,
+                        )
+                    )
+                }
             }
 
             // Combine all flows into a single flow of list

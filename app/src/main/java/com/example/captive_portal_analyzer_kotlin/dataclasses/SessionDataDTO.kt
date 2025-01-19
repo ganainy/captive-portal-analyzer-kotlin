@@ -14,5 +14,5 @@ data class SessionDataDTO(
     /**
      * the screenshots that are privacy or ToS related, which will be passed to the AI model
      */
-    val privacyOrTosRelatedScreenshots: List<ScreenshotEntity>
+    val privacyOrTosRelatedScreenshots: List<ScreenshotEntity>?
 )

@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.components
+package com.example.captive_portal_analyzer_kotlin.navigation
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -8,11 +8,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.navigation.Screen
 import kotlinx.coroutines.launch
 
 // Data class for drawer menu items
@@ -91,7 +87,6 @@ fun AppScaffold(
             }
         }
     }}
-
     ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = drawerState.isOpen,
@@ -120,7 +115,18 @@ fun AppScaffold(
                 TopAppBar(
                     title = {
                         Text(
-                            text = stringResource(R.string.app_name),
+                            text = stringResource(
+                                when (currentRoute) {
+                                    Screen.Welcome.route -> Screen.Welcome.titleStringResource
+                                    Screen.SessionList.route -> Screen.SessionList.titleStringResource
+                                    Screen.ManualConnect.route -> Screen.ManualConnect.titleStringResource
+                                    Screen.Settings.route -> Screen.Settings.titleStringResource
+                                    Screen.About.route -> Screen.About.titleStringResource
+                                    Screen.Session.route -> Screen.Session.titleStringResource
+                                    Screen.WebPageContent.route -> Screen.WebPageContent.titleStringResource
+                                    else -> R.string.app_name
+                                }
+                            ),
                         )
                     },
                     navigationIcon = {
@@ -148,5 +154,3 @@ fun AppScaffold(
         }
     }
 }
-
-

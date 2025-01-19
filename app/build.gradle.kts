@@ -97,6 +97,10 @@ dependencies {
     //compose markdown
     implementation ("com.github.jeziellago:compose-markdown:0.5.6")
 
+    //time ago
+    implementation ("com.github.marlonlom:timeago:4.1.0")
+
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

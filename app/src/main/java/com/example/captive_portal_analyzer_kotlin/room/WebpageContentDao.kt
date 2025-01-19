@@ -63,4 +63,11 @@ interface WebpageContentDao {
         "SELECT COUNT(*) FROM webpage_content WHERE htmlContent = :htmlContent AND jsContent = :jsContent AND sessionId = :sessionId"
     )
     abstract fun isWebpageContentUnique(htmlContent: String, jsContent: String, sessionId: String): Any
+
+
+    /**
+     * Returns the count of webpage content associated with a given session from the database.
+     */
+    @Query("SELECT COUNT(*) FROM webpage_content WHERE sessionId = :sessionId")
+    abstract fun getWebpageContentCountForSession(sessionId: String): Int
 }

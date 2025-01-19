@@ -69,4 +69,14 @@ interface ScreenshotDao {
         "SELECT COUNT(*) FROM screenshots WHERE url = :url AND size = :size AND sessionId = :sessionId"
     )
     abstract fun isScreenshotUnique(url: String?, size: String?, sessionId: String): Any
+
+
+    /**
+     * Retrieves the count of screenshots associated with a specific session.
+     *
+     * @param sessionId The ID of the session for which the count is to be retrieved.
+     * @return the count of screenshot entities.
+     */
+    @Query("SELECT COUNT(*) from screenshots WHERE sessionId = :sessionId")
+    fun getSessionScreenshotsCount(sessionId: String): Int
 }

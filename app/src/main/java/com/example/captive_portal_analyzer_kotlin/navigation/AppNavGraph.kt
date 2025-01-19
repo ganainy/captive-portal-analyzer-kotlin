@@ -23,6 +23,7 @@ import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.screens.settings.SettingsScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
+import com.example.captive_portal_analyzer_kotlin.screens.webpage_content.WebpageContentScreen
 import com.example.captive_portal_analyzer_kotlin.screens.welcome.WelcomeScreen
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import java.util.Locale
@@ -74,6 +75,10 @@ sealed class Screen(val route: String, @StringRes val titleStringResource: Int) 
      * The settings screen.
      */
     object Settings : Screen("settings", R.string.settings)
+    /**
+     * The WebPageContent screen.
+     */
+    object WebPageContent : Screen("webpage_content", R.string.webpage_content)
 }
 
 /**
@@ -168,6 +173,7 @@ fun AppNavGraph(
                 repository = repository,
                 sharedViewModel = sharedViewModel,
                 navigateToAutomaticAnalysis = actions.navigateToAutomaticAnalysisScreen,
+                navigateToWebpageContentScreen = actions.navigateToWebpageContentScreen
             )
         }
         composable(
@@ -193,6 +199,13 @@ fun AppNavGraph(
                 currentLanguage = currentLanguage,
                 onThemeChange = onThemeChanged,
                 onLocalChanged = onLocalChanged
+            )
+        }
+        composable(
+            route = Screen.WebPageContent.route,
+        ) {
+            WebpageContentScreen(
+                sharedViewModel = sharedViewModel,
             )
         }
 
@@ -247,6 +260,12 @@ class NavigationActions(private val navController: NavHostController) {
      */
     val navigateToAutomaticAnalysisScreen: () -> Unit = {
         navController.navigate(Screen.AutomaticAnalysis.route)
+    }
+    /**
+     * Navigate to the oWebpageContentScreen.
+     */
+    val navigateToWebpageContentScreen: () -> Unit = {
+        navController.navigate(Screen.WebPageContent.route)
     }
 
     /**
