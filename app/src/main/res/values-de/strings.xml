@@ -158,8 +158,8 @@
     <string name="permission_denied_error">Erforderliche Berechtigungen wurden verweigert. Bitte erteilen Sie die Berechtigungen in den Einstellungen.</string>
     <string name="webpage_content">"Inhalt der Webseite "</string>
     <string name="error_parsing_the_webpage_content">Fehler beim Parsen des Webseiteninhalts</string>
-    <string name="hint_parse_html">- Die App wird versuchen, den HTML-Inhalt neu zu erstellen, der von der Seite extrahiert wurde, die Sie ausgewählt haben</string>
-    <string name="hint_parse_html2">- Dies kann fehlschlagen, wenn einige erforderliche Komponenten der Seite fehlen</string>
+    <string name="hint_parse_html">Die App wird versuchen, den HTML-Inhalt neu zu erstellen, der von der Seite extrahiert wurde, die Sie ausgewählt haben</string>
+    <string name="hint_parse_html2">Dies kann fehlschlagen, wenn einige erforderliche Komponenten der Seite fehlen</string>
     <string name="hint_click_to_view_content">Tippen Sie auf die Karte, um den HTML-Inhalt anzuzeigen, der von der Seite extrahiert wurde</string>
     <string name="thanks_for_uploading_network_data_for_further_analysis">Danke für das Hochladen von Netzwerkdaten für weitere Analysen.</string>
     <string name="please_review_and_upload_collected_data_to_help_us_research_this_network">Bitte überprüfen und hochladen Sie die gesammelten Daten, um uns bei der Forschung zu diesem Netzwerk zu helfen.</string>
@@ -168,4 +168,10 @@
     <string name="hint_custom_webview">Bitte verwenden Sie diese Webansicht nur, wenn die Website in der Original-Webansicht nicht geladen wird, ansonsten bitte erneut auf \"Browser wechseln\" klicken</string>
     <string name="custom_webview">Custom Webview (Empfohlen)</string>
     <string name="normal_webview">Normale Webview (Backup)</string>
+    <string name="session_id_not_found">Session ID not found</string>
+    <string name="failed_to_load_html_content">Fehler beim Laden des HTML-Inhalts</string>
+    <string name="parsing_html">HTML wird analysiert</string>
+    <string name="timestamp">Zeitstempel: %1$s</string>
+    <string name="html_path">HTML-Pfad: %1$s</string>
+    <string name="js_path">JS-Pfad: %1$s</string>
 </resources>

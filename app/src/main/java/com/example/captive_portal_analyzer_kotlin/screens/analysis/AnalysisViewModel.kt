@@ -426,7 +426,7 @@ class AnalysisViewModel(
     }
 
     /**
-     * Saves the content of the given [WebView] to the local database.
+     * Saves the content of the given [WebView] HTML, JS as files and store those file path in the local database.
      *
      * This function takes a [WebView], a URL, and a [showToast] function. It first
      * checks if the session ID is known. If not, it displays an error toast.
@@ -472,18 +472,44 @@ class AnalysisViewModel(
                     ) { javascript ->
                         // Save to database
                         viewModelScope.launch(Dispatchers.IO) {
-                            val content = WebpageContentEntity(
-                                url = url,
-                                htmlContent = html.unescapeJsonString(),
-                                jsContent = javascript.unescapeJsonString(),
-                                sessionId = currentSessionId,
-                                timestamp = System.currentTimeMillis(),
-                            )
-                            repository.insertWebpageContent(content)
+                            val sanitizedUrl = url.replace(Regex("[^a-zA-Z0-9]"), "_")
+                            val htmlFilePath = saveContentToFile(context, "webpage_${sanitizedUrl}.html", html.unescapeJsonString())
+                            val jsFilePath = saveContentToFile(context, "webpage_${sanitizedUrl}.js", javascript.unescapeJsonString())
+                            if (htmlFilePath != null && jsFilePath != null) {
+                                val webpageContent= WebpageContentEntity(
+                                    url = url,
+                                    htmlContentPath = htmlFilePath, // Store file path of the file containing the HTML content
+                                    jsContentPath = jsFilePath,     // Store file path of the file containing the JavaScript content
+                                    sessionId = currentSessionId,
+                                    timestamp = System.currentTimeMillis(),
+                                )
+                                repository.insertWebpageContent(webpageContent)
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Saves the given content to a file in internal storage with the given filename.
+     * @param context the context used to access the internal storage
+     * @param filename the name of the file to be saved
+     * @param content the content to be written to the file
+     * @return the path of the saved file if successful, null if not
+     */
+    private fun saveContentToFile(context: Context, filename: String, content: String): String? {
+        return try {
+            // Create a new file in internal storage
+            val file = File(context.filesDir, filename)
+            FileOutputStream(file).use { fos ->
+                fos.write(content.toByteArray())
+            }
+            file.absolutePath // Return the file path
+        } catch (e: IOException) {
+            e.printStackTrace()
+            null
         }
     }
 
@@ -577,6 +603,7 @@ class AnalysisViewModel(
      *
      *  If the file saving operation fails, an error message will be shown with the error message.
      */
+    //todo fix sometimes screenshot is taken before page is fully loaded
     fun takeScreenshot(webView: WebView, url: String) {
         // Launch a coroutine on the Main dispatcher for WebView operations
         viewModelScope.launch(Dispatchers.Main) {

@@ -60,9 +60,9 @@ interface WebpageContentDao {
      * sessionId in the database.
      */
     @Query(
-        "SELECT COUNT(*) FROM webpage_content WHERE htmlContent = :htmlContent AND jsContent = :jsContent AND sessionId = :sessionId"
+        "SELECT COUNT(*) FROM webpage_content WHERE htmlContentPath = :htmlContentPath AND jsContentPath = :jsContentPath AND sessionId = :sessionId"
     )
-    abstract fun isWebpageContentUnique(htmlContent: String, jsContent: String, sessionId: String): Any
+    abstract fun isWebpageContentUnique(htmlContentPath: String, jsContentPath: String, sessionId: String): Any
 
 
     /**

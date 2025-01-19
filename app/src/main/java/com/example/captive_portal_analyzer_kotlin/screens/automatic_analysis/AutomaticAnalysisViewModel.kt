@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionDataDTO
 import com.example.captive_portal_analyzer_kotlin.secret.Secret
@@ -89,11 +90,11 @@ class AutomaticAnalysisViewModel(
             try {
                 val inputContent = content {
                     if (!sessionDataDTO.privacyOrTosRelatedScreenshots.isNullOrEmpty()) {
-                    for (screenshot in sessionDataDTO.privacyOrTosRelatedScreenshots) {
-                        val bitmap = pathToBitmap(screenshot.path)
-                        image(bitmap)
+                        for (screenshot in sessionDataDTO.privacyOrTosRelatedScreenshots) {
+                            val bitmap = pathToBitmap(screenshot.path)
+                            image(bitmap)
+                        }
                     }
-                }
                     text(prompt)
                 }
 
@@ -116,28 +117,31 @@ class AutomaticAnalysisViewModel(
      * @param clickedSessionId the id of the session to load
      * @return the loaded session data or null if an exception occurred
      */
-    fun loadSessionData(clickedSessionId: String): SessionData? = runBlocking(Dispatchers.IO) {
+    fun loadSessionData(clickedSessionId: String?): SessionData? = runBlocking(Dispatchers.IO) {
+        val context = getApplication<Application>().applicationContext
         return@runBlocking try {
-            clickedSessionId.let { sessionId ->
-                repository.getCompleteSessionData(sessionId).first()
+            if (clickedSessionId == null) {
+                _uiState.value = AutomaticAnalysisUiState.Error(context.getString(R.string.session_id_not_found))
+                return@runBlocking null
             }
+            repository.getCompleteSessionData(clickedSessionId).first()
         } catch (e: Exception) {
             null
         }
     }
-
-
 }
-    /**
-     * Decodes a file path into a Bitmap because the AI server expects a Bitmap.
-     *
-     * @param path the file path of the image
-     * @return the decoded Bitmap
-     */
-    private fun pathToBitmap(path: String): Bitmap {
-        val bitmap = BitmapFactory.decodeFile(path)
-        return bitmap
-    }
+
+/**
+ * Decodes a file path into a Bitmap because the AI server expects a Bitmap.
+ *
+ * @param path the file path of the image
+ * @return the decoded Bitmap
+ */
+private fun pathToBitmap(path: String): Bitmap {
+    val bitmap = BitmapFactory.decodeFile(path)
+    return bitmap
+}
+
 /**
  * A factory for creating [AutomaticAnalysisViewModel] instances.
  *

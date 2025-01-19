@@ -73,10 +73,10 @@ interface NetworkSessionDao {
     /**
      * Retrieves all [NetworkSessionEntity]s from the database.
      *
-     * @return A list of all sessions in the database.
+     * @return A Flow emitting a list of all sessions in the database.
      */
     @Query("SELECT * FROM network_sessions")
-    abstract fun getAllSessions(): List<NetworkSessionEntity>?
+    abstract fun getAllSessions(): Flow<List<NetworkSessionEntity>?>
 
     /**
      * Updates the isUploadedToRemoteServer flag of a [NetworkSessionEntity] in the database.

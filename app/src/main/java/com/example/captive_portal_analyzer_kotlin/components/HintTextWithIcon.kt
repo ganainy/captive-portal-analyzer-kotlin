@@ -57,8 +57,8 @@ fun HintTextWithIcon(
             painter = painter,
             contentDescription = stringResource(id = iconResId),
             modifier = Modifier
-                .width(16.dp)
-                .height(16.dp) // Set a fixed small size
+                .width(24.dp)
+                .height(24.dp) // Set a fixed small size
         )
 
         Text(

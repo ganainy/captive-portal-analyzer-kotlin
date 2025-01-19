@@ -20,38 +20,44 @@ import kotlinx.coroutines.withContext
 /**
  * Represents the upload state of a session.
  */
-sealed class UploadState {
+sealed class SessionState {
     /**
      * Indicates that the session is being loaded from the repository to be viewed on the screen.
      */
-    object Loading : UploadState()
+    object Loading : SessionState()
 
     /**
      * Indicates that the session has never been uploaded to the remote server (firebase).
      */
-    object NeverUploaded : UploadState()
+    object NeverUploaded : SessionState()
 
     /**
      * Indicates that the session is currently being uploaded to the remote server (firebase).
      */
-    object Uploading : UploadState()
+    object Uploading : SessionState()
 
     /**
      * Indicates that the session was previously already uploaded by user to the remote server (firebase).
      */
-    object AlreadyUploaded : UploadState()
+    object AlreadyUploaded : SessionState()
 
     /**
      * Indicates that the session was successfully uploaded to the remote server (firebase).
      */
-    object Success : UploadState()
+    object Success : SessionState()
 
     /**
-     * Represents an error state with a message describing the error.
+     * Represents an error state while loading session from DB.
      *
      * @property message A description of the error encountered during upload.
      */
-    data class Error(val message: String) : UploadState()
+    data class ErrorLoading(val message: String) : SessionState()
+    /**
+     * Represents an error state while uploading session to remote server.
+     *
+     * @property message A description of the error encountered during upload.
+     */
+    data class ErrorUploading(val message: String) : SessionState()
 }
 
 /**
@@ -64,14 +70,14 @@ sealed class UploadState {
 class SessionViewModel(
     application: Application,
     private val repository: NetworkSessionRepository,
-    private val clickedSessionId: String,
+    private val clickedSessionId: String?,
 ) : AndroidViewModel(application) {
 
     /**
      * Upload state of the session, can be NeverUploaded, AlreadyUploaded, or Error.
      */
-    private val _uploadState = MutableStateFlow<UploadState>(UploadState.Loading)
-    val uploadState = _uploadState.asStateFlow()
+    private val _sessionState = MutableStateFlow<SessionState>(SessionState.Loading)
+    val sessionState = _sessionState.asStateFlow()
 
     /**
      * The session data that is currently being viewed on the screen.
@@ -93,25 +99,31 @@ class SessionViewModel(
     private fun loadSessionData() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Load the session data from the repository using the clickedSessionId
-                clickedSessionId.let { sessionId ->
-                        repository.getCompleteSessionData(sessionId)
-                        .collect { sessionData ->
-                            // Set the session data to the StateFlow
-                            _sessionData.value = sessionData
-                            // Set the initial state of the uploadState StateFlow
-                            // based on whether the session is already uploaded or not
-                            if (sessionData.session.isUploadedToRemoteServer) {
-                                _uploadState.value = UploadState.AlreadyUploaded
-                            }else{
-                                _uploadState.value = UploadState.NeverUploaded
-                            }
-                        }
+                if (clickedSessionId == null) {
+                    _sessionState.value = SessionState.ErrorLoading(
+                        getApplication<Application>().getString(
+                            R.string.error_loading_session
+                        )
+                    )
+                    return@launch
                 }
+                // Load the session data from the repository using the clickedSessionId
+                repository.getCompleteSessionData(clickedSessionId)
+                    .collect { sessionData ->
+                        // Set the session data to the StateFlow
+                        _sessionData.value = sessionData
+                        // Set the initial state of the uploadState StateFlow
+                        // based on whether the session is already uploaded or not
+                        if (sessionData.session.isUploadedToRemoteServer) {
+                            _sessionState.value = SessionState.AlreadyUploaded
+                        } else {
+                            _sessionState.value = SessionState.NeverUploaded
+                        }
+                    }
             } catch (e: Exception) {
                 // If an error occurs, set the uploadState to an Error State
-                _uploadState.value =
-                    UploadState.Error(
+                _sessionState.value =
+                    SessionState.ErrorLoading(
                         getApplication<Application>().getString(
                             R.string.error_loading_session
                         )
@@ -138,33 +150,47 @@ class SessionViewModel(
     /**
      * This function uploads the session data to the remote server.
      * It takes a [SessionData] and a function to show a toast as parameters.
-     * It updates the [_uploadState] with the result of the upload.
+     * It updates the [_sessionState] with the result of the upload.
      *
      * @param sessionData the [SessionData] to be uploaded
      * @param showToast a function used to display a toast message if an error occurs during upload
      */
     fun uploadSession(
-        sessionData: SessionData,
+        sessionData: SessionData?,
         showToast: (message: String, style: ToastStyle) -> Unit,
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            _uploadState.value = UploadState.Uploading
+
+            if (sessionData == null) {
+                _sessionState.value = SessionState.ErrorUploading(
+                    getApplication<Application>().getString(
+                        R.string.error_uploading_session
+                    )
+                )
+                return@launch
+            }
+
+            _sessionState.value = SessionState.Uploading
 
             repository.uploadSessionData(sessionData.session.networkId)
                 .onSuccess {
                     try {
                         repository.updateSession(sessionData.session.copy(isUploadedToRemoteServer = true))
-                        _uploadState.value = UploadState.Success
+                        _sessionState.value = SessionState.Success
                     } catch (e: Exception) {
-                        _uploadState.value = UploadState.Error(e.localizedMessage ?:
-                        getApplication<Application>().getString(R.string.error_uploading_session))
+                        _sessionState.value = SessionState.ErrorUploading(
+                            e.localizedMessage
+                                ?: getApplication<Application>().getString(R.string.error_uploading_session)
+                        )
                         repository.updateSession(sessionData.session.copy(isUploadedToRemoteServer = false))
                         return@launch
                     }
                 }
                 .onFailure { apiResponse ->
-                    _uploadState.value = UploadState.Error(apiResponse.localizedMessage ?:
-                    getApplication<Application>().getString(R.string.error_uploading_session))
+                    _sessionState.value = SessionState.ErrorUploading(
+                        apiResponse.localizedMessage
+                            ?: getApplication<Application>().getString(R.string.error_uploading_session)
+                    )
                     withContext(Dispatchers.Main) {
                         repository.updateSession(sessionData.session.copy(isUploadedToRemoteServer = false))
                         apiResponse.message?.let { showToast(it, ToastStyle.ERROR) }
@@ -185,7 +211,7 @@ class SessionViewModel(
 class SessionViewModelFactory(
     private val application: Application,
     private val repository: NetworkSessionRepository,
-    private val clickedSessionId: String,
+    private val clickedSessionId: String?,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SessionViewModel::class.java)) {

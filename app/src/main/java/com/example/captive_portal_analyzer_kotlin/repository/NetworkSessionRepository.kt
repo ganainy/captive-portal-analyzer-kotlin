@@ -10,10 +10,12 @@ import com.example.captive_portal_analyzer_kotlin.room.ScreenshotDao
 import com.example.captive_portal_analyzer_kotlin.room.WebpageContentDao
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.google.gson.Gson
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 import java.io.File
@@ -172,8 +174,8 @@ class NetworkSessionRepository(
      */
     suspend fun insertWebpageContent(content: WebpageContentEntity) {
         val isUnique = webpageContentDao.isWebpageContentUnique(
-            content.htmlContent,
-            content.jsContent,
+            content.htmlContentPath,
+            content.jsContentPath,
             content.sessionId
         ) == 0
         if (isUnique) {
@@ -223,20 +225,42 @@ class NetworkSessionRepository(
                 screenshot.copy(url = uploadResult.getOrNull())
             }
 
-            // 3. Create report
+            // 3. Upload webpage content (HTML and JS files) and update URLs
+            val uploadedWebpageContent = webpageContent.map { content ->
+                val htmlUploadResult = uploadWebpageFile(
+                    filePath = content.htmlContentPath,
+                    sessionId = sessionId,
+                    fileType = "html",
+                    fileName = "${content.contentId}_html"
+                )
+
+                val jsUploadResult = uploadWebpageFile(
+                    filePath = content.jsContentPath,
+                    sessionId = sessionId,
+                    fileType = "js",
+                    fileName = "${content.contentId}_js"
+                )
+
+                content.copy(
+                    htmlContentPath = htmlUploadResult.getOrNull() ?: content.htmlContentPath,
+                    jsContentPath = jsUploadResult.getOrNull() ?: content.jsContentPath
+                )
+            }
+
+            // 4. Create report
             val sessionData = SessionData(
                 session = session,
                 requests = requests,
                 screenshots = uploadedScreenshots,
-                webpageContent = webpageContent
+                webpageContent = uploadedWebpageContent
             )
 
-            // 4. Upload to Firestore
+            // 5. Upload session data to Firestore
+            val firestore = FirebaseFirestore.getInstance()
+            val sessionRef = firestore.collection("sessions").document(sessionId)
+
             withTimeout(60_000) {
-                firestore.collection("sessions")
-                    .document(sessionId)
-                    .set(sessionData)
-                    .await()
+                sessionRef.set(sessionData).await()
             }
 
             Result.success(Unit)
@@ -244,6 +268,45 @@ class NetworkSessionRepository(
             Result.failure(e)
         }
     }
+    /**
+     * Uploads a single webpage content file (HTML or JS) to Firebase Storage and returns the download URL.
+     *
+     * @param filePath The local path of the file to be uploaded.
+     * @param sessionId The ID of the session to which the file belongs.
+     * @param fileType The type of the file (either "html" or "js").
+     * @param fileName The name of the file without extension.
+     * @return A Result wrapping the download URL of the uploaded file or an Exception in case of failure.
+     */
+    private suspend fun uploadWebpageFile(
+        filePath: String,
+        sessionId: String,
+        fileType: String,
+        fileName: String
+    ): Result<String> {
+        return try {
+            val file = File(filePath)
+            if (!file.exists()) {
+                return Result.failure(Exception("File not found: $filePath"))
+            }
+
+            val storageRef = FirebaseStorage.getInstance().reference
+            val fileRef = storageRef.child("sessions/$sessionId/webpage_content/$fileName.$fileType")
+
+            withTimeout(30_000) {
+                fileRef.putFile(Uri.fromFile(file))
+                    .await()
+            }
+
+            val downloadUrl = withTimeout(30_000) {
+                fileRef.downloadUrl.await().toString()
+            }
+
+            Result.success(downloadUrl)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
 
     /**
      * Uploads a single screenshot to the Storage and returns the download URL.
@@ -281,35 +344,22 @@ class NetworkSessionRepository(
      */
     suspend fun getCompleteSessionDataList(): Flow<List<SessionData>> = flow {
         try {
-            val allSessions = sessionDao.getAllSessions() // Assuming this returns List<Session>
+            val allSessions = sessionDao.getAllSessions() // Assuming this returns Flow<List<NetworkSessionEntity>?>
 
-            if (allSessions.isNullOrEmpty()) {
-                emit(emptyList())
-                return@flow
-            }
-
-            // Convert list of sessions into list of SessionData
-            val allSessionsData = allSessions.map { session ->
-                flow {
+            allSessions.collect { sessions ->
+                val allSessionsData = sessions?.map { session ->
                     val requestsCount = requestDao.getSessionRequestsCount(session.networkId)
                     val screenshotsCount = screenshotDao.getSessionScreenshotsCount(session.networkId)
                     val webpageContentCount = webpageContentDao.getWebpageContentCountForSession(session.networkId)
-                    emit(
-                        SessionData(
-                            session = session,
-                            requestsCount = requestsCount,
-                            screenshotsCount = screenshotsCount,
-                            webpageContentCount = webpageContentCount,
-                        )
+                    SessionData(
+                        session = session,
+                        requestsCount = requestsCount,
+                        screenshotsCount = screenshotsCount,
+                        webpageContentCount = webpageContentCount,
                     )
-                }
-            }
+                } ?: emptyList()
 
-            // Combine all flows into a single flow of list
-            combine(allSessionsData) { sessionDataArray ->
-                sessionDataArray.toList()
-            }.collect { combinedList ->
-                emit(combinedList)
+                emit(allSessionsData)
             }
         } catch (e: Exception) {
             throw e

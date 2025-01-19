@@ -73,11 +73,10 @@ fun AutomaticAnalysisScreen(
 
     // Load session data using the clicked session ID
     val sessionData =
-        automaticAnalysisViewModel.loadSessionData(clickedSessionId = clickedSessionId!!)
+        automaticAnalysisViewModel.loadSessionData(clickedSessionId = clickedSessionId)
 
     // Convert session data to DTO format to prepare it for transmission to AI server for analysis
-    val sessionDataDTO = sessionData!!.toSessionDataDTO()
-
+    val sessionDataDTO = sessionData.toSessionDataDTO()
     // Trigger AI analysis with the session data DTO
     automaticAnalysisViewModel.analyzeWithAi(sessionDataDTO)
 
@@ -89,12 +88,13 @@ fun AutomaticAnalysisScreen(
     ) { paddingValues ->
 
         Box(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = Modifier.fillMaxSize()
         ) {
-        AutomaticAnalysisContent(uiState = uiState, modifier = Modifier, onRetryClick = { automaticAnalysisViewModel.analyzeWithAi(sessionDataDTO) })
-        AnimatedNoInternetBanner(isConnected = isConnected)
-    }
+            AutomaticAnalysisContent(uiState = uiState,
+                modifier = Modifier,
+                onRetryClick = { automaticAnalysisViewModel.analyzeWithAi(sessionDataDTO) })
+            AnimatedNoInternetBanner(isConnected = isConnected)
+        }
     }
 }
 
@@ -188,8 +188,7 @@ private fun AutomaticAnalysisResult(uiState: AutomaticAnalysisUiState.Success) {
         Card(
             modifier = Modifier
                 .weight(1f) // Take available space between header and hints
-                .fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                .fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             // This box is used for scrolling the markdown text.
             Box(
@@ -199,7 +198,7 @@ private fun AutomaticAnalysisResult(uiState: AutomaticAnalysisUiState.Success) {
             ) {
                 // This markdown text is used for showing the result markdown text properly formatted.
                 MarkdownText(
-                    markdown  = uiState.outputText,
+                    markdown = uiState.outputText,
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodyLarge
                 )
@@ -219,12 +218,15 @@ private fun AutomaticAnalysisResult(uiState: AutomaticAnalysisUiState.Success) {
             HintTextWithIcon(hint = stringResource(R.string.ai_hint_2), textAlign = TextAlign.Start)
             Spacer(modifier = Modifier.height(4.dp))
             // This text is used for showing the third hint.
-            HintTextWithIcon(hint = stringResource(R.string.hint_network), textAlign = TextAlign.Start)
+            HintTextWithIcon(
+                hint = stringResource(R.string.hint_network), textAlign = TextAlign.Start
+            )
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
 
 }
+
 /**
  * Preview for the AutomaticAnalysisResult composable function.
  * It shows the result of an automatic analysis with a sample success state.

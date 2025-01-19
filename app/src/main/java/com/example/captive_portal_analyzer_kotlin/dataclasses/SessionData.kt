@@ -3,12 +3,12 @@ package com.example.captive_portal_analyzer_kotlin.dataclasses
 // Data class to hold complete session data
 data class SessionData(
     val session: NetworkSessionEntity,
-    val requests: List<CustomWebViewRequestEntity>?=null,
-    val screenshots: List<ScreenshotEntity>?=null,
-    val webpageContent: List<WebpageContentEntity>?=null,
-    val requestsCount: Int =0,
-    val screenshotsCount: Int=0,
-    val webpageContentCount: Int=0
+    val requests: List<CustomWebViewRequestEntity>? = null,
+    val screenshots: List<ScreenshotEntity>? = null,
+    val webpageContent: List<WebpageContentEntity>? = null,
+    val requestsCount: Int = 0,
+    val screenshotsCount: Int = 0,
+    val webpageContentCount: Int = 0
 )
 
 /**
@@ -18,7 +18,16 @@ data class SessionData(
  * to help the AI agent understand how to format the response.
  * @return SessionDataDTO containing prompt and relevant screenshots.
  */
-fun SessionData.toSessionDataDTO(): SessionDataDTO {
+fun SessionData?.toSessionDataDTO(): SessionDataDTO {
+    // Check if session data is null and return empty SessionDataDTO
+    if (this == null) {
+        return SessionDataDTO(
+            prompt = "",
+            privacyOrTosRelatedScreenshots = null
+        )
+    }
+    //otherwise, convert session data to SessionDataDTO
+    val session = this.session
     val isCaptiveLocal = session.isCaptiveLocal
     val ipAddress = session.ipAddress
     val gatewayAddress = session.gatewayAddress

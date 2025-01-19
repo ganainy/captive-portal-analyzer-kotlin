@@ -158,8 +158,8 @@
     <string name="permission_denied_error">Required permissions were denied. Please grant the permissions in settings.</string>
     <string name="webpage_content">"Web Page Content "</string>
     <string name="error_parsing_the_webpage_content">Error parsing the webpage content</string>
-    <string name="hint_parse_html">- App will try to recreate the HTML content that was extracted from the page you selected</string>
-    <string name="hint_parse_html2">- This can fail if some needed component of the page are missing</string>
+    <string name="hint_parse_html">App will try to recreate the HTML content that was extracted from the page you selected</string>
+    <string name="hint_parse_html2">This can fail if some needed component of the page are missing</string>
     <string name="hint_click_to_view_content">Tap card to view the HTML content exracted from page</string>
     <string name="thanks_for_uploading_network_data_for_further_analysis">Thanks for uploading network data for further analysis.</string>
     <string name="please_review_and_upload_collected_data_to_help_us_research_this_network">Please review and upload collected data to help us research this network.</string>
@@ -168,6 +168,12 @@
     <string name="hint_custom_webview">Please use this Webview only if website fails to load in original Web, otherwise please \"Switch browser\" again</string>
     <string name="custom_webview">Custom Webview (Recommended)</string>
     <string name="normal_webview">Normal Webview (Backup)</string>
+    <string name="session_id_not_found">Session ID not found</string>
+    <string name="failed_to_load_html_content">Failed to load HTML content</string>
+    <string name="parsing_html">Parsing HTML</string>
+    <string name="timestamp">Timestamp: %1$s</string>
+    <string name="html_path">HTML Path: %1$s</string>
+    <string name="js_path">JS Path: %1$s</string>
 
 
 </resources>

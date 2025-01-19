@@ -302,8 +302,6 @@ fun NetworkSessionCard(
                 iconResId = R.drawable.clock,
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
-
             // Status indicators for captive portal
             if (isCaptivePortal) {
                 HintTextWithIcon(
@@ -315,11 +313,8 @@ fun NetworkSessionCard(
                         R.drawable.cloud else R.drawable.local
                 )
             } else {
-                Text(
-                    text = stringResource(R.string.not_a_captive_portal_network),
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.padding(top = 8.dp),
-                )
+                //  indicator for non-captive portal network card
+                HintTextWithIcon(hint = stringResource(R.string.not_a_captive_portal_network))
             }
 
             if (isRecent) {

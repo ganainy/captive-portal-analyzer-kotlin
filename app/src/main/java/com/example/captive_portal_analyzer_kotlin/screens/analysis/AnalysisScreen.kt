@@ -466,6 +466,7 @@ private fun AnalysisError(
             Spacer(Modifier.height(8.dp))
             HintTextWithIcon(
                 hint = hint,
+                rowAllignment = Alignment.Center
             )
             Spacer(Modifier.height(8.dp))
             Row(

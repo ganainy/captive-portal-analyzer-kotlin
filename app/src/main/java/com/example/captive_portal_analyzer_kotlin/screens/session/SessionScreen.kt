@@ -70,7 +70,6 @@ import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetB
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
-import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
@@ -106,7 +105,7 @@ fun SessionScreen(
         factory = SessionViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
             repository = repository,
-            clickedSessionId = clickedSessionId!!,
+            clickedSessionId = clickedSessionId,
         )
     )
 
@@ -114,7 +113,7 @@ fun SessionScreen(
     val sessionData by sessionViewModel.sessionData.collectAsState()
 
     // Collect the upload state from the view model.
-    val uploadState by sessionViewModel.uploadState.collectAsState()
+    val sessionState by sessionViewModel.sessionState.collectAsState()
 
     // Collect the connectivity status from the shared view model.
     val isConnected by sharedViewModel.isConnected.collectAsState()
@@ -139,56 +138,65 @@ fun SessionScreen(
         /**
          * Handles the upload state.
          *
-         * If the upload state is [UploadState.Uploading], it displays a loading indicator.
+         * If the upload state is [SessionState.Uploading], it displays a loading indicator.
          *
-         * If the upload state is [UploadState.Loading], it displays a loading indicator.
+         * If the upload state is [SessionState.Loading], it displays a loading indicator.
          *
-         * If the upload state is [UploadState.Error], it displays an error component with a retry button.
+         * If the upload state is [SessionState.Error], it displays an error component with a retry button.
          *
-         * If the upload state is [UploadState.AlreadyUploaded], [UploadState.Success], or [UploadState.NeverUploaded],
+         * If the upload state is [SessionState.AlreadyUploaded], [SessionState.Success], or [SessionState.NeverUploaded],
          * it displays the session details with only the button changed based on the three different states.
          */
-        when (uploadState) {
-            UploadState.Uploading -> {
+        when (sessionState) {
+            // Display a loading indicator while the session is being uploaded to remote server
+            SessionState.Uploading -> {
                 LoadingIndicator(message = stringResource(R.string.uploading_information_to_be_analyzed))
             }
-            UploadState.Loading -> {
+            // Display a loading indicator while the session is being loaded from DB
+            SessionState.Loading -> {
                 LoadingIndicator(message = stringResource(R.string.loading_session))
             }
-
-            is UploadState.Error -> {
-                val errorMessage = (uploadState as UploadState.Error).message
+            //Display an error component with a retry button if error while uploading to remote server
+            is SessionState.ErrorUploading -> {
+                val errorMessage = (sessionState as SessionState.ErrorUploading).message
                 ErrorComponent(
                     error = errorMessage,
                     onRetryClick = {
                         sessionViewModel.uploadSession(
-                            sessionData!!,
+                            sessionData,
                             showToast,
                         )
                     }
                 )
             }
+            //Display an error message if error while loading from DB
+            is SessionState.ErrorLoading -> {
+                val errorMessage = (sessionState as SessionState.ErrorLoading).message
+                ErrorComponent(
+                    error = errorMessage,
+                )
+            }
             else -> {
-                // This branch is for all other UploadState values
+                // This branch is for all other SessionState values
                 // If the upload state is UploadState.AlreadyUploaded, UploadState.Success, or UploadState.NeverUploaded,
                 // it displays the session details with only the button changed based on the three different states.
-                if (uploadState is UploadState.AlreadyUploaded || uploadState is UploadState.Success || uploadState is UploadState.NeverUploaded) {
+                if (sessionState is SessionState.AlreadyUploaded || sessionState is SessionState.Success || sessionState is SessionState.NeverUploaded) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                     ) {
 
                         SessionDetail(
-                            clickedSessionData = sessionData!!,
+                            clickedSessionData = sessionData,
                             uploadSession = {
                                 sessionViewModel.uploadSession(
-                                    sessionData!!,
+                                    sessionData,
                                     showToast,
                                 )
                             },
                             switchScreenshotPrivacyOrToSrealted = sessionViewModel::toggleScreenshotPrivacyOrToSrelated,
                             navigateToAutomaticAnalysis = navigateToAutomaticAnalysis,
-                            uploadState = uploadState,
+                            uploadState = sessionState,
                             onContentItemClick = {
                                 sharedViewModel.updateClickedContent(it)
                                 navigateToWebpageContentScreen()
@@ -207,7 +215,7 @@ fun SessionScreen(
 
                 } else {
                     // If the upload state is not recognized, throw an exception
-                    throw Exception("Unexpected upload state: $uploadState")
+                    throw Exception("Unexpected upload state: $sessionState")
                 }
 
             }
@@ -266,9 +274,9 @@ private fun HintInfoBox(
  */
 @Composable
 fun SessionDetail(
-    clickedSessionData: SessionData,
+    clickedSessionData: SessionData?,
     uploadSession: () -> Unit,
-    uploadState: UploadState,
+    uploadState: SessionState,
     switchScreenshotPrivacyOrToSrealted: (ScreenshotEntity) -> Unit,
     navigateToAutomaticAnalysis: () -> Unit,
     onContentItemClick: (WebpageContentEntity) -> Unit
@@ -289,17 +297,17 @@ fun SessionDetail(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("Requests (${clickedSessionData.requests?.size?:0})") }
+                text = { Text("Requests (${clickedSessionData?.requests?.size?:0})") }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("Content (${clickedSessionData.webpageContent?.size?:0})") }
+                text = { Text("Content (${clickedSessionData?.webpageContent?.size?:0})") }
             )
             Tab(
                 selected = selectedTab == 2,
                 onClick = { selectedTab = 2 },
-                text = { Text("Screenshots (${clickedSessionData.screenshots?.size?:0})") }
+                text = { Text("Screenshots (${clickedSessionData?.screenshots?.size?:0})") }
             )
         }
 
@@ -310,10 +318,10 @@ fun SessionDetail(
                 .fillMaxWidth()
         ) {
             when (selectedTab) {
-                0 -> RequestsList(clickedSessionData.requests)
-                1 -> ContentList(clickedSessionData.webpageContent, onContentItemClick)
+                0 -> RequestsList(clickedSessionData?.requests)
+                1 -> ContentList(clickedSessionData?.webpageContent, onContentItemClick)
                 2 -> ScreenshotsList(
-                    clickedSessionData.screenshots,
+                    clickedSessionData?.screenshots,
                     switchScreenshotPrivacyOrToSrealted,
                 )
             }
@@ -331,7 +339,7 @@ fun SessionDetail(
 }
 
 @Composable
-private fun SessionGeneralDetails(clickedSessionData: SessionData) {
+private fun SessionGeneralDetails(clickedSessionData: SessionData?) {
     var isExpanded by remember { mutableStateOf(false) }
     val maxHeight = 85.dp
 
@@ -369,7 +377,7 @@ private fun SessionGeneralDetails(clickedSessionData: SessionData) {
                         }
                     )
             ) {
-                clickedSessionData.session.apply {
+                clickedSessionData?.session?.apply {
                     ssid?.let {
                         Text(
                             "SSID: $it",
@@ -436,7 +444,7 @@ private fun SessionGeneralDetails(clickedSessionData: SessionData) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SessionActionButtons(
-    uploadState: UploadState,
+    uploadState: SessionState,
     onUploadClick: () -> Unit,
     onAnalysisClick: () -> Unit,
 ) {
@@ -447,7 +455,7 @@ private fun SessionActionButtons(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         when (uploadState) {
-            UploadState.AlreadyUploaded -> {
+            SessionState.AlreadyUploaded -> {
                 RoundCornerButton(
                     onClick = { },
                     buttonText = stringResource(R.string.already_uploaded),
@@ -456,7 +464,7 @@ private fun SessionActionButtons(
                 )
             }
 
-            UploadState.Success -> {
+            SessionState.Success -> {
                 RoundCornerButton(
                     onClick = { },
                     buttonText = stringResource(R.string.thanks_for_uploading),
@@ -465,7 +473,7 @@ private fun SessionActionButtons(
                 )
             }
 
-            UploadState.NeverUploaded -> {
+            SessionState.NeverUploaded -> {
                 RoundCornerButton(
                     onClick = onUploadClick,
                     buttonText = stringResource(R.string.upload_session_for_analysis),
@@ -538,17 +546,17 @@ fun SessionDetailPreview() {
                 WebpageContentEntity(
                     sessionId = 11.toString(),
                     url = "https://www.example.com",
-                    htmlContent = "<html><body>This is a test.</body></html>",
+                    htmlContentPath = "/storage/emulated/0/Android/data/com.example.captive_portal_analyzer_kotlin/files/webpage_content/11/https___www.example.com/html/mock_html_content.html",
                     timestamp = Date().time,
                     contentId = 1234,
-                    jsContent = "TODO()",
+                    jsContentPath = "/storage/emulated/0/Android/data/com.example.captive_portal_analyzer_kotlin/files/webpage_content/11/https___www.example.com/js/mock_js_content.js",
                 )
             )
         ),
         uploadSession = { },
         switchScreenshotPrivacyOrToSrealted = { },
         navigateToAutomaticAnalysis = { },
-        uploadState = UploadState.NeverUploaded,
+        uploadState = SessionState.NeverUploaded,
         onContentItemClick = { }
     )
 }
@@ -642,7 +650,9 @@ private fun ContentItem(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             item.url?.let { Text("URL: $it") }
-            Text("Timestamp: ${formatDate(item.timestamp)}")
+            Text(stringResource(R.string.html_path, item.htmlContentPath))
+            Text(stringResource(R.string.js_path, item.jsContentPath))
+            Text(stringResource(R.string.timestamp, formatDate(item.timestamp)))
             HintTextWithIcon(hint = stringResource(R.string.hint_click_to_view_content),
                 iconResId = R.drawable.tap)
         }
