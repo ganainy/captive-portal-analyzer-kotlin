@@ -123,6 +123,7 @@
         <string name="automatic_analysis">Analyse-Ergebnis</string>
         <string name="automatic_analysis_button">Mit KI analysieren</string>
         <string name="long_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</string>
+        <string name="short_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</string>
         <string name="uploading_information_to_be_analyzed">Hochladen von Informationen zur Analyse</string>
         <string name="ai_hint_1">- Die gesammelten Daten sind zu groß, um sie in ihrer Gesamtheit an das KI-Modell zu senden. Daher werden nur ausgewählte und gefilterte Teile übertragen.</string>
         <string name="ai_hint_2">- Dies bietet eine erste Übersicht über das Captive Netzwerk. Eine umfassende Analyse wird von unseren Forschern durchgeführt, sobald Sie die Sitzungsdaten zur Überprüfung hochladen.</string>
@@ -174,4 +175,10 @@
     <string name="timestamp">Zeitstempel: %1$s</string>
     <string name="html_path">HTML-Pfad: %1$s</string>
     <string name="js_path">JS-Pfad: %1$s</string>
+    <string name="custom_prompt">Geben Sie ein Prompt ein (max. 300 Zeichen)</string>
+    <string name="analyze_captive_portal_with_ai">Captive Portal mit KI analysieren</string>
+    <string name="clear_prompt">Prompt löschen</string>
+    <string name="no_result_yet">Bitte geben Sie ein Prompt ein und drücken Sie die Schaltfläche "Analysieren", um zu starten.</string>
+
+
 </resources>

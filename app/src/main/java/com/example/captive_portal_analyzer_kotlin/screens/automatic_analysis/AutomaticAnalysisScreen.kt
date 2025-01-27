@@ -2,8 +2,11 @@ package com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis
 
 import NetworkSessionRepository
 import android.app.Application
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,12 +14,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,10 +42,10 @@ import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.ErrorIcon
+import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
-import com.example.captive_portal_analyzer_kotlin.dataclasses.toSessionDataDTO
-import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
+import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import dev.jeziellago.compose.markdowntext.MarkdownText
 
 /**
@@ -57,28 +62,21 @@ fun AutomaticAnalysisScreen(
     repository: NetworkSessionRepository,
 ) {
 
+    // Collect the clicked session ID from sharedViewModel
+    val clickedSessionId by sharedViewModel.clickedSessionId.collectAsState()
+
     // Initialize the AutomaticAnalysisViewModel using a factory pattern
     val automaticAnalysisViewModel: AutomaticAnalysisViewModel = viewModel(
         factory = AutomaticAnalysisViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
             repository = repository,
+            clickedSessionId= clickedSessionId,
         )
     )
 
-    // Collect the clicked session ID from sharedViewModel
-    val clickedSessionId by sharedViewModel.clickedSessionId.collectAsState()
-
     // Observe the UI state from automaticAnalysisViewModel
-    val uiState by automaticAnalysisViewModel.uiState.collectAsState()
+    val automaticAnalysisUiState by automaticAnalysisViewModel.automaticAnalysisUiState.collectAsState()
 
-    // Load session data using the clicked session ID
-    val sessionData =
-        automaticAnalysisViewModel.loadSessionData(clickedSessionId = clickedSessionId)
-
-    // Convert session data to DTO format to prepare it for transmission to AI server for analysis
-    val sessionDataDTO = sessionData.toSessionDataDTO()
-    // Trigger AI analysis with the session data DTO
-    automaticAnalysisViewModel.analyzeWithAi(sessionDataDTO)
 
     // Observe network connectivity status to show/hide internet banner
     val isConnected by sharedViewModel.isConnected.collectAsState()
@@ -90,71 +88,139 @@ fun AutomaticAnalysisScreen(
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            AutomaticAnalysisContent(uiState = uiState,
-                modifier = Modifier,
-                onRetryClick = { automaticAnalysisViewModel.analyzeWithAi(sessionDataDTO) })
+            AutomaticAnalysisContent(
+                automaticAnalysisUiState = automaticAnalysisUiState,
+                onRetryClick = { automaticAnalysisViewModel.analyzeWithAi() },
+                inputText = automaticAnalysisUiState.inputText,
+                onUpdateInputText = { automaticAnalysisViewModel.updatePromptEditText(it) },
+                analyzeWithAI = { automaticAnalysisViewModel.analyzeWithAi() },
+                isLoading = automaticAnalysisUiState.isLoading
+            )
             AnimatedNoInternetBanner(isConnected = isConnected)
         }
     }
 }
 
 /**
- * A composable function that displays the results of the automatic analysis of
- * collected captive portal network data using an AI model.
+ * A composable function that displays the result of automatic analysis using an AI model.
  *
- * @param uiState The current state of the automatic analysis process, which can be
- * one of the following: [AutomaticAnalysisUiState.Loading], [AutomaticAnalysisUiState.Success],
- * or [AutomaticAnalysisUiState.Error].
- * @param modifier The modifier to apply to the root composable of this component.
- * @param onRetryClick A callback to call when the user clicks the retry button in
- * case of an error.
+ * The composable function displays one of the following states:
+ * - A loading indicator if the analysis is in progress
+ * - An error component if the analysis failed
+ * - The result of the analysis if the analysis was successful
+ *
+ * @param automaticAnalysisUiState the UI state of the automatic analysis
+ * @param modifier the modifier to apply to the composable
+ * @param onRetryClick a lambda to call when the retry button is clicked
+ * @param onUpdatePromptInputText a lambda to call when the user updates the custom prompt
+ * @param analyzeWithAI a lambda to call when the user press the analyze button
+ * @param inputText the custom prompt that the user has entered.
+ * @param onUpdateInputText a lambda that is called when the user updates the custom prompt.
+ * @param isLoading true if the AI analysis is in progress, false otherwise
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AutomaticAnalysisContent(
-    uiState: AutomaticAnalysisUiState = AutomaticAnalysisUiState.Loading,
-    modifier: Modifier = Modifier,
-    onRetryClick: () -> Unit = {}
+    automaticAnalysisUiState: AutomaticAnalysisUiState,
+    onRetryClick: () -> Unit = {},
+    inputText: String,
+    onUpdateInputText: (String) -> Unit,
+    analyzeWithAI: () -> Unit,
+    isLoading: Boolean
 ) {
-    // Handle different UI states based on the automatic analysis process
-    when (uiState) {
-        // show loading indicator while analyzing is in progress
-        AutomaticAnalysisUiState.Loading -> {
-            LoadingIndicator(message = stringResource(R.string.uploading_information_to_be_analyzed))
-        }
-
-        //show the result of the analysis when response is received from AI server
-        is AutomaticAnalysisUiState.Success -> {
-            AutomaticAnalysisResult(uiState)
-        }
-
-        //show error message when there is an error
-        is AutomaticAnalysisUiState.Error -> {
-            ErrorComponent(
-                error = uiState.errorMessage,
-                icon = ErrorIcon.ResourceIcon(R.drawable.robot),
-                onRetryClick = onRetryClick
-            )
-        }
-    }
-}
-
-
-/**
- * Composable that displays the result of the automatic analysis. The result is a
- * piece of markdown text that is received from the AI server.
- *
- * @param uiState the state of the automatic analysis. The result of the analysis
- * is stored in the [AutomaticAnalysisUiState.Success] object.
- */
-@Composable
-private fun AutomaticAnalysisResult(uiState: AutomaticAnalysisUiState.Success) {
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
     ) {
+
+        OutlinedTextField(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            value = inputText,
+            onValueChange = { onUpdateInputText(it) },
+            label = { Text(stringResource(R.string.custom_prompt)) },
+            singleLine = false,
+            maxLines = 5
+        )
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // Button to start analysis with AI
+            RoundCornerButton(
+                onClick = analyzeWithAI,
+                buttonText = stringResource(R.string.analyze_captive_portal_with_ai),
+                enabled = !isLoading,
+                isLoading = isLoading,
+                fillWidth = false,
+            )
+            GhostButton(
+                onClick = { onUpdateInputText("") },
+                text = stringResource(R.string.clear_prompt),
+                enabled = inputText.isNotEmpty()
+            )
+        }
+
+        if (automaticAnalysisUiState.isLoading) {
+            // Display a loading indicator if the analysis is in progress
+            LoadingIndicator(message = stringResource(R.string.uploading_information_to_be_analyzed))
+        } else if (automaticAnalysisUiState.error != null) {
+            // Display error component if there is an error
+            ErrorComponent(
+                error = automaticAnalysisUiState.error,
+                icon = ErrorIcon.ResourceIcon(R.drawable.robot),
+                onRetryClick = onRetryClick
+            )
+        } else if (automaticAnalysisUiState.outputText.isNullOrEmpty()) {
+            // Display a hint text if no result is available
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .wrapContentSize(Alignment.Center)
+            ) {
+                HintTextWithIcon(
+                    hint = stringResource(R.string.no_result_yet),
+                    rowAllignment = Alignment.Center
+                )
+            }
+        }
+        else {
+            // Display the result if there is a result
+            AutomaticAnalysisResult(
+                automaticAnalysisUiState.outputText,
+            )
+        }
+
+    }
+
+}
+
+/**
+ * Composable that displays the result of the automatic analysis. The result is a
+ * piece of markdown text that is received from the AI server.
+ *
+ * @param outputText the AI generated response returned from the AI server.
+ */
+@Composable
+private fun AutomaticAnalysisResult(
+    outputText: String?,
+) {
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+    ) {
+
+
         // Fixed Header with Icon. Used for showing the result header.
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -197,11 +263,13 @@ private fun AutomaticAnalysisResult(uiState: AutomaticAnalysisUiState.Success) {
                     .verticalScroll(rememberScrollState())
             ) {
                 // This markdown text is used for showing the result markdown text properly formatted.
-                MarkdownText(
-                    markdown = uiState.outputText,
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                if (outputText != null) {
+                    MarkdownText(
+                        markdown = outputText,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
             }
         }
 
@@ -234,7 +302,9 @@ private fun AutomaticAnalysisResult(uiState: AutomaticAnalysisUiState.Success) {
 @Composable
 @Preview(showBackground = true)
 fun AutomaticAnalysisResultPreview() {
-    AutomaticAnalysisResult(AutomaticAnalysisUiState.Success(stringResource(R.string.long_lorem_ipsum)))
+    AutomaticAnalysisResult(
+        outputText = stringResource(R.string.long_lorem_ipsum),
+    )
 }
 
 /**
@@ -244,5 +314,12 @@ fun AutomaticAnalysisResultPreview() {
 @Composable
 @Preview(showSystemUi = true)
 fun AutomaticAnalysisContentPreview() {
-    AutomaticAnalysisContent()
+    AutomaticAnalysisContent(
+        automaticAnalysisUiState = AutomaticAnalysisUiState(),
+        onRetryClick = { },
+        onUpdateInputText = { },
+        isLoading = false,
+        inputText = "",
+        analyzeWithAI = { },
+    )
 }

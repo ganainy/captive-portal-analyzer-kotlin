@@ -174,6 +174,11 @@
     <string name="timestamp">Timestamp: %1$s</string>
     <string name="html_path">HTML Path: %1$s</string>
     <string name="js_path">JS Path: %1$s</string>
+    <string name="short_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</string>
+    <string name="custom_prompt">Enter prompt (max 300 characters)</string>
+    <string name="analyze_captive_portal_with_ai">Analyze captive portal with AI</string>
+    <string name="clear_prompt">clear prompt</string>
+    <string name="no_result_yet">Please enter a prompt and press the \"Analyze\" button to start.</string>
 
 
 </resources>
