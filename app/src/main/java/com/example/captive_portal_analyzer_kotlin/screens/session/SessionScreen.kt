@@ -651,6 +651,10 @@ private fun RequestListItem(
                 }
             }
             RequestMethodView(request.method)
+            HintTextWithIcon(
+                hint = stringResource(R.string.hint_click_to_view_request_content),
+                iconResId = R.drawable.tap
+            )
         }
     }
 }
@@ -679,7 +683,7 @@ fun FilterBottomSheet(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Text("Filters", style = typography.titleLarge)
+            Text(stringResource(R.string.filters), style = typography.titleLarge)
             Spacer(modifier = Modifier.height(16.dp))
 
             // Checkbox to hide requests with empty body
@@ -692,7 +696,7 @@ fun FilterBottomSheet(
                     onCheckedChange = { onToggleIsBodyEmpty() }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Hide requests with empty body")
+                Text(stringResource(R.string.hide_requests_with_empty_body))
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -702,7 +706,7 @@ fun FilterBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Select Method:")
+                Text(stringResource(R.string.select_method))
                 Spacer(modifier = Modifier.width(8.dp))
 
                 FlowRow(

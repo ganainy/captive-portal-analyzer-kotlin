@@ -161,6 +161,7 @@
     <string name="hint_parse_html">App will try to recreate the HTML content that was extracted from the page you selected</string>
     <string name="hint_parse_html2">This can fail if some needed component of the page are missing</string>
     <string name="hint_click_to_view_content">Tap card to view the HTML content exracted from page</string>
+    <string name="hint_click_to_view_request_content">Tap card to view the full request content</string>
     <string name="thanks_for_uploading_network_data_for_further_analysis">Thanks for uploading network data for further analysis.</string>
     <string name="please_review_and_upload_collected_data_to_help_us_research_this_network">Please review and upload collected data to help us research this network.</string>
     <string name="this_is_new_session">This session was created in the last %1$s minutes.</string>
@@ -190,6 +191,8 @@
     <string name="ip">IP: %1$s</string>
     <string name="bssid">BSSID: %1$s</string>
     <string name="ssid">SSID: %1$s</string>
+    <string name="hide_requests_with_empty_body">Hide requests with empty body</string>
+    <string name="select_method">Select Method:</string>
 
 
 </resources>
