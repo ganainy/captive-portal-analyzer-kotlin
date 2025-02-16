@@ -179,6 +179,16 @@
     <string name="analyze_captive_portal_with_ai">Captive Portal mit KI analysieren</string>
     <string name="clear_prompt">Prompt löschen</string>
     <string name="no_result_yet">Bitte geben Sie ein Prompt ein und drücken Sie die Schaltfläche "Analysieren", um zu starten.</string>
-
+    <string name="request_details">Anfrage-Details</string>
+    <string name="remove_filters">Filter entfernen</string>
+    <string name="type">"Typ: "</string>
+    <string name="url">"URL: "</string>
+    <string name="filters">Filter</string>
+    <string name="portal_url">Portal-URL: %1$s</string>
+    <string name="security">Sicherheit: %1$s</string>
+    <string name="gateway">Gateway: %1$s</string>
+    <string name="ip">IP: %1$s</string>
+    <string name="bssid">BSSID: %1$s</string>
+    <string name="ssid">SSID: %1$s</string>
 
 </resources>

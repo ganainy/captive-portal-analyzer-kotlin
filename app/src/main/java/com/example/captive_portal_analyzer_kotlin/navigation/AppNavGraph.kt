@@ -2,7 +2,6 @@ package com.example.captive_portal_analyzer_kotlin.navigation
 
 import NetworkSessionRepository
 import androidx.annotation.StringRes
-import com.example.captive_portal_analyzer_kotlin.screens.manual_connect.ManualConnectScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -11,18 +10,20 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.screens.about.AboutScreen
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreen
-import com.example.captive_portal_analyzer_kotlin.screens.session.SessionScreen
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.ThemeMode
 import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.AppToast
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
-import com.example.captive_portal_analyzer_kotlin.screens.settings.SettingsScreen
+import com.example.captive_portal_analyzer_kotlin.screens.about.AboutScreen
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisScreen
+import com.example.captive_portal_analyzer_kotlin.screens.manual_connect.ManualConnectScreen
+import com.example.captive_portal_analyzer_kotlin.screens.request_details_screen.RequestDetailsScreen
+import com.example.captive_portal_analyzer_kotlin.screens.session.SessionScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
+import com.example.captive_portal_analyzer_kotlin.screens.settings.SettingsScreen
 import com.example.captive_portal_analyzer_kotlin.screens.webpage_content.WebpageContentScreen
 import com.example.captive_portal_analyzer_kotlin.screens.welcome.WelcomeScreen
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
@@ -75,10 +76,16 @@ sealed class Screen(val route: String, @StringRes val titleStringResource: Int) 
      * The settings screen.
      */
     object Settings : Screen("settings", R.string.settings)
+
     /**
      * The WebPageContent screen.
      */
     object WebPageContent : Screen("webpage_content", R.string.webpage_content)
+
+    /**
+     * The request details screen.
+     */
+    object RequestDetails : Screen("request_details", R.string.request_details)
 }
 
 /**
@@ -173,7 +180,8 @@ fun AppNavGraph(
                 repository = repository,
                 sharedViewModel = sharedViewModel,
                 navigateToAutomaticAnalysis = actions.navigateToAutomaticAnalysisScreen,
-                navigateToWebpageContentScreen = actions.navigateToWebpageContentScreen
+                navigateToWebpageContentScreen = actions.navigateToWebpageContentScreen,
+                navigateToRequestDetailsScreen = actions.navigateToRequestDetailsScreen
             )
         }
         composable(
@@ -205,6 +213,13 @@ fun AppNavGraph(
             route = Screen.WebPageContent.route,
         ) {
             WebpageContentScreen(
+                sharedViewModel = sharedViewModel,
+            )
+        }
+        composable(
+            route = Screen.RequestDetails.route,
+        ) {
+            RequestDetailsScreen(
                 sharedViewModel = sharedViewModel,
             )
         }
@@ -261,12 +276,19 @@ class NavigationActions(private val navController: NavHostController) {
     val navigateToAutomaticAnalysisScreen: () -> Unit = {
         navController.navigate(Screen.AutomaticAnalysis.route)
     }
+
     /**
      * Navigate to the oWebpageContentScreen.
      */
     val navigateToWebpageContentScreen: () -> Unit = {
         navController.navigate(Screen.WebPageContent.route)
     }
+
+    /**
+     * Navigate to the RequestDetails Screen.
+     */
+    val navigateToRequestDetailsScreen: () -> Unit =
+        { navController.navigate(Screen.RequestDetails.route) }
 
     /**
      * Navigate back to the previous screen.

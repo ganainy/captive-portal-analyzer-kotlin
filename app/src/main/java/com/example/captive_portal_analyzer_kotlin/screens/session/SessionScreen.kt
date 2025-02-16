@@ -3,7 +3,6 @@ package com.example.captive_portal_analyzer_kotlin.screens.session
 import NetworkSessionRepository
 import android.app.Application
 import android.content.Context
-import android.content.res.Configuration
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -33,6 +35,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,12 +79,21 @@ import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertD
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
-import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.utils.Utils.Companion.formatDate
-import java.util.Date
+
+
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import com.example.captive_portal_analyzer_kotlin.components.CustomChip
+import com.example.captive_portal_analyzer_kotlin.components.RequestMethodView
+import com.example.captive_portal_analyzer_kotlin.dataclasses.RequestMethod
+
 
 /**
  * Composable function to display the session details of a network with captive portal.
@@ -96,6 +109,7 @@ fun SessionScreen(
     repository: NetworkSessionRepository,
     navigateToAutomaticAnalysis: () -> Unit,
     navigateToWebpageContentScreen: () -> Unit,
+    navigateToRequestDetailsScreen: () -> Unit
 ) {
     // Collect the clicked session ID from the shared view model.
     val clickedSessionId by sharedViewModel.clickedSessionId.collectAsState()
@@ -110,7 +124,7 @@ fun SessionScreen(
     )
 
     // Collect the session data from the view model.
-    val sessionData by sessionViewModel.sessionData.collectAsState()
+    val sessionUiData by sessionViewModel.sessionUiData.collectAsState()
 
     // Collect the upload state from the view model.
     val sessionState by sessionViewModel.sessionState.collectAsState()
@@ -163,7 +177,7 @@ fun SessionScreen(
                     error = errorMessage,
                     onRetryClick = {
                         sessionViewModel.uploadSession(
-                            sessionData,
+                            sessionUiData.sessionData,
                             showToast,
                         )
                     }
@@ -176,6 +190,7 @@ fun SessionScreen(
                     error = errorMessage,
                 )
             }
+
             else -> {
                 // This branch is for all other SessionState values
                 // If the upload state is UploadState.AlreadyUploaded, UploadState.Success, or UploadState.NeverUploaded,
@@ -187,10 +202,10 @@ fun SessionScreen(
                     ) {
 
                         SessionDetail(
-                            clickedSessionData = sessionData,
+                            sessionUiData = sessionUiData,
                             uploadSession = {
                                 sessionViewModel.uploadSession(
-                                    sessionData,
+                                    sessionUiData.sessionData,
                                     showToast,
                                 )
                             },
@@ -200,7 +215,15 @@ fun SessionScreen(
                             onContentItemClick = {
                                 sharedViewModel.updateClickedContent(it)
                                 navigateToWebpageContentScreen()
-                            }
+                            },
+                            onRequestItemClick = {
+                                sharedViewModel.updateClickedRequest(it)
+                                navigateToRequestDetailsScreen()
+                            },
+                            onToggleShowBottomSheet = sessionViewModel::toggleShowBottomSheet,
+                            onToggleIsBodyEmpty = sessionViewModel::toggleIsBodyEmpty,
+                            onModifySelectedMethods = sessionViewModel::modifySelectedMethods,
+                            onResetFilters = sessionViewModel::resetFilters,
                         )
 
 
@@ -265,7 +288,7 @@ private fun HintInfoBox(
 /**
  * A composable function to display a session detail page.
  *
- * @param clickedSessionData The SessionData of the clicked session.
+ * @param sessionUiData The SessionUiData of the clicked session.
  * @param uploadSession A function to upload the session to the remote server.
  * @param uploadState The state of the upload process.
  * @param switchScreenshotPrivacyOrToSrealted A function to switch the privacy of a screenshot or to
@@ -274,12 +297,17 @@ private fun HintInfoBox(
  */
 @Composable
 fun SessionDetail(
-    clickedSessionData: SessionData?,
+    sessionUiData: SessionUiData,
     uploadSession: () -> Unit,
     uploadState: SessionState,
     switchScreenshotPrivacyOrToSrealted: (ScreenshotEntity) -> Unit,
     navigateToAutomaticAnalysis: () -> Unit,
-    onContentItemClick: (WebpageContentEntity) -> Unit
+    onContentItemClick: (WebpageContentEntity) -> Unit,
+    onRequestItemClick: (CustomWebViewRequestEntity) -> Unit,
+    onToggleShowBottomSheet: () -> Unit,
+    onToggleIsBodyEmpty: () -> Unit,
+    onModifySelectedMethods: (RequestMethod) -> Unit,
+    onResetFilters: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -287,7 +315,7 @@ fun SessionDetail(
             .padding(16.dp)
     ) {
         // Card displaying network details
-        SessionGeneralDetails(clickedSessionData)
+        SessionGeneralDetails(sessionUiData.sessionData)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -297,17 +325,17 @@ fun SessionDetail(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("Requests (${clickedSessionData?.requests?.size?:0})") }
+                text = { Text("Requests (${sessionUiData.sessionData?.requests?.size ?: 0})") }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("Content (${clickedSessionData?.webpageContent?.size?:0})") }
+                text = { Text("Content (${sessionUiData.sessionData?.webpageContent?.size ?: 0})") }
             )
             Tab(
                 selected = selectedTab == 2,
                 onClick = { selectedTab = 2 },
-                text = { Text("Screenshots (${clickedSessionData?.screenshots?.size?:0})") }
+                text = { Text("Screenshots (${sessionUiData.sessionData?.screenshots?.size ?: 0})") }
             )
         }
 
@@ -318,10 +346,21 @@ fun SessionDetail(
                 .fillMaxWidth()
         ) {
             when (selectedTab) {
-                0 -> RequestsList(clickedSessionData?.requests)
-                1 -> ContentList(clickedSessionData?.webpageContent, onContentItemClick)
+                0 -> RequestsList(
+                    sessionUiData.sessionData?.requests,
+                    onRequestItemClick,
+                    sessionUiData.showFilteringBottomSheet,
+                    sessionUiData.isBodyEmptyChecked,
+                    sessionUiData.selectedMethods,
+                    onToggleShowBottomSheet,
+                    onToggleIsBodyEmpty,
+                    onModifySelectedMethods,
+                    onResetFilters
+                )
+
+                1 -> ContentList(sessionUiData.sessionData?.webpageContent, onContentItemClick)
                 2 -> ScreenshotsList(
-                    clickedSessionData?.screenshots,
+                    sessionUiData.sessionData?.screenshots,
                     switchScreenshotPrivacyOrToSrealted,
                 )
             }
@@ -380,43 +419,43 @@ private fun SessionGeneralDetails(clickedSessionData: SessionData?) {
                 clickedSessionData?.session?.apply {
                     ssid?.let {
                         Text(
-                            "SSID: $it",
-                            style = MaterialTheme.typography.bodyMedium,
+                            stringResource(R.string.ssid, it),
+                            style = typography.bodyMedium,
                             modifier = Modifier.padding(vertical = 2.dp)
                         )
                     }
                     bssid?.let {
                         Text(
-                            "BSSID: $it",
-                            style = MaterialTheme.typography.bodyMedium,
+                            stringResource(R.string.bssid, it),
+                            style = typography.bodyMedium,
                             modifier = Modifier.padding(vertical = 2.dp)
                         )
                     }
                     ipAddress?.let {
                         Text(
-                            "IP: $it",
-                            style = MaterialTheme.typography.bodyMedium,
+                            stringResource(R.string.ip, it),
+                            style = typography.bodyMedium,
                             modifier = Modifier.padding(vertical = 2.dp)
                         )
                     }
                     gatewayAddress?.let {
                         Text(
-                            "Gateway: $it",
-                            style = MaterialTheme.typography.bodyMedium,
+                            stringResource(R.string.gateway, it),
+                            style = typography.bodyMedium,
                             modifier = Modifier.padding(vertical = 2.dp)
                         )
                     }
                     securityType?.let {
                         Text(
-                            "Security: $it",
-                            style = MaterialTheme.typography.bodyMedium,
+                            stringResource(R.string.security, it),
+                            style = typography.bodyMedium,
                             modifier = Modifier.padding(vertical = 2.dp)
                         )
                     }
                     captivePortalUrl?.let {
                         Text(
-                            "Portal URL: $it",
-                            style = MaterialTheme.typography.bodyMedium,
+                            stringResource(R.string.portal_url, it),
+                            style = typography.bodyMedium,
                             modifier = Modifier.padding(vertical = 2.dp)
                         )
                     }
@@ -494,72 +533,7 @@ private fun SessionActionButtons(
         )
     }
 }
-/**
- * A preview of the SessionDetail composable.
- *
- * This is a preview of what the SessionDetail composable will look like in different
- * devices and screen sizes.
- *
- * @author Akshay Chordiya
- * @since 1.0
- */
-@Preview(name = "Pixel 5", device = "id:pixel_5", showBackground = true)
-@Preview(name = "Tablet", device = "id:Nexus 7", showBackground = true)
-@Preview(showBackground = true)
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun SessionDetailPreview() {
-    SessionDetail(
-        clickedSessionData = SessionData(
-            session = NetworkSessionEntity(
-                ssid = "test ssid",
-                bssid = "test bssid",
-                ipAddress = "test ip",
-                gatewayAddress = "test gateway",
-                securityType = "test security",
-                captivePortalUrl = "test portal url",
-                timestamp = Date().time,
-                networkId = 1.toString(),
-                isCaptiveLocal = true,
-                isUploadedToRemoteServer = false,
-            ),
-            requests = emptyList()/*listOf(
-                CustomWebViewRequestEntity(
-                    sessionId = 11.toString(),
-                    type = "GET",
-                    url = "https://www.example.com",
-                    method = "GET",
-                    body = "{}",
-                    headers = "{}",
-                )
-            )*/,
-            screenshots = listOf(
-                ScreenshotEntity(
-                    sessionId = "11",
-                    timestamp = Date().time,
-                    path = "test path",
-                    size = "100KB",
-                    url = "test url"
-                )
-            ),
-            webpageContent = listOf(
-                WebpageContentEntity(
-                    sessionId = 11.toString(),
-                    url = "https://www.example.com",
-                    htmlContentPath = "/storage/emulated/0/Android/data/com.example.captive_portal_analyzer_kotlin/files/webpage_content/11/https___www.example.com/html/mock_html_content.html",
-                    timestamp = Date().time,
-                    contentId = 1234,
-                    jsContentPath = "/storage/emulated/0/Android/data/com.example.captive_portal_analyzer_kotlin/files/webpage_content/11/https___www.example.com/js/mock_js_content.js",
-                )
-            )
-        ),
-        uploadSession = { },
-        switchScreenshotPrivacyOrToSrealted = { },
-        navigateToAutomaticAnalysis = { },
-        uploadState = SessionState.NeverUploaded,
-        onContentItemClick = { }
-    )
-}
+
 
 /**
  * A composable function to display a list of web requests.
@@ -570,29 +544,251 @@ fun SessionDetailPreview() {
  * @param requests A list of CustomWebViewRequestEntity to display.
  */
 @Composable
-private fun RequestsList(requests: List<CustomWebViewRequestEntity>?) {
+private fun RequestsList(
+    requests: List<CustomWebViewRequestEntity>?,
+    onRequestItemClick: (CustomWebViewRequestEntity) -> Unit,
+    showFilteringBottomSheet: Boolean,
+    isBodyEmptyChecked: Boolean,
+    selectedMethods: List<Map<RequestMethod, Boolean>>,
+    onToggleShowBottomSheet: () -> Unit,
+    onToggleIsBodyEmpty: () -> Unit,
+    onToggleSelectedMethods: (RequestMethod) -> Unit,
+    onResetFilters: () -> Unit
+) {
 
-    if (requests.isNullOrEmpty()) {
-        EmptyListUi(R.string.no_requests_found)
-        return
-    }
 
     LazyColumn {
-        items(requests) { request ->
-            Card(
+        item {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp)
+                    .padding(16.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    request.url?.let { Text("URL: $it") }
-                    request.method?.let { Text("Method: $it") }
-                    request.type?.let { Text("Type: $it") }
+                Text(stringResource(R.string.filters), style = typography.bodyLarge)
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = onToggleShowBottomSheet) {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        painter = painterResource(id = R.drawable.filter),
+                        contentDescription = if (showFilteringBottomSheet) "Collapse filters" else "Expand filters"
+                    )
                 }
             }
         }
+        if (requests.isNullOrEmpty()) {
+            item {
+                EmptyListUi(R.string.no_requests_found)
+            }
+        } else {
+            items(requests) { request ->
+                RequestListItem(onRequestItemClick, request)
+            }
+        }
+
+    }
+
+    //Bottom Sheet shown only when user clicks on filter icon
+    if (showFilteringBottomSheet)
+        FilterBottomSheet(
+            onDismiss = onToggleShowBottomSheet,
+            isBodyEmptyChecked = isBodyEmptyChecked,
+            onToggleIsBodyEmpty = onToggleIsBodyEmpty,
+            selectedMethods = selectedMethods,
+            onToggleSelectedMethods = onToggleSelectedMethods,
+            onResetFilters = onResetFilters
+        )
+}
+
+/**
+ * A composable that displays a [CustomWebViewRequestEntity] in a card layout.
+ *
+ * @param onRequestItemClick A callback function invoked when the user clicks on the card.
+ * @param request The [CustomWebViewRequestEntity] to display.
+ */
+@Composable
+private fun RequestListItem(
+    onRequestItemClick: (CustomWebViewRequestEntity) -> Unit,
+    request: CustomWebViewRequestEntity
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onRequestItemClick(request) }
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(8.dp)
+        ) {
+            request.url?.let {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.url),
+                        style = typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                    Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            request.type?.let {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.type),
+                        style = typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                    Text(it)
+                }
+            }
+            RequestMethodView(request.method)
+        }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun FilterBottomSheet(
+    onDismiss: () -> Unit,
+    isBodyEmptyChecked: Boolean,
+    onToggleIsBodyEmpty: () -> Unit,
+    selectedMethods: List<Map<RequestMethod, Boolean>>,
+    onToggleSelectedMethods: (RequestMethod) -> Unit,
+    onResetFilters: () -> Unit,
+) {
+
+    val sheetState = rememberModalBottomSheetState()
+
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text("Filters", style = typography.titleLarge)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Checkbox to hide requests with empty body
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = isBodyEmptyChecked,
+                    onCheckedChange = { onToggleIsBodyEmpty() }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Hide requests with empty body")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Dropdown to select GET or PUT methods
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Select Method:")
+                Spacer(modifier = Modifier.width(8.dp))
+
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    selectedMethods.forEach { method ->
+                        CustomChip(
+                            label = method.keys.first().name,
+                            onClick = { onToggleSelectedMethods(method.keys.first()) },
+                            isSelected = method.values.first()
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                }
+
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Remove filters button
+        GhostButton(
+            onClick = onResetFilters,
+            text = stringResource(R.string.remove_filters),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        )
+
+    }
+}
+
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun RequestsListPreview() {
+    // Provide mock data and a dummy lambda for the preview
+    val mockRequests = listOf(
+        CustomWebViewRequestEntity(
+            customWebViewRequestId = 0,
+            sessionId = null,
+            type = "API Request",
+            url = "https://exampleexampleexampleexampleexampleexampleexampleexampleexampleexample.com",
+            method = RequestMethod.GET,
+            body = null,
+            headers = null
+        ),
+        CustomWebViewRequestEntity(
+            customWebViewRequestId = 1,
+            sessionId = null,
+            type = "Form Submission",
+            url = "https://another-example.com",
+            method = RequestMethod.POST,
+            body = "name=value&foo=bar",
+            headers = "Content-Type: application/x-www-form-urlencoded"
+        ),
+        CustomWebViewRequestEntity(
+            customWebViewRequestId = 2,
+            sessionId = null,
+            type = "Data Update",
+            url = "https://yet-another-example.com",
+            method = RequestMethod.PUT,
+            body = "{\"key\": \"value\"}",
+            headers = "Content-Type: application/json"
+        )
+    )
+
+    RequestsList(
+        requests = mockRequests,
+        onRequestItemClick = { request ->
+            // Dummy implementation for the click handler
+            println("Clicked on request: ${request.url}")
+        },
+        showFilteringBottomSheet = false,
+        isBodyEmptyChecked = false,
+        selectedMethods = emptyList(),
+        onToggleShowBottomSheet = { },
+        onToggleIsBodyEmpty = { },
+        onToggleSelectedMethods = { },
+        onResetFilters = { }
+    )
+}
+
+
 /**
  * A composable function to display an empty list message.
  *
@@ -610,7 +806,7 @@ private fun EmptyListUi(@StringRes stringRes: Int) {
     ) {
         Text(
             stringResource(id = stringRes),
-            style = MaterialTheme.typography.bodyLarge
+            style = typography.bodyLarge
         )
     }
 }
@@ -623,7 +819,10 @@ private fun EmptyListUi(@StringRes stringRes: Int) {
  * @param content A list of WebpageContentEntity to display.
  */
 @Composable
-private fun ContentList(content: List<WebpageContentEntity>?,  onContentItemClick: (WebpageContentEntity) -> Unit) {
+private fun ContentList(
+    content: List<WebpageContentEntity>?,
+    onContentItemClick: (WebpageContentEntity) -> Unit
+) {
 
     if (content.isNullOrEmpty()) {
         EmptyListUi(R.string.no_webpages_found)
@@ -632,7 +831,7 @@ private fun ContentList(content: List<WebpageContentEntity>?,  onContentItemClic
 
     LazyColumn {
         items(content) { item ->
-            ContentItem(item,onContentItemClick)
+            ContentItem(item, onContentItemClick)
         }
     }
 }
@@ -653,8 +852,10 @@ private fun ContentItem(
             Text(stringResource(R.string.html_path, item.htmlContentPath))
             Text(stringResource(R.string.js_path, item.jsContentPath))
             Text(stringResource(R.string.timestamp, formatDate(item.timestamp)))
-            HintTextWithIcon(hint = stringResource(R.string.hint_click_to_view_content),
-                iconResId = R.drawable.tap)
+            HintTextWithIcon(
+                hint = stringResource(R.string.hint_click_to_view_content),
+                iconResId = R.drawable.tap
+            )
         }
     }
 }
@@ -775,7 +976,7 @@ fun ImageItem(
                 Text(
                     text = "ToS/Privacy related screenshot",
                     color = MaterialTheme.colorScheme.onPrimary,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = typography.bodySmall,
                     textAlign = TextAlign.Center
                 )
             }

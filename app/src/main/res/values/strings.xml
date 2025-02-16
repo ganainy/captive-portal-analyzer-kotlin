@@ -179,6 +179,17 @@
     <string name="analyze_captive_portal_with_ai">Analyze captive portal with AI</string>
     <string name="clear_prompt">clear prompt</string>
     <string name="no_result_yet">Please enter a prompt and press the \"Analyze\" button to start.</string>
+    <string name="request_details">Request details</string>
+    <string name="remove_filters">Remove Filters</string>
+    <string name="type">"Type: "</string>
+    <string name="url">"URL: "</string>
+    <string name="filters">Filters</string>
+    <string name="portal_url">Portal URL: %1$s</string>
+    <string name="security">Security: %1$s</string>
+    <string name="gateway">Gateway: %1$s</string>
+    <string name="ip">IP: %1$s</string>
+    <string name="bssid">BSSID: %1$s</string>
+    <string name="ssid">SSID: %1$s</string>
 
 
 </resources>

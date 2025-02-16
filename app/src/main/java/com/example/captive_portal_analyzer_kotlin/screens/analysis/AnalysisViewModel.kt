@@ -1,6 +1,7 @@
 package com.example.captive_portal_analyzer_kotlin.screens.analysis
 
 import CaptivePortalDetector
+import CaptivePortalResult
 import NetworkSessionRepository
 import android.app.Application
 import android.content.Context
@@ -23,6 +24,7 @@ import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.convertMethodStringToEnum
 import com.example.captive_portal_analyzer_kotlin.utils.LocalOrRemoteCaptiveChecker
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import kotlinx.coroutines.Dispatchers
@@ -350,7 +352,7 @@ class AnalysisViewModel(
         return CustomWebViewRequestEntity(
             sessionId = sessionId,
             url = request.url,
-            method = request.method,
+            method = convertMethodStringToEnum(request.method),
             headers = request.headers.toString(),
             body = request.body,
             type = request.type.name,
@@ -394,7 +396,7 @@ class AnalysisViewModel(
         return CustomWebViewRequestEntity(
             sessionId = sessionId,
             url = request.url.toString(),
-            method = request.method,
+            method = convertMethodStringToEnum(request.method),
             headers = request.requestHeaders.toString(),
         )
     }

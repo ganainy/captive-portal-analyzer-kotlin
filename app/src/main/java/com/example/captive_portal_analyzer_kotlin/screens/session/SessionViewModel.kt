@@ -8,12 +8,17 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
+import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.RequestMethod
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import kotlinx.coroutines.Dispatchers
-
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -52,6 +57,7 @@ sealed class SessionState {
      * @property message A description of the error encountered during upload.
      */
     data class ErrorLoading(val message: String) : SessionState()
+
     /**
      * Represents an error state while uploading session to remote server.
      *
@@ -59,6 +65,15 @@ sealed class SessionState {
      */
     data class ErrorUploading(val message: String) : SessionState()
 }
+
+data class SessionUiData(
+    val sessionData: SessionData? = null,
+    val showFilteringBottomSheet: Boolean = false, // Show or hide the filtering bottom sheet
+    val isBodyEmptyChecked: Boolean = false, // show or hide the requests with empty body
+    val selectedMethods: List<Map<RequestMethod, Boolean>> = emptyList(), //show or hide requests with certain
+    // methods GET,POST,PUT according to filters and boolean value to determine if filter is enabled or not
+    val unfilteredRequests: List<CustomWebViewRequestEntity> = emptyList(), // contains all requests of the session to apply filtering to them
+)
 
 /**
  * ViewModel for managing the session data and upload state.
@@ -82,14 +97,68 @@ class SessionViewModel(
     /**
      * The session data that is currently being viewed on the screen.
      */
-    private val _sessionData = MutableStateFlow<SessionData?>(null)
-    val sessionData = _sessionData.asStateFlow()
+    private val _sessionUiData = MutableStateFlow(SessionUiData())
+    val sessionUiData = _sessionUiData.asStateFlow()
 
     /**
      * This function is called when the ViewModel is constructed.
      */
     init {
         loadSessionData()
+        viewModelScope.launch {
+            applyFilters()
+        }
+    }
+
+    /**
+     * Applies filtering logic to the session requests based on current UI state.
+     * Filters can be applied based on:
+     * - Request body emptiness
+     * - Selected HTTP methods
+     *
+     * The filtered results are stored in filteredRequests while preserving the original requests.
+     *
+     * Note: This should be called within a coroutine scope.
+     */
+    private suspend fun applyFilters() {
+        _sessionUiData
+            .map { sessionUiData ->
+                sessionUiData.unfilteredRequests.filter { request ->
+                    // Filter by body emptiness
+                    val passesBodyFilter = if (sessionUiData.isBodyEmptyChecked) {
+                        !request.body.isNullOrEmpty()
+                    } else {
+                        true
+                    }
+
+                    // Filter by selected methods
+                    val passesMethodFilter = if (sessionUiData.selectedMethods.isEmpty()) {
+                        true
+                    } else {
+                        sessionUiData.selectedMethods.any { methodMap ->
+                            methodMap.entries.firstOrNull()?.let { (method, isEnabled) ->
+                                isEnabled && request.method == method
+                            } ?: false
+                        }
+                    }
+
+                    passesBodyFilter && passesMethodFilter
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
+            .collect { filteredRequests ->
+                _sessionUiData.update {
+                    it.copy(
+                        sessionData = it.sessionData?.copy(
+                            requests = filteredRequests
+                        )
+                    )
+                }
+            }
     }
 
     /**
@@ -110,8 +179,21 @@ class SessionViewModel(
                 // Load the session data from the repository using the clickedSessionId
                 repository.getCompleteSessionData(clickedSessionId)
                     .collect { sessionData ->
+                        //extract the methods available for this session to show them in the filter sheet
+                        val availableMethods =
+                            sessionData.requests?.map { it.method }?.toSet()?.toList()
+                                ?: emptyList()
+
                         // Set the session data to the StateFlow
-                        _sessionData.value = sessionData
+                        _sessionUiData.update {
+                            it.copy(
+                                sessionData = sessionData,
+                                unfilteredRequests = sessionData.requests ?: emptyList(),
+                                selectedMethods = availableMethods.map { method ->
+                                    mapOf(method to true)
+                                }
+                            )
+                        }
                         // Set the initial state of the uploadState StateFlow
                         // based on whether the session is already uploaded or not
                         if (sessionData.session.isUploadedToRemoteServer) {
@@ -152,7 +234,6 @@ class SessionViewModel(
      * It takes a [SessionData] and a function to show a toast as parameters.
      * It updates the [_sessionState] with the result of the upload.
      *
-     * @param sessionData the [SessionData] to be uploaded
      * @param showToast a function used to display a toast message if an error occurs during upload
      */
     fun uploadSession(
@@ -175,14 +256,22 @@ class SessionViewModel(
             repository.uploadSessionData(sessionData.session.networkId)
                 .onSuccess {
                     try {
-                        repository.updateSession(sessionData.session.copy(isUploadedToRemoteServer = true))
+                        repository.updateSession(
+                            sessionData.session.copy(
+                                isUploadedToRemoteServer = true
+                            )
+                        )
                         _sessionState.value = SessionState.Success
                     } catch (e: Exception) {
                         _sessionState.value = SessionState.ErrorUploading(
                             e.localizedMessage
                                 ?: getApplication<Application>().getString(R.string.error_uploading_session)
                         )
-                        repository.updateSession(sessionData.session.copy(isUploadedToRemoteServer = false))
+                        repository.updateSession(
+                            sessionData.session.copy(
+                                isUploadedToRemoteServer = false
+                            )
+                        )
                         return@launch
                     }
                 }
@@ -192,10 +281,64 @@ class SessionViewModel(
                             ?: getApplication<Application>().getString(R.string.error_uploading_session)
                     )
                     withContext(Dispatchers.Main) {
-                        repository.updateSession(sessionData.session.copy(isUploadedToRemoteServer = false))
+                        repository.updateSession(
+                            sessionData.session.copy(
+                                isUploadedToRemoteServer = false
+                            )
+                        )
                         apiResponse.message?.let { showToast(it, ToastStyle.ERROR) }
                     }
                 }
+        }
+    }
+
+    /**
+     * Toggles the visibility of the bottom sheet for filtering options.
+     */
+    fun toggleShowBottomSheet() {
+        _sessionUiData.update {
+            it.copy(showFilteringBottomSheet = !it.showFilteringBottomSheet)
+        }
+    }
+
+    /**
+     * Toggles the state of the body empty check.
+     */
+    fun toggleIsBodyEmpty() {
+        _sessionUiData.update {
+            it.copy(isBodyEmptyChecked = !it.isBodyEmptyChecked)
+        }
+    }
+
+    /**
+     * Modifies the selected methods by toggling the boolean value for the given [requestMethod].
+     *
+     * @param requestMethod the [RequestMethod] to toggle in the list of selected methods.
+     */
+
+    fun modifySelectedMethods(requestMethod: RequestMethod) {
+        _sessionUiData.update {
+            val updatedMethods = it.selectedMethods.map { methodMap ->
+                methodMap.mapValues { (key, value) ->
+                    if (key == requestMethod) !value else value
+                }
+            }
+            it.copy(selectedMethods = updatedMethods)
+        }
+    }
+
+    /**
+     * Resets the filters to their default state.
+     */
+    fun resetFilters() {
+        _sessionUiData.update { sessionUiData ->
+            sessionUiData.copy(
+                isBodyEmptyChecked = false,
+                selectedMethods = sessionUiData.selectedMethods.map { methodMap ->
+                    // Reset all methods to true to show all request methods of the session
+                    methodMap.mapValues { (_, value) -> true }
+                }
+            )
         }
     }
 

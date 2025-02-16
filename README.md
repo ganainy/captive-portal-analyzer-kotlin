@@ -12,6 +12,7 @@ For detailed information about the project files structure and architecture, see
 
 - Interact with captive portals seamlessly.
 - Automatically gather and manage POST request bodies and headers.
+- Filter and view collected requests details.
 - Automatically create and manage sessions effortlessly.
 - Automatically capture screenshots of portal interactions.
 - Perform AI-powered privacy and data collection analysis.
@@ -52,13 +53,15 @@ For detailed information about the project files structure and architecture, see
 [Download video for better quality](preview/videos/mark-analyze-with-ai_blurred.mp4)
 
 ### Screenshots:
-| Feature                                                                 | Screenshot                          |
-|-------------------------------------------------------------------------|-------------------------------------|
-| **Interacting with captive portal from the app**                        | ![2.png](preview/screenshots/2.png) |
-| **Detailed View of collected data**                                     | ![3.png](preview/screenshots/3.png) |
-| **AI Insights about the captive portal**                                | ![4.png](preview/screenshots/4.png) |
-| **Control language & theme**                                            | ![5.png](preview/screenshots/5.png) |
-| **Fetched request bodies saved to backend**                             | ![6.png](preview/screenshots/6.png) |
+| Feature                                                                              | Screenshot                          |
+|--------------------------------------------------------------------------------------|-------------------------------------|
+| **Interacting with captive portal from the app**                                     | ![2.png](preview/screenshots/2.png) |
+| **Detailed View of collected data**                                                  | ![3.png](preview/screenshots/3.png) |
+| **Filter collected requests**                                                        | ![8.png](preview/screenshots/8.png) |
+| **Show each collected request in details**                                           | ![9.png](preview/screenshots/9.png) |
+| **AI Insights about the captive portal**                                             | ![4.png](preview/screenshots/4.png) |
+| **Control language & theme**                                                         | ![5.png](preview/screenshots/5.png) |
+| **Fetched request bodies saved to backend**                                          | ![6.png](preview/screenshots/6.png) |
 | **Screenshots related to Privacy policy/ToS<br/> uploaded to back end for analysis** | ![7.png](preview/screenshots/7.png) |
 ---
 

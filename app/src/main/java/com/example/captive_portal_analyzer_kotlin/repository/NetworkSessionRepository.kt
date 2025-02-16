@@ -1,21 +1,21 @@
+
 import android.net.Uri
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.convertMethodEnumToString
 import com.example.captive_portal_analyzer_kotlin.room.CustomWebViewRequestDao
 import com.example.captive_portal_analyzer_kotlin.room.NetworkSessionDao
 import com.example.captive_portal_analyzer_kotlin.room.ScreenshotDao
 import com.example.captive_portal_analyzer_kotlin.room.WebpageContentDao
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
-import com.google.gson.Gson
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 import java.io.File
@@ -114,7 +114,7 @@ class NetworkSessionRepository(
             request.sessionId,
             request.type,
             request.url,
-            request.method,
+            convertMethodEnumToString( request.method),
             request.body,
             request.headers
         ) == 0

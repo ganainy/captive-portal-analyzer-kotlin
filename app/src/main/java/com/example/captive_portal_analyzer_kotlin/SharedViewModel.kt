@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
 import com.example.captive_portal_analyzer_kotlin.components.ToastState
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
+import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +19,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -43,6 +43,8 @@ class SharedViewModel(
     private val _clickedSessionId = MutableStateFlow<String?>(null)
     val clickedSessionId: StateFlow<String?> = _clickedSessionId
 
+    private val _clickedWebViewRequestEntity = MutableStateFlow<CustomWebViewRequestEntity?>(null)
+    val clickedWebViewRequestEntity: StateFlow<CustomWebViewRequestEntity?> = _clickedWebViewRequestEntity
 
     private val _toastState = MutableStateFlow<ToastState>(ToastState.Hidden)
     val toastState = _toastState.asStateFlow()
@@ -188,6 +190,10 @@ class SharedViewModel(
      */
     fun updateClickedContent(webpageContentEntity: WebpageContentEntity) {
         _clickedWebpageContent.value = webpageContentEntity
+    }
+
+    fun updateClickedRequest(webViewRequestEntity: CustomWebViewRequestEntity) {
+        _clickedWebViewRequestEntity.value = webViewRequestEntity
     }
 
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
@@ -20,9 +21,10 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEnti
         WebpageContentEntity::class,
         ScreenshotEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
+@TypeConverters(RequestMethodConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     /**
      * Provides a Data Access Object (DAO) for interacting with the CustomWebViewRequest
