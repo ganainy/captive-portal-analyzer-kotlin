@@ -345,10 +345,11 @@ class AnalysisViewModel(
      * @return a [CustomWebViewRequestEntity] containing the information from the
      * [WebViewRequest] and the session ID.
      */
-    private fun getCustomWebViewRequestFromWebViewRequest(
+    private suspend fun getCustomWebViewRequestFromWebViewRequest(
         request: WebViewRequest,
         sessionId: String?
     ): CustomWebViewRequestEntity {
+        val hasFullInternet = hasFullInternetAccess(context)
         return CustomWebViewRequestEntity(
             sessionId = sessionId,
             url = request.url,
@@ -356,6 +357,8 @@ class AnalysisViewModel(
             headers = request.headers.toString(),
             body = request.body,
             type = request.type.name,
+            hasFullInternetAccess = hasFullInternet,
+            timestamp = System.currentTimeMillis()
         )
     }
 
@@ -389,15 +392,18 @@ class AnalysisViewModel(
      * @return a [CustomWebViewRequestEntity] containing the information from the
      * [WebResourceRequest] and the session ID.
      */
-    private fun getCustomWebViewRequestFromWebResourceRequest(
+    private suspend fun getCustomWebViewRequestFromWebResourceRequest(
         request: WebResourceRequest,
         sessionId: String?
     ): CustomWebViewRequestEntity {
+        val hasFullInternet = hasFullInternetAccess(context)
         return CustomWebViewRequestEntity(
             sessionId = sessionId,
             url = request.url.toString(),
             method = convertMethodStringToEnum(request.method),
             headers = request.requestHeaders.toString(),
+            hasFullInternetAccess = hasFullInternet,
+            timestamp = System.currentTimeMillis()
         )
     }
 

@@ -193,5 +193,9 @@
     <string name="hint_click_to_view_request_content">Karte anklicken, um den vollständigen Anfrageinhalt anzuzeigen</string>
     <string name="hide_requests_with_empty_body">Anfragen mit leerem Body verstecken</string>
     <string name="select_method">Methode auswählen:</string>
-
+<string name="timestamp_no_param">"Zeitstempel: "</string>
+<string name="before_authentication">Vor der Authentifizierung</string>
+<string name="after_authentication">Nach der Authentifizierung</string>
+    <string name="after_authentication_request">Nach der Authentifizierung Anfrage</string>
+    <string name="before_authentication_request">Vor der Authentifizierung Anfrage</string>
 </resources>

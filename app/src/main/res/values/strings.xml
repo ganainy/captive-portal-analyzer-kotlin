@@ -193,6 +193,11 @@
     <string name="ssid">SSID: %1$s</string>
     <string name="hide_requests_with_empty_body">Hide requests with empty body</string>
     <string name="select_method">Select Method:</string>
+    <string name="timestamp_no_param">"Timestamp: "</string>
+    <string name="before_authentication">Before Authentication</string>
+    <string name="after_authentication">After Authentication</string>
+    <string name="after_authentication_request">After Authentication Request</string>
+    <string name="before_authentication_request">Before Authentication Request</string>
 
 
 </resources>

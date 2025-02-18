@@ -5,14 +5,19 @@ import androidx.room.PrimaryKey
 import java.util.Locale
 
 /**
- * Data class to represent a  webview request.
- * This class is used by the  webview to store the requests that are made.
+ * Data class to represent a webview request.
+ * This class is used by the webview to store the requests that are made.
  * The requests are stored in the database with a unique id.
- * The session id is used to group requests that are made by the same session (same network).
- * The url is the url of the request.
- * The method is the method of the request (e.g. GET, POST, etc.).
- * The body is the body of the request (e.g. the data that is sent with the request).
- * The headers is the headers of the request (e.g. the headers that are sent with the request).
+ *
+ * @param customWebViewRequestId The unique ID of the request.
+ * @param sessionId The session ID to group requests made by the same session (same network).
+ * @param type The type of the request.
+ * @param url The URL of the request.
+ * @param method The method of the request (e.g. GET, POST, etc.).
+ * @param body The body of the request (e.g. the data that is sent with the request).
+ * @param headers The headers of the request (e.g. the headers that are sent with the request).
+ * @param hasFullInternetAccess A boolean indicating whether the request was made while having full internet access.
+ * @param timestamp The time when the request was made.
  */
 @Entity(tableName = "custom_webview_request")
 data class CustomWebViewRequestEntity(
@@ -23,7 +28,10 @@ data class CustomWebViewRequestEntity(
     val url: String?,
     val method: RequestMethod = RequestMethod.UNKNOWN,
     val body: String? = null,
-    val headers: String? // Stored as JSON string
+    val headers: String?, // Stored as JSON string
+    val hasFullInternetAccess: Boolean = false, // Whether the request has full internet access,
+    // if true it means its done after successful login otherwise false
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 /**

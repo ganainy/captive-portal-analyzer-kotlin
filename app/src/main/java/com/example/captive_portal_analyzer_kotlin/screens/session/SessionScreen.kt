@@ -581,11 +581,57 @@ private fun RequestsList(
                 EmptyListUi(R.string.no_requests_found)
             }
         } else {
-            items(requests) { request ->
-                RequestListItem(onRequestItemClick, request)
+            // Group requests based on whether they have full internet access and show each group
+            // separately with a header
+
+            // Before Authentication Requests
+            item {
+                Text(
+                    text = stringResource(R.string.before_authentication),
+                    style = typography.titleMedium,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+
+            val beforeAuthRequests = requests.filter { !it.hasFullInternetAccess }
+            if (beforeAuthRequests.isEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.no_requests_found),
+                        style = typography.bodyMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            } else {
+                items(beforeAuthRequests) { request ->
+                    RequestListItem(onRequestItemClick, request)
+                }
+            }
+
+            // After Authentication Requests
+            item {
+                Text(
+                    text = stringResource(R.string.after_authentication),
+                    style = typography.titleMedium,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+
+            val afterAuthRequests = requests.filter { it.hasFullInternetAccess }
+            if (afterAuthRequests.isEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.no_requests_found),
+                        style = typography.bodyMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            } else {
+                items(afterAuthRequests) { request ->
+                    RequestListItem(onRequestItemClick, request)
+                }
             }
         }
-
     }
 
     //Bottom Sheet shown only when user clicks on filter icon
@@ -651,6 +697,19 @@ private fun RequestListItem(
                 }
             }
             RequestMethodView(request.method)
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.timestamp_no_param),
+                    style = typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Text(formatDate(request.timestamp))
+            }
             HintTextWithIcon(
                 hint = stringResource(R.string.hint_click_to_view_request_content),
                 iconResId = R.drawable.tap
@@ -751,7 +810,7 @@ fun RequestsListPreview() {
             customWebViewRequestId = 0,
             sessionId = null,
             type = "API Request",
-            url = "https://exampleexampleexampleexampleexampleexampleexampleexampleexampleexample.com",
+            url = "https://example.com",
             method = RequestMethod.GET,
             body = null,
             headers = null
@@ -773,6 +832,16 @@ fun RequestsListPreview() {
             method = RequestMethod.PUT,
             body = "{\"key\": \"value\"}",
             headers = "Content-Type: application/json"
+        ),
+        CustomWebViewRequestEntity(
+            customWebViewRequestId = 3,
+            sessionId = null,
+            type = "Data Update",
+            url = "https://yet-another-example.com",
+            method = RequestMethod.PUT,
+            body = "{\"key\": \"value\"}",
+            headers = "Content-Type: application/json",
+            hasFullInternetAccess = true
         )
     )
 
