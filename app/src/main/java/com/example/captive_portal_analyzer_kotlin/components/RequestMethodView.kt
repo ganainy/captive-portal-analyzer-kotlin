@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -47,6 +46,48 @@ fun RequestMethodView(method: RequestMethod) {
 
 @Preview
 @Composable
-fun RequestMethodViewPreview() {
+fun RequestMethodViewPreviewGET() {
     RequestMethodView(RequestMethod.GET)
+}
+
+@Preview
+@Composable
+fun RequestMethodViewPreviewPOST() {
+    RequestMethodView(RequestMethod.POST)
+}
+
+@Preview
+@Composable
+fun RequestMethodViewPreviewPUT() {
+    RequestMethodView(RequestMethod.PUT)
+}
+
+@Preview
+@Composable
+fun RequestMethodViewPreviewDELETE() {
+    RequestMethodView(RequestMethod.DELETE)
+}
+
+@Preview
+@Composable
+fun RequestMethodViewPreviewPATCH() {
+    RequestMethodView(RequestMethod.PATCH)
+}
+
+@Preview
+@Composable
+fun RequestMethodViewPreviewHEAD() {
+    RequestMethodView(RequestMethod.HEAD)
+}
+
+@Preview
+@Composable
+fun RequestMethodViewPreviewOPTIONS() {
+    RequestMethodView(RequestMethod.OPTIONS)
+}
+
+@Preview
+@Composable
+fun RequestMethodViewPreviewUNKNOWN() {
+    RequestMethodView(RequestMethod.UNKNOWN)
 }

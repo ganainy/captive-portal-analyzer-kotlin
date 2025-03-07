@@ -21,7 +21,7 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEnti
         WebpageContentEntity::class,
         ScreenshotEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 @TypeConverters(RequestMethodConverter::class)

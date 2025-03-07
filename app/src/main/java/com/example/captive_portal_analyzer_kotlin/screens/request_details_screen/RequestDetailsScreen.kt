@@ -16,9 +16,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.RequestMethodView
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
@@ -37,21 +39,7 @@ fun RequestDetailsScreen(sharedViewModel: SharedViewModel) {
 
 }
 
-@Preview(showBackground = true)
-@Composable
-fun RequestDetailsScreenPreview() {
-    RequestDetailsContent(
-        PaddingValues(), CustomWebViewRequestEntity(
-            customWebViewRequestId = 1,
-            sessionId = "1",
-            type = "HTML",
-            url = "www.example.com",
-            method = RequestMethod.GET,
-            body = "",
-            headers = ""
-        )
-    )
-}
+
 
 @Composable
 private fun RequestDetailsContent(
@@ -133,6 +121,30 @@ private fun RequestDetailsContent(
             text = webViewRequest?.headers ?: "N/A",
             style = MaterialTheme.typography.bodyMedium
         )
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        Text(
+            text = if (webViewRequest?.hasFullInternetAccess == true) stringResource(R.string.after_authentication_request) else stringResource(
+                R.string.before_authentication_request
+            ),
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun RequestDetailsScreenPreview() {
+    RequestDetailsContent(
+        PaddingValues(), CustomWebViewRequestEntity(
+            customWebViewRequestId = 1,
+            sessionId = "1",
+            type = "HTML",
+            url = "www.example.com",
+            method = RequestMethod.GET,
+            body = "",
+            headers = "test",
+        )
+    )
+}
