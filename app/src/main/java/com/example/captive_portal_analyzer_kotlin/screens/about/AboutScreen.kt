@@ -4,22 +4,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -27,8 +22,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.captive_portal_analyzer_kotlin.R
+import com.example.captive_portal_analyzer_kotlin.screens.about.composables.FAQItem
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 
 /**
@@ -86,44 +81,6 @@ fun AboutScreen() {
             )
         }
     }
-
-
-}
-
-
-/**
- * A composable function that displays a Question and Answer pair.
- *
- * @param question The text displayed as the question.
- * @param answer The text displayed as the answer.
- * */
-@Composable
-fun FAQItem(question: String, answer: AnnotatedString) {
-    val context = LocalContext.current
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = question,
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        )
-        ClickableText(
-            text = answer,
-            style = MaterialTheme.typography.bodyLarge.copy(
-                lineHeight = 20.sp,
-                color =  MaterialTheme.colorScheme.onSurface
-            ),
-            onClick = { offset ->
-                answer.getStringAnnotations(tag = "URL", start = offset, end = offset)
-                    .firstOrNull()?.let { annotation ->
-                        openExternalWebsite(annotation.item, context)
-                    }
-            }
-        )
-    }
 }
 
 /**
@@ -137,28 +94,18 @@ fun openExternalWebsite(url: String, context: Context) {
     context.startActivity(intent)
 }
 
-@Preview(showBackground = true)
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+
 @Composable
-fun FAQItemPreview() {
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
+@Preview(
+    showBackground = true,
+    device = "spec:width=1280dp,height=800dp,dpi=240",
+    name = "tablet",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
+fun AboutScreenPreview() {
     AppTheme {
-        FAQItem(
-            question = "Sample Question?",
-            answer = buildAnnotatedString {
-                append("Sample Answer with a link to ")
-                pushStringAnnotation(tag = "if-is", annotation = "https://example.com")
-                withStyle(
-                    style = SpanStyle(
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline,
-                        fontWeight = FontWeight.Bold
-                    )
-                ) {
-                    append("example.com")
-                }
-                pop()
-            }
-        )
+        AboutScreen()
     }
 }
 

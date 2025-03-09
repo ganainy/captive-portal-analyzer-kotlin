@@ -1,8 +1,10 @@
 package com.example.captive_portal_analyzer_kotlin.screens.session
 
+
 import NetworkSessionRepository
 import android.app.Application
 import android.content.Context
+import android.content.res.Configuration
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -41,10 +43,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.typography
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,8 +62,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -67,32 +74,26 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import com.example.captive_portal_analyzer_kotlin.R
-
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
+import com.example.captive_portal_analyzer_kotlin.components.CustomChip
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
+import com.example.captive_portal_analyzer_kotlin.components.RequestMethodView
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.RequestMethod
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
+import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.Utils.Companion.formatDate
-
-
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import com.example.captive_portal_analyzer_kotlin.components.CustomChip
-import com.example.captive_portal_analyzer_kotlin.components.RequestMethodView
-import com.example.captive_portal_analyzer_kotlin.dataclasses.RequestMethod
 
 
 /**
@@ -138,13 +139,45 @@ fun SessionScreen(
             message = message, style = style,
         )
     }
-    /**
-     * The main composable function for the session screen.
-     *
-     * It uses a scaffold to display the session details and handles the upload state.
-     *
-     * @param paddingValues The padding values for the scaffold.
-     */
+
+    SessionScreenContent(
+        sessionState = sessionState,
+        sessionUiData = sessionUiData,
+        showToast = showToast,
+        navigateToAutomaticAnalysis = navigateToAutomaticAnalysis,
+        navigateToWebpageContentScreen = navigateToWebpageContentScreen,
+        navigateToRequestDetailsScreen = navigateToRequestDetailsScreen,
+        isConnected = isConnected,
+        uploadSession = sessionViewModel::uploadSession,
+        toggleScreenshotPrivacyOrToSrelated = sessionViewModel::toggleScreenshotPrivacyOrToSrelated,
+        toggleShowBottomSheet = sessionViewModel::toggleShowBottomSheet,
+        toggleIsBodyEmpty = sessionViewModel::toggleIsBodyEmpty,
+        modifySelectedMethods = sessionViewModel::modifySelectedMethods,
+        resetFilters = sessionViewModel::resetFilters,
+        updateClickedContent = sharedViewModel::updateClickedContent,
+        updateClickedRequest = sharedViewModel::updateClickedRequest
+    )
+
+}
+
+@Composable
+private fun SessionScreenContent(
+    sessionState: SessionState,
+    sessionUiData: SessionUiData,
+    isConnected: Boolean,
+    showToast: (String, ToastStyle) -> Unit,
+    navigateToAutomaticAnalysis: () -> Unit,
+    navigateToWebpageContentScreen: () -> Unit,
+    navigateToRequestDetailsScreen: () -> Unit,
+    uploadSession: (SessionData?, (String, ToastStyle) -> Unit) -> Unit,
+    toggleScreenshotPrivacyOrToSrelated: (ScreenshotEntity) -> Unit,
+    toggleShowBottomSheet: () -> Unit,
+    toggleIsBodyEmpty: () -> Unit,
+    modifySelectedMethods: (RequestMethod) -> Unit,
+    resetFilters: () -> Unit,
+    updateClickedContent: (WebpageContentEntity) -> Unit,
+    updateClickedRequest: (CustomWebViewRequestEntity) -> Unit
+) {
     Scaffold(
 
     ) { paddingValues ->
@@ -161,93 +194,95 @@ fun SessionScreen(
          * If the upload state is [SessionState.AlreadyUploaded], [SessionState.Success], or [SessionState.NeverUploaded],
          * it displays the session details with only the button changed based on the three different states.
          */
-        when (sessionState) {
-            // Display a loading indicator while the session is being uploaded to remote server
-            SessionState.Uploading -> {
-                LoadingIndicator(message = stringResource(R.string.uploading_information_to_be_analyzed))
-            }
-            // Display a loading indicator while the session is being loaded from DB
-            SessionState.Loading -> {
-                LoadingIndicator(message = stringResource(R.string.loading_session))
-            }
-            //Display an error component with a retry button if error while uploading to remote server
-            is SessionState.ErrorUploading -> {
-                val errorMessage = (sessionState as SessionState.ErrorUploading).message
-                ErrorComponent(
-                    error = errorMessage,
-                    onRetryClick = {
-                        sessionViewModel.uploadSession(
-                            sessionUiData.sessionData,
-                            showToast,
-                        )
+
+        Box(Modifier.padding(paddingValues)){
+            when (sessionState) {
+                // Display a loading indicator while the session is being uploaded to remote server
+                SessionState.Uploading -> {
+                    LoadingIndicator(message = stringResource(R.string.uploading_information_to_be_analyzed))
+                }
+                // Display a loading indicator while the session is being loaded from DB
+                SessionState.Loading -> {
+                    LoadingIndicator(message = stringResource(R.string.loading_session))
+                }
+                //Display an error component with a retry button if error while uploading to remote server
+                is SessionState.ErrorUploading -> {
+                    val errorMessage = (sessionState as SessionState.ErrorUploading).message
+                    ErrorComponent(
+                        error = errorMessage,
+                        onRetryClick = {
+                            uploadSession(
+                                sessionUiData.sessionData,
+                                showToast,
+                            )
+                        }
+                    )
+                }
+                //Display an error message if error while loading from DB
+                is SessionState.ErrorLoading -> {
+                    val errorMessage = (sessionState as SessionState.ErrorLoading).message
+                    ErrorComponent(
+                        error = errorMessage,
+                    )
+                }
+
+                else -> {
+                    // This branch is for all other SessionState values
+                    // If the upload state is UploadState.AlreadyUploaded, UploadState.Success, or UploadState.NeverUploaded,
+                    // it displays the session details with only the button changed based on the three different states.
+                    if (sessionState is SessionState.AlreadyUploaded || sessionState is SessionState.Success || sessionState is SessionState.NeverUploaded) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                        ) {
+
+                            SessionDetail(
+                                sessionUiData = sessionUiData,
+                                uploadSession = {
+                                    uploadSession(
+                                        sessionUiData.sessionData,
+                                        showToast,
+                                    )
+                                },
+                                switchScreenshotPrivacyOrToSrealted = toggleScreenshotPrivacyOrToSrelated,
+                                navigateToAutomaticAnalysis = navigateToAutomaticAnalysis,
+                                uploadState = sessionState,
+                                onContentItemClick = {
+                                    updateClickedContent(it)
+                                    navigateToWebpageContentScreen()
+                                },
+                                onRequestItemClick = {
+                                    updateClickedRequest(it)
+                                    navigateToRequestDetailsScreen()
+                                },
+                                onToggleShowBottomSheet = toggleShowBottomSheet,
+                                onToggleIsBodyEmpty = toggleIsBodyEmpty,
+                                onModifySelectedMethods = modifySelectedMethods,
+                                onResetFilters = resetFilters,
+                            )
+
+
+                            HintInfoBox(
+                                context = LocalContext.current,
+                                modifier = Modifier.align(Alignment.Center),
+                            )
+
+                            AnimatedNoInternetBanner(isConnected = isConnected)
+
+                        }
+
+                    } else {
+                        // If the upload state is not recognized, throw an exception
+                        throw Exception("Unexpected upload state: $sessionState")
                     }
-                )
-            }
-            //Display an error message if error while loading from DB
-            is SessionState.ErrorLoading -> {
-                val errorMessage = (sessionState as SessionState.ErrorLoading).message
-                ErrorComponent(
-                    error = errorMessage,
-                )
-            }
 
-            else -> {
-                // This branch is for all other SessionState values
-                // If the upload state is UploadState.AlreadyUploaded, UploadState.Success, or UploadState.NeverUploaded,
-                // it displays the session details with only the button changed based on the three different states.
-                if (sessionState is SessionState.AlreadyUploaded || sessionState is SessionState.Success || sessionState is SessionState.NeverUploaded) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                    ) {
-
-                        SessionDetail(
-                            sessionUiData = sessionUiData,
-                            uploadSession = {
-                                sessionViewModel.uploadSession(
-                                    sessionUiData.sessionData,
-                                    showToast,
-                                )
-                            },
-                            switchScreenshotPrivacyOrToSrealted = sessionViewModel::toggleScreenshotPrivacyOrToSrelated,
-                            navigateToAutomaticAnalysis = navigateToAutomaticAnalysis,
-                            uploadState = sessionState,
-                            onContentItemClick = {
-                                sharedViewModel.updateClickedContent(it)
-                                navigateToWebpageContentScreen()
-                            },
-                            onRequestItemClick = {
-                                sharedViewModel.updateClickedRequest(it)
-                                navigateToRequestDetailsScreen()
-                            },
-                            onToggleShowBottomSheet = sessionViewModel::toggleShowBottomSheet,
-                            onToggleIsBodyEmpty = sessionViewModel::toggleIsBodyEmpty,
-                            onModifySelectedMethods = sessionViewModel::modifySelectedMethods,
-                            onResetFilters = sessionViewModel::resetFilters,
-                        )
-
-
-                        HintInfoBox(
-                            context = LocalContext.current,
-                            modifier = Modifier.align(Alignment.Center),
-                        )
-
-                        AnimatedNoInternetBanner(isConnected = isConnected)
-
-                    }
-
-                } else {
-                    // If the upload state is not recognized, throw an exception
-                    throw Exception("Unexpected upload state: $sessionState")
                 }
 
             }
-
         }
 
 
     }
-
 }
 
 /**
@@ -800,11 +835,17 @@ fun FilterBottomSheet(
     }
 }
 
-
-@Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun RequestsListPreview() {
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
+@Preview(
+    showBackground = true,
+    device = "spec:width=1280dp,height=800dp,dpi=240",
+    name = "tablet",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
+fun SessionScreenContentPreview_Requests() {
     // Provide mock data and a dummy lambda for the preview
+
     val mockRequests = listOf(
         CustomWebViewRequestEntity(
             customWebViewRequestId = 0,
@@ -845,21 +886,120 @@ fun RequestsListPreview() {
         )
     )
 
-    RequestsList(
+    val mockSessionData = SessionData(
+        session = NetworkSessionEntity(
+            networkId = "mock",
+            ssid = "Captive Portal Check",
+            bssid = "00:00:00:00:00:00",
+            timestamp = System.currentTimeMillis(),
+            captivePortalUrl = null,
+            ipAddress = "192.168.1.1",
+            gatewayAddress = "192.168.1.254",
+            securityType = "WPA2",
+            isCaptiveLocal = null,
+            isUploadedToRemoteServer = false
+        ),
         requests = mockRequests,
-        onRequestItemClick = { request ->
-            // Dummy implementation for the click handler
-            println("Clicked on request: ${request.url}")
-        },
+        screenshots = listOf(),
+        webpageContent = listOf(),
+        requestsCount = 0,
+        screenshotsCount = 0,
+        webpageContentCount = 0
+    )
+    // Create a mock SessionState
+    val mockSessionState = SessionState.Success
+
+    val mockSessionUiData = SessionUiData(
+        sessionData = mockSessionData,
         showFilteringBottomSheet = false,
         isBodyEmptyChecked = false,
         selectedMethods = emptyList(),
-        onToggleShowBottomSheet = { },
-        onToggleIsBodyEmpty = { },
-        onToggleSelectedMethods = { },
-        onResetFilters = { }
+        unfilteredRequests = emptyList()
     )
+    AppTheme {
+        SessionScreenContent(
+            sessionState = mockSessionState,
+            sessionUiData = mockSessionUiData,
+            isConnected = true,
+            showToast = { _, _ -> },
+            navigateToAutomaticAnalysis = {},
+            navigateToWebpageContentScreen = {},
+            navigateToRequestDetailsScreen = {},
+            uploadSession = { _, _ -> },
+            toggleScreenshotPrivacyOrToSrelated = {},
+            toggleShowBottomSheet = {},
+            toggleIsBodyEmpty = {},
+            modifySelectedMethods = {},
+            resetFilters = {},
+            updateClickedContent = {},
+            updateClickedRequest = {}
+        )
+    }
 }
+
+@Composable
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
+@Preview(
+    showBackground = true,
+    device = "spec:width=1280dp,height=800dp,dpi=240",
+    name = "tablet",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
+fun SessionScreenContentPreview_NoRequests() {
+    // Provide mock data and a dummy lambda for the preview
+
+
+    val mockSessionData = SessionData(
+        session = NetworkSessionEntity(
+            networkId = "mock",
+            ssid = "Captive Portal Check",
+            bssid = "00:00:00:00:00:00",
+            timestamp = System.currentTimeMillis(),
+            captivePortalUrl = null,
+            ipAddress = "192.168.1.1",
+            gatewayAddress = "192.168.1.254",
+            securityType = "WPA2",
+            isCaptiveLocal = null,
+            isUploadedToRemoteServer = false
+        ),
+        requests = listOf(),
+        screenshots = listOf(),
+        webpageContent = listOf(),
+        requestsCount = 0,
+        screenshotsCount = 0,
+        webpageContentCount = 0
+    )
+    // Create a mock SessionState
+    val mockSessionState = SessionState.Success
+
+    val mockSessionUiData = SessionUiData(
+        sessionData = mockSessionData,
+        showFilteringBottomSheet = false,
+        isBodyEmptyChecked = false,
+        selectedMethods = emptyList(),
+        unfilteredRequests = emptyList()
+    )
+    AppTheme {
+        SessionScreenContent(
+            sessionState = mockSessionState,
+            sessionUiData = mockSessionUiData,
+            isConnected = true,
+            showToast = { _, _ -> },
+            navigateToAutomaticAnalysis = {},
+            navigateToWebpageContentScreen = {},
+            navigateToRequestDetailsScreen = {},
+            uploadSession = { _, _ -> },
+            toggleScreenshotPrivacyOrToSrelated = {},
+            toggleShowBottomSheet = {},
+            toggleIsBodyEmpty = {},
+            modifySelectedMethods = {},
+            resetFilters = {},
+            updateClickedContent = {},
+            updateClickedRequest = {}
+        )
+    }
+}
+
 
 
 /**

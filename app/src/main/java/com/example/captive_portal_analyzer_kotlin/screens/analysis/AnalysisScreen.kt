@@ -1,6 +1,7 @@
 package com.example.captive_portal_analyzer_kotlin.screens.analysis
 
 import NetworkSessionRepository
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import android.content.res.Configuration
@@ -10,7 +11,6 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebView.setWebContentsDebuggingEnabled
 import android.webkit.WebViewClient
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -22,13 +22,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -42,7 +42,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -52,15 +54,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acsbendi.requestinspectorwebview.RequestInspectorWebViewClient
 import com.acsbendi.requestinspectorwebview.WebViewRequest
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
-import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
-import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
-
 import com.example.captive_portal_analyzer_kotlin.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
+import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
+import com.example.captive_portal_analyzer_kotlin.components.MockWebView
+import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
+import com.example.captive_portal_analyzer_kotlin.secret.Secret
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import kotlinx.coroutines.CoroutineScope
@@ -92,20 +95,11 @@ fun AnalysisScreen(
             showToast = sharedViewModel::showToast
         )
     )
-
     // Collect the UI state from the analysisViewModel
     val uiState by analysisViewModel.uiState.collectAsState()
 
-    // Retrieve the current context
-    val context = LocalContext.current
-
-    // Remember a coroutine scope for launching coroutines
-    val coroutineScope = rememberCoroutineScope()
-
-    // Collect the portal URL and WebView type state from the analysisViewModel
-    val portalUrl by analysisViewModel.portalUrl.collectAsState()
-    val webViewType by analysisViewModel.webViewType.collectAsState()
-    val showedHint by analysisViewModel.showedHint.collectAsState()
+    // Collect the ui data from the analysisViewModel
+    val uiData by analysisViewModel.uiData.collectAsState()
 
     // a lambda function to show toast messages using the sharedViewModel
     val showToast = { message: String, style: ToastStyle ->
@@ -116,24 +110,13 @@ fun AnalysisScreen(
     // Request the captive portal address on screen start, providing the showToast function to show toast if needed
     analysisViewModel.getCaptivePortalAddress(showToast)
 
-    // Remember a WebView instance with the current context to keep webView state across recompositions
-    val webView = remember {
-        WebView(context)
-    }
-
-    // Clean up the WebView when it is no longer needed
-    DisposableEffect(webView) {
-        onDispose {
-            webView.destroy()
+    Scaffold { contentPadding ->
+        // if app in debug mode show the CaptiveUrlDetected state with Testing webview otherwise show actual state
+        var effectiveUiState = uiState
+        if (Secret.isAppInDebugMode) {
+            effectiveUiState = AnalysisUiState.CaptiveUrlDetected
         }
-    }
-
-    Scaffold(
-
-    ) { contentPadding ->
-
-
-        when (uiState) {
+        when (effectiveUiState) {
 
             // while loading the captive portal URL, show a loading indicator
             is AnalysisUiState.Loading -> {
@@ -147,17 +130,23 @@ fun AnalysisScreen(
             is AnalysisUiState.CaptiveUrlDetected -> {
 
                 CaptivePortalWebsiteContent(
-                    webViewType,
-                    portalUrl,
-                    webView,
-                    coroutineScope,
-                    analysisViewModel,
-                    contentPadding,
-                    showToast,
-                    showedHint,
-                    context,
-                    sharedViewModel,
-                    navigateToSessionList
+                    webViewType = uiData.webViewType,
+                    portalUrl = uiData.portalUrl,
+                    showedHint = uiData.showedHint,
+                    selectedTab = uiData.selectedTab,
+                    contentPadding = contentPadding,
+                    showToast = showToast,
+                    navigateToSessionList = navigateToSessionList,
+                    hideDialog = sharedViewModel::hideDialog,
+                    showDialog = sharedViewModel::showDialog,
+                    saveWebResourceRequest = analysisViewModel::saveWebResourceRequest,
+                    saveWebpageContent = analysisViewModel::saveWebpageContent,
+                    takeScreenshot = analysisViewModel::takeScreenshot,
+                    saveWebViewRequest = analysisViewModel::saveWebViewRequest,
+                    updateShowedHint = analysisViewModel::updateShowedHint,
+                    stopAnalysis = analysisViewModel::stopAnalysis,
+                    switchWebViewType = analysisViewModel::switchWebViewType,
+                    updateSelectedTab = analysisViewModel::updateSelectedTab
                 )
             }
 
@@ -197,22 +186,130 @@ fun AnalysisScreen(
 private fun CaptivePortalWebsiteContent(
     webViewType: WebViewType,
     portalUrl: String?,
-    webView: WebView,
-    coroutineScope: CoroutineScope,
-    analysisViewModel: AnalysisViewModel,
     contentPadding: PaddingValues,
     showToast: (String, ToastStyle) -> Unit,
     showedHint: Boolean,
-    context: Context,
-    sharedViewModel: SharedViewModel,
-    navigateToSessionList: () -> Unit
+    navigateToSessionList: () -> Unit,
+    showDialog: (title: String, message: String, confirmText: String, dismissText: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
+    hideDialog: () -> Unit,
+    saveWebResourceRequest: suspend (WebResourceRequest?) -> Unit,
+    saveWebpageContent: suspend (WebView, String, (String, ToastStyle) -> Unit) -> Unit,
+    takeScreenshot: (WebView, String) -> Unit,
+    saveWebViewRequest: suspend (WebViewRequest) -> Unit,
+    updateShowedHint: (Boolean) -> Unit,
+    stopAnalysis: (onUncompletedAnalysis: () -> Unit) -> Unit,
+    switchWebViewType: ((String, ToastStyle) -> Unit) -> Unit,
+    selectedTab: Int,
+    updateSelectedTab: (Int) -> Unit
 ) {
+    val context = LocalContext.current
+    // Remember a coroutine scope for launching coroutines
+    val coroutineScope = rememberCoroutineScope()
+
+    // Remember a WebView instance with the current context to keep webView state across recompositions
+    val webView = remember {
+        WebView(context)
+    }
+
+    // Clean up the WebView when it is no longer needed
+    DisposableEffect(webView) {
+        onDispose {
+            webView.destroy()
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // TabRow for navigating between interactable web view, and PCABdroid capture tab
+        TabRow(selectedTabIndex = selectedTab) {
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { updateSelectedTab(0) },
+                text = { Text("Webview") }
+            )
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { updateSelectedTab(1) },
+                text = { Text("Request capture") }
+            )
+        }
+
+
+        // Box for displaying scrollable content based on selected tab
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
+            when (selectedTab) {
+                0 -> WebViewInteractionContent(
+                    webViewType = webViewType,
+                    portalUrl = portalUrl,
+                    webView = webView,
+                    coroutineScope = coroutineScope,
+                    saveWebResourceRequest = saveWebResourceRequest,
+                    contentPadding = contentPadding,
+                    saveWebpageContent = saveWebpageContent,
+                    showToast = showToast,
+                    takeScreenshot = takeScreenshot,
+                    saveWebViewRequest = saveWebViewRequest,
+                    showedHint = showedHint,
+                    updateShowedHint = updateShowedHint,
+                    stopAnalysis = stopAnalysis,
+                    context = context,
+                    hideDialog = hideDialog,
+                    showDialog = showDialog,
+                    navigateToSessionList = navigateToSessionList,
+                    switchWebViewType = switchWebViewType
+                )
+
+                1 -> CaptureScreen(
+
+                )
+            }
+        }
+
+    }
+}
+
+@Composable
+private fun WebViewInteractionContent(
+    webViewType: WebViewType,
+    portalUrl: String?,
+    webView: WebView,
+    coroutineScope: CoroutineScope,
+    saveWebResourceRequest: suspend (WebResourceRequest?) -> Unit,
+    contentPadding: PaddingValues,
+    saveWebpageContent: suspend (WebView, String, (String, ToastStyle) -> Unit) -> Unit,
+    showToast: (String, ToastStyle) -> Unit,
+    takeScreenshot: (WebView, String) -> Unit,
+    saveWebViewRequest: suspend (WebViewRequest) -> Unit,
+    showedHint: Boolean,
+    updateShowedHint: (Boolean) -> Unit,
+    stopAnalysis: (onUncompletedAnalysis: () -> Unit) -> Unit,
+    context: Context,
+    hideDialog: () -> Unit,
+    showDialog: (title: String, message: String, confirmText: String, dismissText: String, onConfirm: () -> Unit, onDismiss: () -> Unit) -> Unit,
+    navigateToSessionList: () -> Unit,
+    switchWebViewType: ((String, ToastStyle) -> Unit) -> Unit
+) {
+
+    // Determine the effective WebView type based on debug mode
+    val effectiveWebViewType = if (Secret.isAppInDebugMode) {
+        WebViewType.TestingWebView // Use TestingWebView in debug mode
+    } else {
+        webViewType // Use the provided WebView type in release mode
+    }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
         //hint text to ask user to use backup webview if webView fails to load
         HintTextWithIcon(
-            hint = if (webViewType == WebViewType.CustomWebView)
+            hint = if (effectiveWebViewType == WebViewType.CustomWebView)
                 stringResource(R.string.hint_backup_webview)
             else stringResource(R.string.hint_custom_webview),
         )
@@ -237,7 +334,7 @@ private fun CaptivePortalWebsiteContent(
 
             // Label in top right corner
             Text(
-                text = if (webViewType == WebViewType.CustomWebView) stringResource(R.string.custom_webview)
+                text = if (effectiveWebViewType == WebViewType.CustomWebView) stringResource(R.string.custom_webview)
                 else stringResource(R.string.normal_webview),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -246,64 +343,75 @@ private fun CaptivePortalWebsiteContent(
                 color = MaterialTheme.colorScheme.primary
             )
 
-            when (webViewType) {
-                // this is the backup webView type, it will not intercept the request body,
-                // it is only used as a fallback if custom webView fails
-                WebViewType.NormalWebView -> {
+            if (LocalInspectionMode.current) {
+                // Use a mock WebView placeholder for the preview function since WebView cannot be previewed
+                MockWebView()
+            } else {
+                when (effectiveWebViewType) {
+                    // this is the backup webView type, it will not intercept the request body,
+                    // it is only used as a fallback if custom webView fails
+                    WebViewType.NormalWebView -> {
 
-                    NormalWebView(
-                        portalUrl = portalUrl,
-                        webView = webView,
-                        saveWebRequest = { request ->
-                            coroutineScope.launch {
-                                analysisViewModel.saveWebResourceRequest(request)
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(contentPadding),
-                        captureAndSaveContent = { webView, content ->
-                            coroutineScope.launch {
-                                analysisViewModel.saveWebpageContent(
-                                    webView,
-                                    content,
-                                    showToast
-                                )
-                            }
-                        },
-                        takeScreenshot = analysisViewModel::takeScreenshot
-                    )
+                        NormalWebView(
+                            portalUrl = portalUrl,
+                            webView = webView,
+                            saveWebRequest = { request ->
+                                coroutineScope.launch {
+                                    saveWebResourceRequest(request)
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(contentPadding),
+                            captureAndSaveContent = { webView, content ->
+                                coroutineScope.launch {
+                                    saveWebpageContent(
+                                        webView,
+                                        content,
+                                        showToast
+                                    )
+                                }
+                            },
+                            takeScreenshot = takeScreenshot
+                        )
 
 
-                }
-                //this is the default webView type, it will intercept the request body, but if there is
-                // an issue loading the website, it will fall back to the normal webView
-                WebViewType.CustomWebView -> {
-                    CustomWebView(
-                        portalUrl = portalUrl,
-                        webView = webView,
-                        saveWebRequest = { request ->
-                            coroutineScope.launch {
-                                analysisViewModel.saveWebViewRequest(request)
-                            }
-                        },
-                        takeScreenshot = analysisViewModel::takeScreenshot,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(contentPadding),
-                        captureAndSaveContent = { webView, content ->
-                            coroutineScope.launch {
-                                analysisViewModel.saveWebpageContent(
-                                    webView,
-                                    content,
-                                    showToast
-                                )
-                            }
-                        },
-                        showedHint = showedHint,
-                        updateShowedHint = analysisViewModel::updateShowedHint
-                    )
+                    }
+                    //this is the default webView type, it will intercept the request body, but if there is
+                    // an issue loading the website, it will fall back to the normal webView
+                    WebViewType.CustomWebView -> {
+                        CustomWebView(
+                            portalUrl = portalUrl,
+                            webView = webView,
+                            saveWebRequest = { request ->
+                                coroutineScope.launch {
+                                    saveWebViewRequest(request)
+                                }
+                            },
+                            takeScreenshot = takeScreenshot,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(contentPadding),
+                            captureAndSaveContent = { webView, content ->
+                                coroutineScope.launch {
+                                    saveWebpageContent(
+                                        webView,
+                                        content,
+                                        showToast
+                                    )
+                                }
+                            },
+                            showedHint = showedHint,
+                            updateShowedHint = updateShowedHint
+                        )
 
+                    }
+                    // This is the testing WebView, used only in debug mode
+                    WebViewType.TestingWebView -> {
+                        TestingWebView(
+
+                        )
+                    }
                 }
             }
         }
@@ -326,14 +434,14 @@ private fun CaptivePortalWebsiteContent(
                         .weight(2f)
                         .padding(start = 8.dp),
                     onClick = {
-                        analysisViewModel.stopAnalysis(onUncompletedAnalysis = {
+                        stopAnalysis {
                             showUncompletedAnalysisDialog(
                                 context = context,
-                                hideDialog = sharedViewModel::hideDialog,
-                                showDialog = sharedViewModel::showDialog,
+                                hideDialog = hideDialog,
+                                showDialog = showDialog,
                                 navigateToSessionList = navigateToSessionList
                             )
-                        })
+                        }
                     },
                     buttonText = stringResource(id = R.string.end_analysis)
                 )
@@ -343,13 +451,38 @@ private fun CaptivePortalWebsiteContent(
                         .weight(1f)
                         .padding(end = 8.dp),
                     onClick = {
-                        analysisViewModel.switchWebViewType(
-                            showToast = showToast
+                        switchWebViewType(
+                            showToast
                         )
                     },
                     text = stringResource(id = R.string.switch_browser_type)
                 )
             }
+        }
+    }
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+fun TestingWebView() {
+    Box {
+        // Implement a WebView that loads Google
+        AndroidView(factory = { context ->
+            WebView(context).apply {
+                settings.javaScriptEnabled = true
+                loadUrl("https://www.google.com")
+            }
+        })
+
+        // Add debug-specific UI or behavior
+        if (Secret.isAppInDebugMode) {
+            Text(
+                text = "DEBUG MODE: Testing WebView Active",
+                color = Color.Red,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(8.dp)
+            )
         }
     }
 }
@@ -381,15 +514,79 @@ private fun showUncompletedAnalysisDialog(
     )
 }
 
+
+/**
+ * Preview function for AnalysisSuccess composable*/
+@Composable
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
+@Preview(
+    showBackground = true,
+    device = "spec:width=1280dp,height=800dp,dpi=240",
+    name = "tablet",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
+private fun AnalysisScreenPreview_Success_WebviewTab() {
+    AppTheme {
+        CaptivePortalWebsiteContent(
+            webViewType = WebViewType.NormalWebView,
+            portalUrl = "www.example.com",
+            contentPadding = PaddingValues(),
+            showToast = { _, _ -> },
+            showedHint = false,
+            navigateToSessionList = {},
+            showDialog = { _, _, _, _, _, _ -> },
+            hideDialog = {},
+            saveWebResourceRequest = { _ -> },
+            saveWebpageContent = { _, _, _ -> },
+            takeScreenshot = { _, _ -> },
+            saveWebViewRequest = { _ -> },
+            updateShowedHint = { _ -> },
+            stopAnalysis = { _ -> },
+            switchWebViewType = { _ -> },
+            selectedTab = 0,
+            updateSelectedTab = {},
+        )
+    }
+}
+
+@Composable
+@Preview(showBackground = true)
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+private fun AnalysisScreenPreview_Success_CaptureTab() {
+    AppTheme {
+        CaptivePortalWebsiteContent(
+            webViewType = WebViewType.NormalWebView,
+            portalUrl = "www.example.com",
+            contentPadding = PaddingValues(),
+            showToast = { _, _ -> },
+            showedHint = false,
+            navigateToSessionList = {},
+            showDialog = { _, _, _, _, _, _ -> },
+            hideDialog = {},
+            saveWebResourceRequest = { _ -> },
+            saveWebpageContent = { _, _, _ -> },
+            takeScreenshot = { _, _ -> },
+            saveWebViewRequest = { _ -> },
+            updateShowedHint = { _ -> },
+            stopAnalysis = { _ -> },
+            switchWebViewType = { _ -> },
+            selectedTab = 1,
+            updateSelectedTab = {},
+        )
+    }
+}
+
+
+
 /**
  * Preview function for AnalysisError composable
  * This function is used to generate a preview of the AnalysisError composable
  * in the Android Studio preview panel.
  */
 @Composable
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Preview(showBackground = true)
-private fun AnalysisErrorPreview() {
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+private fun AnalysisScreenPreview_Error() {
     AppTheme {
         AnalysisError(
             contentPadding = PaddingValues(),
@@ -400,6 +597,7 @@ private fun AnalysisErrorPreview() {
         )
     }
 }
+
 
 /**
  * A composable function that displays an error message and two buttons.

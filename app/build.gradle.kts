@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.example.captive_portal_analyzer_kotlin"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.captive_portal_analyzer_kotlin"
@@ -28,6 +28,9 @@ android {
                 "proguard-rules.pro"
             )
         }
+        debug {
+            isDebuggable = true
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -40,6 +43,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.3"
@@ -55,51 +59,49 @@ dependencies {
     // ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     // ViewModel utilities for Compose
-    implementation (libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     //lifecycle
-    implementation (libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     //gson
-    implementation (libs.gson)
+    implementation(libs.gson)
 
 
     //navigation
-    implementation (libs.androidx.navigation.compose.v272)
+    implementation(libs.androidx.navigation.compose.v272)
 
     // https://github.com/acsbendi/Android-Request-Inspector-WebView
-    implementation ("com.github.acsbendi:Android-Request-Inspector-WebView:1.0.12")
+    implementation(libs.android.request.inspector.webview)
 
     //pull to refresh
-    implementation ("androidx.compose.foundation:foundation:1.6.0")
+    implementation(libs.androidx.foundation)
 
     //keep state of some variables across restarts
-    implementation ("androidx.datastore:datastore-preferences:1.0.0")
+    implementation(libs.androidx.datastore.preferences)
 
     //Room
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
     debugImplementation(libs.androidx.ui.tooling)
-    ksp("androidx.room:room-compiler:2.6.1")
-
+    ksp(libs.androidx.room.compiler)
 
     //coil for image loading
-    implementation("io.coil-kt.coil3:coil-compose:3.0.4")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
     //Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
-    implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-storage")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.storage)
     implementation(libs.firebase.firestore.ktx)
 
     //Gemini sdk
-    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    implementation(libs.generativeai)
 
     //compose markdown
-    implementation ("com.github.jeziellago:compose-markdown:0.5.6")
+    implementation(libs.compose.markdown)
 
     //time ago
-    implementation ("com.github.marlonlom:timeago:4.1.0")
-
+    implementation(libs.timeago)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

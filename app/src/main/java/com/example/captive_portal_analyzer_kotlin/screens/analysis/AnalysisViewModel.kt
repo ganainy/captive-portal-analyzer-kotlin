@@ -31,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -83,6 +84,14 @@ sealed class AnalysisUiState {
     data class Error(val type: ErrorType) : AnalysisUiState()
 }
 
+data class AnalysisUiData
+    (
+    val portalUrl: String? = null,
+    val webViewType: WebViewType = WebViewType.CustomWebView,
+    val showedHint: Boolean = false,
+    val selectedTab: Int = 0, // 0 for WebView, 1 for PCABdroid capture
+)
+
 /**
  * Enum class to represent the type of the WebView. The WebView can be of type
  * NormalWebView which is the default WebView type or CustomWebView which is
@@ -90,7 +99,8 @@ sealed class AnalysisUiState {
  */
 enum class WebViewType {
     NormalWebView,
-    CustomWebView
+    CustomWebView,
+    TestingWebView // for testing purposes only
 }
 
 /**
@@ -123,26 +133,11 @@ class AnalysisViewModel(
     val uiState: StateFlow<AnalysisUiState> = _uiState.asStateFlow()
 
     /**
-     * The mutable state flow to hold the detected captive portal URL.
+     * The mutable state flow to hold the ui data of the screen.
      */
-    private val _portalUrl = MutableStateFlow<String?>(null)
-    val portalUrl: StateFlow<String?> get() = _portalUrl.asStateFlow()
+    private val _uiData = MutableStateFlow(AnalysisUiData())
+    val uiData: StateFlow<AnalysisUiData> get() = _uiData.asStateFlow()
 
-    /**
-     * The mutable state flow to hold the type of the WebView.
-     *
-     * The type of the WebView can be either NormalWebView or CustomWebView.
-     */
-    private val _webViewType = MutableStateFlow<WebViewType>(WebViewType.CustomWebView)
-    val webViewType = _webViewType.asStateFlow()
-
-    /**
-     * The mutable state flow to hold a boolean flag indicating whether the hint has been shown or not.
-     *
-     * The hint is a dialog box that provides information on how to login to the captive portal and end the analysis process.
-     */
-    private val _showedHint = MutableStateFlow<Boolean>(false)
-    val showedHint = _showedHint.asStateFlow()
 
     /**
      * Gets the captive portal address.
@@ -214,22 +209,22 @@ class AnalysisViewModel(
 
             CaptivePortalResult.ErrorType.TIMEOUT -> AnalysisUiState.Error(
                 AnalysisUiState.ErrorType.Timeout
-            ).also { Log.e("AnalysisViewModel","Connection timed out: ${result.message}") }
+            ).also { Log.e("AnalysisViewModel", "Connection timed out: ${result.message}") }
 
             CaptivePortalResult.ErrorType.NETWORK_ERROR -> AnalysisUiState.Error(
                 AnalysisUiState.ErrorType.NetworkError
-            ).also { Log.e("AnalysisViewModel","Network error occurred: ${result.message}") }
+            ).also { Log.e("AnalysisViewModel", "Network error occurred: ${result.message}") }
 
             CaptivePortalResult.ErrorType.UNKNOWN -> AnalysisUiState.Error(
                 AnalysisUiState.ErrorType.Unknown
-            ).also {Log.e("AnalysisViewModel","Unknown error occurred: ${result.message}") }
+            ).also { Log.e("AnalysisViewModel", "Unknown error occurred: ${result.message}") }
         }
     }
 
     // Handle unknown portal detection result
     private fun handleUnknownError() {
         _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.Unknown)
-        Log.e("AnalysisViewModel","Received unexpected portal detection result")
+        Log.e("AnalysisViewModel", "Received unexpected portal detection result")
     }
 
     // Handle exceptions during portal detection
@@ -244,23 +239,28 @@ class AnalysisViewModel(
             // Show appropriate error message based on exception type
             when (exception) {
                 is SecurityException -> {
-                    _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.PermissionDenied)
+                    _uiState.value =
+                        AnalysisUiState.Error(AnalysisUiState.ErrorType.PermissionDenied)
                     showToast(
                         context.getString(R.string.permission_denied_error),
                         ToastStyle.ERROR
                     )
                 }
+
                 is NetworkOnMainThreadException -> {
                     _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.NetworkError)
-                    Log.e("AnalysisViewModel","Network operation attempted on main thread")
+                    Log.e("AnalysisViewModel", "Network operation attempted on main thread")
                 }
+
                 is IllegalStateException -> {
                     _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.InvalidState)
-                    Log.e("AnalysisViewModel","Invalid state: ${exception.message}")
+                    Log.e("AnalysisViewModel", "Invalid state: ${exception.message}")
                 }
+
                 else -> {
-                    _uiState.value = AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl)
-                    Log.e("AnalysisViewModel","Unhandled exception: ${exception.message}")
+                    _uiState.value =
+                        AnalysisUiState.Error(AnalysisUiState.ErrorType.CannotDetectCaptiveUrl)
+                    Log.e("AnalysisViewModel", "Unhandled exception: ${exception.message}")
                 }
             }
         }
@@ -313,7 +313,7 @@ class AnalysisViewModel(
      * @param newUrl the new URL to show in the WebView.
      */
     fun updateUrl(newUrl: String) {
-        _portalUrl.value = newUrl
+        _uiData.value = _uiData.value.copy().copy(portalUrl = newUrl)
     }
 
     /**
@@ -426,9 +426,18 @@ class AnalysisViewModel(
     fun switchWebViewType(
         showToast: (message: String, style: ToastStyle) -> Unit
     ) {
-        when (_webViewType.value) {
-            WebViewType.NormalWebView -> _webViewType.value = WebViewType.CustomWebView
-            WebViewType.CustomWebView -> _webViewType.value = WebViewType.NormalWebView
+        when (_uiData.value.webViewType) {
+            WebViewType.CustomWebView -> _uiData.update {
+                it.copy(webViewType = WebViewType.CustomWebView)
+            }
+
+            WebViewType.NormalWebView -> _uiData.update {
+                it.copy(webViewType = WebViewType.NormalWebView)
+            }
+
+            WebViewType.TestingWebView ->  _uiData.update {
+                it.copy(webViewType = WebViewType.TestingWebView)
+            }
         }
         showToast(context.getString(R.string.switched_detection_method), ToastStyle.SUCCESS)
     }
@@ -481,10 +490,18 @@ class AnalysisViewModel(
                         // Save to database
                         viewModelScope.launch(Dispatchers.IO) {
                             val sanitizedUrl = url.replace(Regex("[^a-zA-Z0-9]"), "_")
-                            val htmlFilePath = saveContentToFile(context, "webpage_${sanitizedUrl}.html", html.unescapeJsonString())
-                            val jsFilePath = saveContentToFile(context, "webpage_${sanitizedUrl}.js", javascript.unescapeJsonString())
+                            val htmlFilePath = saveContentToFile(
+                                context,
+                                "webpage_${sanitizedUrl}.html",
+                                html.unescapeJsonString()
+                            )
+                            val jsFilePath = saveContentToFile(
+                                context,
+                                "webpage_${sanitizedUrl}.js",
+                                javascript.unescapeJsonString()
+                            )
                             if (htmlFilePath != null && jsFilePath != null) {
-                                val webpageContent= WebpageContentEntity(
+                                val webpageContent = WebpageContentEntity(
                                     url = url,
                                     htmlContentPath = htmlFilePath, // Store file path of the file containing the HTML content
                                     jsContentPath = jsFilePath,     // Store file path of the file containing the JavaScript content
@@ -693,7 +710,15 @@ class AnalysisViewModel(
      * @param showedHint A boolean indicating the new state of the hint visibility.
      */
     fun updateShowedHint(showedHint: Boolean) {
-        _showedHint.value = showedHint
+        _uiData.update {
+            it.copy().copy(showedHint = showedHint)
+        }
+    }
+
+    fun updateSelectedTab(selectedTab: Int) {
+        _uiData.update {
+            it.copy().copy(selectedTab = selectedTab)
+        }
     }
 
 

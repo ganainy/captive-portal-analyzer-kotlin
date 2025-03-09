@@ -2,6 +2,7 @@ package com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis
 
 import NetworkSessionRepository
 import android.app.Application
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -300,7 +301,13 @@ private fun AutomaticAnalysisResult(
  * It shows the result of an automatic analysis with a sample success state.
  */
 @Composable
-@Preview(showBackground = true)
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
+@Preview(
+    showBackground = true,
+    device = "spec:width=1280dp,height=800dp,dpi=240",
+    name = "tablet",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
 fun AutomaticAnalysisResultPreview() {
     AutomaticAnalysisResult(
         outputText = stringResource(R.string.long_lorem_ipsum),
@@ -312,7 +319,13 @@ fun AutomaticAnalysisResultPreview() {
  * It displays the UI for automatic analysis content, showing different states.
  */
 @Composable
-@Preview(showSystemUi = true)
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
+@Preview(
+    showBackground = true,
+    device = "spec:width=1280dp,height=800dp,dpi=240",
+    name = "tablet",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
 fun AutomaticAnalysisContentPreview() {
     AutomaticAnalysisContent(
         automaticAnalysisUiState = AutomaticAnalysisUiState(),
