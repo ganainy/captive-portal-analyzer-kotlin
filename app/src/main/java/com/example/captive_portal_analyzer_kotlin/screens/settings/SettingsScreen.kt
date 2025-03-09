@@ -1,5 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.screens.settings
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -21,9 +22,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.ThemeMode
+import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import java.util.Locale
 
 /**
@@ -191,5 +194,25 @@ fun LanguageDropdown(
                 )
             }
         }
+    }
+}
+
+
+@Composable
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
+@Preview(
+    showBackground = true,
+    device = "spec:width=1280dp,height=800dp,dpi=240",
+    name = "tablet",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
+fun SettingsScreenPreview() {
+    AppTheme {
+        SettingsScreen(
+            onLocalChanged = { },
+            onThemeChange = { },
+            themeMode = ThemeMode.SYSTEM,
+            currentLanguage = "en"
+        )
     }
 }

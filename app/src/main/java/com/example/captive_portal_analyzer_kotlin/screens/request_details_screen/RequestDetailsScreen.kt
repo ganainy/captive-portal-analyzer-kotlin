@@ -1,5 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.screens.request_details_screen
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -133,8 +134,14 @@ private fun RequestDetailsContent(
     }
 }
 
-@Preview(showBackground = true)
 @Composable
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
+@Preview(
+    showBackground = true,
+    device = "spec:width=1280dp,height=800dp,dpi=240",
+    name = "tablet",
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
 fun RequestDetailsScreenPreview() {
     RequestDetailsContent(
         PaddingValues(), CustomWebViewRequestEntity(

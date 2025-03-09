@@ -17,9 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
-import com.example.captive_portal_analyzer_kotlin.navigation.AppScaffold
 import com.example.captive_portal_analyzer_kotlin.datastore.settingsDataStore
 import com.example.captive_portal_analyzer_kotlin.navigation.AppNavGraph
+import com.example.captive_portal_analyzer_kotlin.navigation.AppScaffold
 import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
@@ -94,7 +94,7 @@ class MainActivity : ComponentActivity() {
                             themeMode = themeMode,
                             currentLanguage = currentLocale.toLanguageTag(),
                             onThemeChanged = sharedViewModel::updateThemeMode,
-                            onLocalChanged = sharedViewModel::updateLocale
+                            onLocalChanged = sharedViewModel::updateLocale,
                         )
                     }
                 }
@@ -102,6 +102,7 @@ class MainActivity : ComponentActivity() {
 
         }
     }
+
 
     private fun updateLocale(locale: Locale) {
         if (locale != Locale.getDefault()) {
@@ -113,10 +114,7 @@ class MainActivity : ComponentActivity() {
             // Recreate the activity to apply changes immediately
             recreate()
         }
-
     }
-
-
 
 }
 

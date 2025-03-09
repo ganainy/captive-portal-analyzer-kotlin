@@ -32,7 +32,7 @@ enum class ThemeMode {
 
 class SharedViewModel(
     private val connectivityObserver: NetworkConnectivityObserver,
-    private val dataStore: DataStore<Preferences>
+    private val dataStore: DataStore<Preferences>,
 ) : ViewModel() {
 
     /*show action alert dialogs from anywhere in the app*/
@@ -44,11 +44,14 @@ class SharedViewModel(
     val clickedSessionId: StateFlow<String?> = _clickedSessionId
 
     private val _clickedWebViewRequestEntity = MutableStateFlow<CustomWebViewRequestEntity?>(null)
-    val clickedWebViewRequestEntity: StateFlow<CustomWebViewRequestEntity?> = _clickedWebViewRequestEntity
+    val clickedWebViewRequestEntity: StateFlow<CustomWebViewRequestEntity?> =
+        _clickedWebViewRequestEntity
 
     private val _toastState = MutableStateFlow<ToastState>(ToastState.Hidden)
     val toastState = _toastState.asStateFlow()
 
+    // Flag to ensure that the PCAPDroidManager initialization code is only run once
+    private var hasInitialized = false
 
     fun updateClickedSessionId(clickedSessionId: String?) {
         _clickedSessionId.value = clickedSessionId
@@ -73,7 +76,8 @@ class SharedViewModel(
 
     //the clicked webpage content to show in the WebpageContent screen
     private val _clickedWebpageContent = MutableStateFlow<WebpageContentEntity?>(null)
-    val clickedWebpageContent: StateFlow<WebpageContentEntity?> = _clickedWebpageContent.asStateFlow()
+    val clickedWebpageContent: StateFlow<WebpageContentEntity?> =
+        _clickedWebpageContent.asStateFlow()
 
     init {
         getLocalePreference()
@@ -82,10 +86,8 @@ class SharedViewModel(
             connectivityObserver.observe().collect { isConnected ->
                 _isConnected.value = isConnected
             }
-
         }
     }
-
 
 
     private fun getLocalePreference() {
@@ -93,7 +95,9 @@ class SharedViewModel(
             try {
                 dataStore.data
                     .map { preferences ->
-                        Locale.forLanguageTag(preferences[languageKey] ?: Locale.getDefault().language)
+                        Locale.forLanguageTag(
+                            preferences[languageKey] ?: Locale.getDefault().language
+                        )
                     }
                     .catch { e ->
                         Log.e("SharedViewModel", "Error reading locale preference", e)
@@ -116,8 +120,6 @@ class SharedViewModel(
             _currentLocale.value = locale
         }
     }
-
-
 
 
     private fun getThemePreference() {
@@ -207,7 +209,7 @@ class SharedViewModelFactory(
             @Suppress("UNCHECKED_CAST")
             return SharedViewModel(
                 connectivityObserver,
-                dataStore
+                dataStore,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
