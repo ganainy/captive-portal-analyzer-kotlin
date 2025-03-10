@@ -199,5 +199,43 @@
     <string name="after_authentication_request">After Authentication Request</string>
     <string name="before_authentication_request">Before Authentication Request</string>
 
+    <!--PCAP-->
+    <string name="pcap_setup_screen_title">PCAP Setup</string>
+    <string name="setup_packet_capture">Setup Packet Capture</string>
+    <string name="complete_tls_decryption_checklist">Please complete following steps to enable TLS decryption</string>
+    <string name="install_mitm_addon">Install Mitm addon</string>
+    <string name="install_the_mitm_addon">Install the PCAPdroid <a href='%1$s'>mitm addon</a></string>
+    <string name="install_action">Install</string>
+    <string name="mitm_addon_update_available">A new mitm addon update is available. Update to get the latest bug fixes</string>
+    <string name="update_action">Update</string>
+    <string name="mitm_addon_new_version">The PCAPdroid mitm addon must be updated</string>
+    <string name="mitm_addon_bad_version">Bad PCAPdroid mitm addon version. Please install version %1$s and retry</string>
+    <string name="mitm_addon_installed">Mitm Addon already installed</string>
+    <string name="failed_to_open_export_dialog">" Failed to open export dialog"</string>
+    <string name="no_intent_handler_found">No app found to perform this action</string>
+    <string name="checking_the_certificate">Checking the certificate…</string>
+    <string name="cert_installed_correctly">The CA certificate is installed</string>
+    <string name="install_ca_certificate">Install the PCAPdroid CA certificate, choosing \"VPN and apps\". Android will ask for your lockscreen or password</string>
+    <string name="app_intro_skip_button">Skip</string>
+    <string name="export_ca_certificate">Export the PCAPdroid CA certificate, then open the Android \"Encryption &amp; Credentials\" settings and choose install it as a \"CA certificate\"</string>
+    <string name="export_action">Export</string>
+    <string name="cert_exported_now_installed">Certificate exported, now install it from the Android settings</string>
+    <string name="mitm_addon_autostart_workaround">Connection to the mitm addon failed. As a workaround, you can try to open the mitm addon app and then go back to PCAPdroid without closing it. Do you want to open it now?</string>
+    <string name="ca_cert_export_failed">An error occurred while exporting the CA certificate\n\nIf your device implements Autostart or similar software to limit background services execution, be sure to <a href='%1$s'>whitelist PCAPdroid</a></string>
+    <string name="mitm_skip_notice">The mitm certificate does not seem to be installed. If you proceed, decryption may fail</string>
+    <string name="cancel_action">Cancel</string>
+    <string name="please_complete_the_following_steps">Please complete the following steps to enable TLS Decryption</string>
+    <string name="storage_permission_required">Storage permission is required so that app is able to store result as PCAP file</string>
+    <string name="notifications_notice">The app uses notifications to send traffic tracking updates.</string>
+    <string name="ok">Ok</string>
+    <string name="enable_notification">Allow app to send notifications</string>
+    <string name="enable_action">Enable</string>
+    <string name="give_storage_permission">Allow app to store PCAP files to device</string>
+    <string name="allow_permission">Allow permission</string>
+    <string name="enable_vpn_connection">Enable VPN connection</string>
+    <string name="request_vpn_access">Request VPN Access</string>
+    <string name="vpn_permission_required">VPN permission is required for network traffic monitoring</string>
+    <string name="completed">Completed</string>
+
 
 </resources>

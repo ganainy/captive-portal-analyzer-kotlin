@@ -20,6 +20,7 @@ import com.example.captive_portal_analyzer_kotlin.screens.about.AboutScreen
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.manual_connect.ManualConnectScreen
+import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.PCAPSetupScreen
 import com.example.captive_portal_analyzer_kotlin.screens.request_details_screen.RequestDetailsScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session.SessionScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
@@ -37,55 +38,28 @@ import java.util.Locale
  * @property titleStringResource The string resource id for the title of the screen.
  */
 sealed class Screen(val route: String, @StringRes val titleStringResource: Int) {
-    /**
-     * The welcome screen.
-     */
+
     object Welcome : Screen("welcome", R.string.welcome_screen_title)
 
-    /**
-     * The manual connect screen.
-     */
     object ManualConnect : Screen("manual_connect", R.string.manual_connect_screen_title)
 
-    /**
-     * The analysis screen.
-     */
     object Analysis : Screen("analysis", R.string.analysis_screen_title)
 
-    /**
-     * The session list screen.
-     */
     object SessionList : Screen("session_list", R.string.session_list_screen_title)
 
-    /**
-     * The session screen.
-     */
     object Session : Screen("session", R.string.session_screen_title)
 
-    /**
-     * The about screen.
-     */
     object About : Screen("about", R.string.about_screen_title)
 
-    /**
-     * The automatic analysis screen.
-     */
     object AutomaticAnalysis : Screen("automatic_analysis", R.string.automatic_analysis)
 
-    /**
-     * The settings screen.
-     */
     object Settings : Screen("settings", R.string.settings)
 
-    /**
-     * The WebPageContent screen.
-     */
     object WebPageContent : Screen("webpage_content", R.string.webpage_content)
 
-    /**
-     * The request details screen.
-     */
     object RequestDetails : Screen("request_details", R.string.request_details)
+
+    object PCAPSetup : Screen("pcap_setup", R.string.pcap_setup_screen_title)
 }
 
 /**
@@ -145,7 +119,7 @@ fun AppNavGraph(
         composable(route = Screen.Welcome.route) {
             WelcomeScreen(
                 navigateToNetworkList = actions.navigateToManualConnectScreen,
-
+                navigateToPCAPSetupScreen = actions.navigateToPCAPSetupScreen
                 )
         }
         composable(route = Screen.ManualConnect.route) {
@@ -223,6 +197,13 @@ fun AppNavGraph(
                 sharedViewModel = sharedViewModel,
             )
         }
+        composable(
+            route = Screen.PCAPSetup.route,
+        ) {
+            PCAPSetupScreen(
+                sharedViewModel = sharedViewModel,
+            )
+        }
 
     }
 }
@@ -235,66 +216,42 @@ fun AppNavGraph(
  */
 class NavigationActions(private val navController: NavHostController) {
 
-    /**
-     * Navigate to the ManualConnectScreen.
-     */
     val navigateToManualConnectScreen: () -> Unit = {
         navController.navigate(Screen.ManualConnect.route)
     }
 
-    /**
-     * Navigate to the AnalysisScreen.
-     */
     val navigateToAnalysisScreen: () -> Unit = {
         navController.navigate(Screen.Analysis.route)
     }
 
-    /**
-     * Navigate to the WelcomeScreen.
-     */
     val navigateToWelcomeScreen: () -> Unit = {
         navController.navigate(Screen.Welcome.route)
     }
 
-    /**
-     * Navigate to the SessionListScreen.
-     */
     val navigateToSessionListScreen: () -> Unit = {
         navController.navigate(Screen.SessionList.route)
     }
 
-    /**
-     * Navigate to the SessionScreen.
-     */
     val navigateToSessionScreen: () -> Unit = {
         navController.navigate(Screen.Session.route)
     }
 
-    /**
-     * Navigate to the AutomaticAnalysisScreen.
-     */
     val navigateToAutomaticAnalysisScreen: () -> Unit = {
         navController.navigate(Screen.AutomaticAnalysis.route)
     }
 
-    /**
-     * Navigate to the oWebpageContentScreen.
-     */
     val navigateToWebpageContentScreen: () -> Unit = {
         navController.navigate(Screen.WebPageContent.route)
     }
 
-    /**
-     * Navigate to the RequestDetails Screen.
-     */
     val navigateToRequestDetailsScreen: () -> Unit =
         { navController.navigate(Screen.RequestDetails.route) }
 
-    /**
-     * Navigate back to the previous screen.
-     */
     val navigateBack: () -> Unit = {
         navController.popBackStack()
     }
+
+    val navigateToPCAPSetupScreen: () -> Unit =
+        { navController.navigate(Screen.PCAPSetup.route) }
 
 }

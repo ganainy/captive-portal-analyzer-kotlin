@@ -33,6 +33,7 @@ uiToolingPreviewAndroid = "1.7.8"
 navigationCompose = "2.8.8"
 firebaseFirestoreKtx = "25.1.2"
 uiTooling = "1.7.8"
+preferenceKtx = "1.2.1"
 
 [libraries]
 android-request-inspector-webview = { module = "com.github.acsbendi:Android-Request-Inspector-WebView", version.ref = "androidRequestInspectorWebview" }
@@ -74,6 +75,7 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebaseFirestoreKtx" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "uiTooling" }
 timeago = { module = "com.github.marlonlom:timeago", version.ref = "timeago" }
+androidx-preference-ktx = { group = "androidx.preference", name = "preference-ktx", version.ref = "preferenceKtx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
