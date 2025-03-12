@@ -2,9 +2,11 @@ package com.example.captive_portal_analyzer_kotlin.screens.analysis
 
 import CaptivePortalDetector
 import CaptivePortalResult
+import MitmAddon
 import NetworkSessionRepository
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.net.ConnectivityManager
@@ -14,6 +16,8 @@ import android.os.NetworkOnMainThreadException
 import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat.startActivity
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -25,6 +29,7 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewReque
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.convertMethodStringToEnum
+import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.Prefs
 import com.example.captive_portal_analyzer_kotlin.utils.LocalOrRemoteCaptiveChecker
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import kotlinx.coroutines.Dispatchers
@@ -721,6 +726,25 @@ class AnalysisViewModel(
         }
     }
 
+
+
+
+    /** Packet capture related functions*/
+    fun startCapture() {
+        if (VpnReconnectService.isAvailable()) VpnReconnectService.stopService()
+
+        if (showRemoteServerAlert()) return
+
+            if (MitmAddon.needsSetup(this)) {
+                val intent: Intent = Intent(
+                    this,
+                    MitmSetupWizard::class.java
+                )
+                startActivity(intent)
+                return
+            }
+       doStartCaptureService(null)
+    }
 
 }
 

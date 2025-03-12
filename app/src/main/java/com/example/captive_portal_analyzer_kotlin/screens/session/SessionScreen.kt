@@ -93,7 +93,7 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
-import com.example.captive_portal_analyzer_kotlin.utils.Utils.Companion.formatDate
+import com.example.captive_portal_analyzer_kotlin.utils.AppUtils.Companion.formatDate
 
 
 /**

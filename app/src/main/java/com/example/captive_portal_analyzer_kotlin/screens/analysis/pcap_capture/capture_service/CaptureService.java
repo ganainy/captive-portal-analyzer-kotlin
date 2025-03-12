@@ -1,17 +1,22 @@
-package com.example.captive_portal_analyzer_kotlin.screens.pcap_setup;
+package com.example.captive_portal_analyzer_kotlin.screens.analysis.pcap_capture.capture_service;/*
+ * This file is part of PCAPdroid.
+ *
+ * PCAPdroid is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * PCAPdroid is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with PCAPdroid.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Copyright 2020-24 - Emanuele Faranda
+ */
 
-import android.net.VpnService;
-
-public class CaptureService extends VpnService {
-
-}
-
-
-
-/*
-
-//todo
-package com.example.captive_portal_analyzer_kotlin.screens.pcap_setup;
 
 import android.annotation.TargetApi;
 import android.app.Notification;
@@ -54,8 +59,12 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.preference.PreferenceManager;
 
+import com.example.captive_portal_analyzer_kotlin.CaptivePortalApp;
 import com.example.captive_portal_analyzer_kotlin.MainActivity;
-import com.google.api.Billing;
+import com.example.captive_portal_analyzer_kotlin.R;
+import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.MitmAPI;
+import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.Prefs;
+import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.Utils;
 
 import java.io.File;
 import java.io.IOException;
@@ -93,6 +102,7 @@ public class CaptureService extends VpnService implements Runnable {
     private boolean mRevoked;
     private SharedPreferences mPrefs;
     private CaptureSettings mSettings;
+    private Billing mBilling;
     private Handler mHandler;
     private Thread mCaptureThread;
     private Thread mBlacklistsUpdateThread;
@@ -107,7 +117,7 @@ public class CaptureService extends VpnService implements Runnable {
     private long last_bytes;
     private int last_connections;
     private int[] mAppFilterUids;
-    private PcapDumper mDumper;
+    private com.example.captive_portal_analyzer_kotlin.screens.analysis.pcap_capture.capture_service.PcapDumper mDumper;
     private ConnectionsRegister conn_reg;
     private Uri mPcapUri;
     private String mPcapFname;
@@ -141,23 +151,17 @@ public class CaptureService extends VpnService implements Runnable {
     private BroadcastReceiver mNewAppsInstallReceiver;
     private Utils.PrivateDnsMode mPrivateDnsMode;
 
-    */
-/* The maximum connections to log into the ConnectionsRegister. Older connections are dropped.
-     * Max estimated memory usage: less than 4 MB (+8 MB with payload mode minimal). *//*
-
+    /* The maximum connections to log into the ConnectionsRegister. Older connections are dropped.
+     * Max estimated memory usage: less than 4 MB (+8 MB with payload mode minimal). */
     public static final int CONNECTIONS_LOG_SIZE = 8192;
 
-    */
-/* The IP address of the virtual network interface *//*
-
+    /* The IP address of the virtual network interface */
     public static final String VPN_IP_ADDRESS = "10.215.173.1";
     public static final String VPN_IP6_ADDRESS = "fd00:2:fd00:1:fd00:1:fd00:1";
 
-    */
-/* The DNS server IP address to use to internally analyze the DNS requests.
+    /* The DNS server IP address to use to internally analyze the DNS requests.
      * It must be in the same subnet of the VPN network interface.
-     * After the analysis, requests will be routed to the primary DNS server. *//*
-
+     * After the analysis, requests will be routed to the primary DNS server. */
     public static final String VPN_VIRTUAL_DNS_SERVER = "10.215.173.2";
 
     public enum ServiceStatus {
@@ -166,9 +170,7 @@ public class CaptureService extends VpnService implements Runnable {
     }
 
     static {
-        */
-/* Load native library *//*
-
+        /* Load native library */
         try {
             System.loadLibrary("capture");
             CaptureService.initPlatformInfo(Utils.getAppVersionString(), Utils.getDeviceModel(), Utils.getOsVersion());
@@ -413,7 +415,7 @@ public class CaptureService extends VpnService implements Runnable {
         }
 
         if(mSettings.tls_decryption && !mSettings.root_capture && !mSettings.readFromPcap())
-            mDecryptionList = PCAPdroid.getInstance().getDecryptionList();
+            mDecryptionList = CaptivePortalApp.getInstance().getDecryptionList();
         else
             mDecryptionList = null;
 
@@ -449,10 +451,8 @@ public class CaptureService extends VpnService implements Runnable {
             Log.i(TAG, "Using DNS server " + dns_server);
 
             // VPN
-            */
-/* In order to see the DNS packets into the VPN we must set an internal address as the DNS
-             * server. *//*
-
+            /* In order to see the DNS packets into the VPN we must set an internal address as the DNS
+             * server. */
             Builder builder = new Builder()
                     .setMtu(VPN_MTU);
 
@@ -534,14 +534,14 @@ public class CaptureService extends VpnService implements Runnable {
             }
         }
 
-        mMalwareWhitelist = PCAPdroid.getInstance().getMalwareWhitelist();
-        mBlacklists = PCAPdroid.getInstance().getBlacklists();
+        mMalwareWhitelist = CaptivePortalApp.getInstance().getMalwareWhitelist();
+        mBlacklists = CaptivePortalApp.getInstance().getBlacklists();
         if(mMalwareDetectionEnabled && !mBlacklists.needsUpdate(true))
             reloadBlacklists();
         checkBlacklistsUpdates(true);
 
-        mBlocklist = PCAPdroid.getInstance().getBlocklist();
-        mFirewallWhitelist = PCAPdroid.getInstance().getFirewallWhitelist();
+        mBlocklist = CaptivePortalApp.getInstance().getBlocklist();
+        mFirewallWhitelist = CaptivePortalApp.getInstance().getFirewallWhitelist();
 
         mConnUpdateThread = new Thread(this::connUpdateWork, "UpdateListener");
         mConnUpdateThread.start();
@@ -584,14 +584,14 @@ public class CaptureService extends VpnService implements Runnable {
                             if(man.areNotificationsEnabled()) {
                                 Notification notification = new NotificationCompat.Builder(CaptureService.this, NOTIFY_CHAN_OTHER)
                                         .setContentIntent(pi)
-                                        .setSmallIcon(R.drawable.ic_logo)
-                                        .setColor(ContextCompat.getColor(CaptureService.this, R.color.colorPrimary))
+                                        .setSmallIcon(R.drawable.analyzer)
+                                        .setColor(ContextCompat.getColor(CaptureService.this, R.color.ic_launcher_background))
                                         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                                         .setCategory(NotificationCompat.CATEGORY_STATUS)
                                         .setContentTitle(getString(R.string.app_blocked))
                                         .setContentText(getString(R.string.app_blocked_info, label))
                                         .setAutoCancel(true)
-                                        .addAction(R.drawable.ic_check_solid, getString(R.string.action_unblock), unblockIntent)
+                                        .addAction(R.drawable.check, getString(R.string.action_unblock), unblockIntent)
                                         .build();
 
                                 man.notify(NOTIFY_ID_APP_BLOCKED, notification);
@@ -675,8 +675,8 @@ public class CaptureService extends VpnService implements Runnable {
         PendingIntent pi = PendingIntent.getActivity(this, 0,
                 new Intent(this, MainActivity.class), Utils.getIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT));
         mStatusBuilder = new NotificationCompat.Builder(this, NOTIFY_CHAN_VPNSERVICE)
-                .setSmallIcon(R.drawable.ic_logo)
-                .setColor(ContextCompat.getColor(this, R.color.colorPrimary))
+                .setSmallIcon(R.drawable.analyzer)
+                .setColor(ContextCompat.getColor(this, R.color.ic_launcher_background))
                 .setContentIntent(pi)
                 .setOngoing(true)
                 .setAutoCancel(false)
@@ -687,7 +687,7 @@ public class CaptureService extends VpnService implements Runnable {
 
         // Malware notification builder
         mMalwareBuilder = new NotificationCompat.Builder(this, NOTIFY_CHAN_MALWARE_DETECTION)
-                .setSmallIcon(R.drawable.ic_skull)
+                //.setSmallIcon(R.drawable.ic_skull)
                 .setAutoCancel(true)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setCategory(NotificationCompat.CATEGORY_STATUS)
@@ -753,8 +753,8 @@ public class CaptureService extends VpnService implements Runnable {
     public void notifyLowMemory(CharSequence msg) {
         Notification notification = new NotificationCompat.Builder(this, NOTIFY_CHAN_OTHER)
                 .setAutoCancel(true)
-                .setSmallIcon(R.drawable.ic_logo)
-                .setColor(ContextCompat.getColor(this, R.color.colorPrimary))
+                .setSmallIcon(R.drawable.analyzer)
+                .setColor(ContextCompat.getColor(this, R.color.ic_launcher_background))
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setWhen(System.currentTimeMillis())
@@ -835,7 +835,7 @@ public class CaptureService extends VpnService implements Runnable {
         if(linkProperties == null)
             return;
 
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             mPrivateDnsMode = Utils.getPrivateDnsMode(linkProperties);
             Log.i(TAG, "Private DNS: " + mPrivateDnsMode);
 
@@ -846,14 +846,12 @@ public class CaptureService extends VpnService implements Runnable {
                 mDnsEncrypted = mPrivateDnsMode.equals(Utils.PrivateDnsMode.STRICT);
                 boolean opportunistic_mode = mPrivateDnsMode.equals(Utils.PrivateDnsMode.OPPORTUNISTIC);
 
-                */
-/* Private DNS can be in one of these modes:
+                /* Private DNS can be in one of these modes:
                  *  1. Off
                  *  2. Automatic (default): also called "opportunistic", only use it if not blocked
                  *  3. Strict: private DNS is enforced, Internet unavailable if blocked. User must set a specific DNS server.
                  * When in opportunistic mode, PCAPdroid will block private DNS connections to force the use of plain-text
-                 * DNS queries, which can be extracted by PCAPdroid. *//*
-
+                 * DNS queries, which can be extracted by PCAPdroid. */
                 if (mBlockPrivateDns != opportunistic_mode) {
                     mBlockPrivateDns = opportunistic_mode;
                     setPrivateDnsBlocked(mBlockPrivateDns);
@@ -913,10 +911,8 @@ public class CaptureService extends VpnService implements Runnable {
         }
     }
 
-    */
-/* Stops the running Service. The SERVICE_STATUS_STOPPED notification is sent asynchronously
-     * when mCaptureThread terminates. *//*
-
+    /* Stops the running Service. The SERVICE_STATUS_STOPPED notification is sent asynchronously
+     * when mCaptureThread terminates. */
     @SuppressWarnings("deprecation")
     public static void stopService() {
         CaptureService captureService = INSTANCE;
@@ -936,9 +932,7 @@ public class CaptureService extends VpnService implements Runnable {
         captureService.stopSelf();
     }
 
-    */
-/* Check if the VPN service was launched *//*
-
+    /* Check if the VPN service was launched */
     public static boolean isServiceActive() {
         return((INSTANCE != null) &&
                 (INSTANCE.mCaptureThread != null));
@@ -1179,7 +1173,7 @@ public class CaptureService extends VpnService implements Runnable {
         // Notify
         mHandler.post(() -> {
             updateServiceStatus(ServiceStatus.STOPPED);
-            CaptureCtrl.notifyCaptureStopped(this, getStats());
+           //todo CaptureCtrl.notifyCaptureStopped(this, getStats());
         });
     }
 
@@ -1311,9 +1305,7 @@ public class CaptureService extends VpnService implements Runnable {
         }
     }
 
-    */
-/* The following methods are called from native code *//*
-
+    /* The following methods are called from native code */
 
     public String getVpnIPv4() {
         return(vpn_ipv4);
@@ -1396,11 +1388,7 @@ public class CaptureService extends VpnService implements Runnable {
     // from NetGuard
     @TargetApi(Build.VERSION_CODES.Q)
     public int getUidQ(int protocol, String saddr, int sport, String daddr, int dport) {
-        if (protocol != 6 */
-/* TCP *//*
- && protocol != 17 */
-/* UDP *//*
-)
+        if (protocol != 6 /* TCP */ && protocol != 17 /* UDP */)
             return Utils.UID_UNKNOWN;
 
         ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
@@ -1463,7 +1451,7 @@ public class CaptureService extends VpnService implements Runnable {
             reloadFirewallWhitelist();
         } else if (cur_status == ServiceStatus.STOPPED) {
             if (mRevoked && Prefs.restartOnDisconnect(mPrefs) && !mIsAlwaysOnVPN && (isVpnCapture() == 1)) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                     Log.i(TAG, "VPN disconnected, starting reconnect service");
 
                     final Intent intent = new Intent(this, VpnReconnectService.class);
@@ -1515,9 +1503,7 @@ public class CaptureService extends VpnService implements Runnable {
         return "";
     }
 
-    */
-/* Exports a PCAP data chunk *//*
-
+    /* Exports a PCAP data chunk */
     public void dumpPcapData(byte[] data) {
         if((mDumper != null) && (data.length > 0)) {
             while(true) {
@@ -1714,4 +1700,3 @@ public class CaptureService extends VpnService implements Runnable {
     public static native boolean hasSeenDumpExtensions();
     public static native boolean extractKeylogFromPcapng(String pcapng_path, String out_path);
 }
-*/

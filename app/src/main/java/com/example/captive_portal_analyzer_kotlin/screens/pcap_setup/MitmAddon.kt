@@ -21,7 +21,6 @@ import androidx.core.content.pm.PackageInfoCompat
 import androidx.preference.PreferenceManager
 import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.MitmAPI
 import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.MitmListener
-import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.PCAPUtils
 import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.Prefs
 import java.io.IOException
 import java.lang.ref.WeakReference
@@ -131,17 +130,17 @@ class MitmAddon(ctx: Context, private val mReceiver: MitmListener) {
 
         return try {
             mService!!.send(msg)
-            PCAPUtils.safeClose(pair[0])
+            Utils.safeClose(pair[0])
             pair[1]
         } catch (e: RemoteException) {
             e.printStackTrace()
-            PCAPUtils.safeClose(pair[0])
-            PCAPUtils.safeClose(pair[1])
+            Utils.safeClose(pair[0])
+            Utils.safeClose(pair[1])
             null
         } catch (e: NullPointerException) {
             e.printStackTrace()
-            PCAPUtils.safeClose(pair[0])
-            PCAPUtils.safeClose(pair[1])
+            Utils.safeClose(pair[0])
+            Utils.safeClose(pair[1])
             null
         }
     }
@@ -202,7 +201,7 @@ class MitmAddon(ctx: Context, private val mReceiver: MitmListener) {
 
         fun getInstalledVersion(ctx: Context): Long {
             return try {
-                val pInfo: PackageInfo = PCAPUtils.getPackageInfo(ctx.packageManager, MitmAPI.PACKAGE_NAME, 0)
+                val pInfo: PackageInfo = Utils.getPackageInfo(ctx.packageManager, MitmAPI.PACKAGE_NAME, 0)
                 PackageInfoCompat.getLongVersionCode(pInfo)
             } catch (e: PackageManager.NameNotFoundException) {
                 -1
@@ -211,7 +210,7 @@ class MitmAddon(ctx: Context, private val mReceiver: MitmListener) {
 
         fun getInstalledVersionName(ctx: Context): String {
             return try {
-                val pInfo: PackageInfo = PCAPUtils.getPackageInfo(ctx.packageManager, MitmAPI.PACKAGE_NAME, 0)
+                val pInfo: PackageInfo = Utils.getPackageInfo(ctx.packageManager, MitmAPI.PACKAGE_NAME, 0)
                 pInfo.versionName ?: ""
             } catch (e: PackageManager.NameNotFoundException) {
                 ""
@@ -220,7 +219,7 @@ class MitmAddon(ctx: Context, private val mReceiver: MitmListener) {
 
         fun getUid(ctx: Context): Int {
             return try {
-                PCAPUtils.getPackageUid(ctx.packageManager, MitmAPI.PACKAGE_NAME, 0)
+                Utils.getPackageUid(ctx.packageManager, MitmAPI.PACKAGE_NAME, 0)
             } catch (e: PackageManager.NameNotFoundException) {
                 -1
             }
@@ -232,11 +231,11 @@ class MitmAddon(ctx: Context, private val mReceiver: MitmListener) {
             if (Prefs.isIgnoredMitmVersion(prefs, PACKAGE_VERSION_NAME)) return ""
 
             return try {
-                val pInfo: PackageInfo = PCAPUtils.getPackageInfo(ctx.packageManager, MitmAPI.PACKAGE_NAME, 0)
+                val pInfo: PackageInfo = Utils.getPackageInfo(ctx.packageManager, MitmAPI.PACKAGE_NAME, 0)
 
                 if (PackageInfoCompat.getLongVersionCode(pInfo) >= PACKAGE_VERSION_CODE) return ""
 
-                if (PCAPUtils.isSemanticVersionCompatible(PACKAGE_VERSION_NAME, pInfo.versionName)) PACKAGE_VERSION_NAME else ""
+                if (Utils.isSemanticVersionCompatible(PACKAGE_VERSION_NAME, pInfo.versionName)) PACKAGE_VERSION_NAME else ""
             } catch (ignored: PackageManager.NameNotFoundException) {
                 ""
             }
@@ -249,8 +248,8 @@ class MitmAddon(ctx: Context, private val mReceiver: MitmListener) {
 
         fun isInstalled(ctx: Context): Boolean {
             return try {
-                val pInfo: PackageInfo = PCAPUtils.getPackageInfo(ctx.packageManager, MitmAPI.PACKAGE_NAME, 0)
-                PCAPUtils.isSemanticVersionCompatible(PACKAGE_VERSION_NAME, pInfo.versionName)
+                val pInfo: PackageInfo = Utils.getPackageInfo(ctx.packageManager, MitmAPI.PACKAGE_NAME, 0)
+                Utils.isSemanticVersionCompatible(PACKAGE_VERSION_NAME, pInfo.versionName)
             } catch (ignored: PackageManager.NameNotFoundException) {
                 false
             }

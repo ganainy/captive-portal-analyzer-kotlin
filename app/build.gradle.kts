@@ -33,8 +33,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
         jvmTarget = "11"
@@ -103,6 +103,12 @@ dependencies {
 
     //time ago
     implementation(libs.timeago)
+
+    // Brotli dependency
+    implementation (libs.brotli.dec)
+
+    //MaxMind GeoIP2
+    implementation (libs.db.maxmind.db)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

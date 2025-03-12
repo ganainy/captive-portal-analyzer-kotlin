@@ -1,19 +1,11 @@
 package com.example.captive_portal_analyzer_kotlin.utils
 
-import android.annotation.SuppressLint
-import android.net.DhcpInfo
-import android.net.wifi.WifiInfo
-import android.net.wifi.WifiManager
-import java.net.InetAddress
-import java.security.MessageDigest
-import java.security.NoSuchAlgorithmException
-import android.net.wifi.WifiConfiguration
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /** Utility class for common functions used by different parts of the app.*/
-class Utils {
+class AppUtils {
 
     companion object {
 

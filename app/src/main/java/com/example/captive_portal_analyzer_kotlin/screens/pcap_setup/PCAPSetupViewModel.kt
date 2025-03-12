@@ -67,7 +67,7 @@ class PCAPSetupViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun isSemanticVersionCompatible(installedVer: String, newVer: String): Boolean {
-        return PCAPUtils.isSemanticVersionCompatible(installedVer, newVer)
+        return Utils.isSemanticVersionCompatible(installedVer, newVer)
     }
 
     private fun getInstalledVersion(): Long {
@@ -94,12 +94,12 @@ class PCAPSetupViewModel(application: Application) : AndroidViewModel(applicatio
         // in the source
         try {
             val pInfo: PackageInfo =
-                PCAPUtils.getPackageInfo(ctx.packageManager, MitmAPI.PACKAGE_NAME, 0)
+                Utils.getPackageInfo(ctx.packageManager, MitmAPI.PACKAGE_NAME, 0)
 
             if (PackageInfoCompat.getLongVersionCode(pInfo) >= MitmAddon.PACKAGE_VERSION_CODE)  // same version or better installed
                 return ""
 
-            if (PCAPUtils.isSemanticVersionCompatible(
+            if (Utils.isSemanticVersionCompatible(
                     MitmAddon.PACKAGE_VERSION_NAME,
                     pInfo.versionName
                 )
@@ -158,7 +158,7 @@ class PCAPSetupViewModel(application: Application) : AndroidViewModel(applicatio
     fun checkCertificateStatus() {
         val currentCert = caCert
 
-        if (currentCert != null && PCAPUtils.isCAInstalled(currentCert)) {
+        if (currentCert != null && Utils.isCAInstalled(currentCert)) {
             MitmAddon.setCAInstallationSkipped(context, false)
             _certificateState.value = CertificateUiState.Installed
         } else {
@@ -179,7 +179,7 @@ class PCAPSetupViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun handleCertificateInstallIntent(result: ActivityResult) {
-        if (result.resultCode == Activity.RESULT_OK && PCAPUtils.isCAInstalled(caCert)) {
+        if (result.resultCode == Activity.RESULT_OK && Utils.isCAInstalled(caCert)) {
             _certificateState.value = CertificateUiState.Installed
             updateCompletedStepsCount()
         } else {
@@ -243,9 +243,9 @@ class PCAPSetupViewModel(application: Application) : AndroidViewModel(applicatio
         this.caPem = caPem
 
         if (caPem != null) {
-            caCert = PCAPUtils.x509FromPem(caPem)
+            caCert = Utils.x509FromPem(caPem)
             if (caCert != null) {
-                if (PCAPUtils.isCAInstalled(caCert)) {
+                if (Utils.isCAInstalled(caCert)) {
                     _certificateState.value = CertificateUiState.Installed
                 } else {
                     MitmAddon.setDecryptionSetupDone(context, false)
