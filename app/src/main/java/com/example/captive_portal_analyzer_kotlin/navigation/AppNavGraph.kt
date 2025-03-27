@@ -1,6 +1,7 @@
 package com.example.captive_portal_analyzer_kotlin.navigation
 
 import NetworkSessionRepository
+import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -20,7 +21,8 @@ import com.example.captive_portal_analyzer_kotlin.screens.about.AboutScreen
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.manual_connect.ManualConnectScreen
-import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.PCAPSetupScreen
+import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.CaptureScreen
+import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.CaptureViewModel
 import com.example.captive_portal_analyzer_kotlin.screens.request_details_screen.RequestDetailsScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session.SessionScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
@@ -88,6 +90,10 @@ fun AppNavGraph(
     currentLanguage: String,
     onThemeChanged: (mode: ThemeMode) -> Unit,
     onLocalChanged: (locale: Locale) -> Unit,
+    captureViewModel: CaptureViewModel,
+    onStartIntentLaunchRequested: (Intent) -> Unit,
+    onStopIntentLaunchRequested: (Intent) -> Unit,
+    onStatusIntentLaunchRequested: (Intent) -> Unit,
 ) {
     // Remember navigation actions for the navController
     val actions = remember(navController) { NavigationActions(navController) }
@@ -120,7 +126,7 @@ fun AppNavGraph(
             WelcomeScreen(
                 navigateToNetworkList = actions.navigateToManualConnectScreen,
                 navigateToPCAPSetupScreen = actions.navigateToPCAPSetupScreen
-                )
+            )
         }
         composable(route = Screen.ManualConnect.route) {
             ManualConnectScreen(
@@ -200,8 +206,11 @@ fun AppNavGraph(
         composable(
             route = Screen.PCAPSetup.route,
         ) {
-            PCAPSetupScreen(
-                sharedViewModel = sharedViewModel,
+            CaptureScreen(
+                viewModel = captureViewModel,
+                onStartIntentLaunchRequested = onStartIntentLaunchRequested,
+                onStopIntentLaunchRequested = onStopIntentLaunchRequested,
+                onStatusIntentLaunchRequested = onStatusIntentLaunchRequested,
             )
         }
 

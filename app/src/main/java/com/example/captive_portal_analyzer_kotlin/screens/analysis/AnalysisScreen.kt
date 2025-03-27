@@ -266,7 +266,7 @@ private fun CaptivePortalWebsiteContent(
                     switchWebViewType = switchWebViewType
                 )
 
-                1 -> CaptureScreen(
+                1 -> Text("todo: implement request capture tab"
 
                 )
             }

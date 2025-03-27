@@ -1,5 +1,5 @@
 [versions]
-agp = "8.8.2"
+agp = "8.9.1"
 androidRequestInspectorWebview = "1.0.12"
 androidxCoreKtx = "1.15.0"
 androidxLifecycleViewmodelKtx = "2.8.7"

@@ -2,7 +2,6 @@ package com.example.captive_portal_analyzer_kotlin.screens.analysis
 
 import CaptivePortalDetector
 import CaptivePortalResult
-import MitmAddon
 import NetworkSessionRepository
 import android.app.Application
 import android.content.Context
@@ -29,7 +28,6 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewReque
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.convertMethodStringToEnum
-import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.Prefs
 import com.example.captive_portal_analyzer_kotlin.utils.LocalOrRemoteCaptiveChecker
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import kotlinx.coroutines.Dispatchers
