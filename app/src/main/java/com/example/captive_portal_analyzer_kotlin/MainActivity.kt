@@ -1,11 +1,13 @@
 package com.example.captive_portal_analyzer_kotlin
 
+import CaptureViewModel
 import NetworkSessionRepository
 import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -26,17 +28,24 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.captive_portal_analyzer_kotlin.datastore.settingsDataStore
 import com.example.captive_portal_analyzer_kotlin.navigation.AppNavGraph
 import com.example.captive_portal_analyzer_kotlin.navigation.AppScaffold
 import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
-import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.CaptureViewModel
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import com.google.firebase.FirebaseApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -46,10 +55,13 @@ class MainActivity : ComponentActivity() {
     // ViewModel needed to pass results back
     private val captureViewModel: CaptureViewModel by viewModels()
 
-    // ActivityResultLaunchers MUST live here
+    // Launchers for PCAPdroid control
     private lateinit var startCaptureLauncher: ActivityResultLauncher<Intent>
     private lateinit var stopCaptureLauncher: ActivityResultLauncher<Intent>
     private lateinit var getStatusLauncher: ActivityResultLauncher<Intent>
+
+    // *** Launcher for SAF File Picker ***
+    private lateinit var openPcapFileLauncher: ActivityResultLauncher<Array<String>>
 
 
     val onStartIntentLaunchRequested =
@@ -65,6 +77,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setupResultLaunchers()
+        setupSafLauncher() // Setup the SAF launcher
         setupBroadcastReceiver()
 
         val database by lazy { AppDatabase.getDatabase(this) }
@@ -130,7 +143,8 @@ class MainActivity : ComponentActivity() {
                             captureViewModel = captureViewModel,
                             onStartIntentLaunchRequested =onStartIntentLaunchRequested,
                             onStopIntentLaunchRequested =onStopIntentLaunchRequested,
-                            onStatusIntentLaunchRequested =onStatusIntentLaunchRequested
+                            onStatusIntentLaunchRequested =onStatusIntentLaunchRequested,
+                            onOpenFileRequested = ::handleOpenFileRequest,
                         )
                     }
                 }
@@ -231,6 +245,117 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // --- SAF Setup and Handling ---
+
+    private fun setupSafLauncher() {
+        openPcapFileLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+            if (uri != null) {
+                Log.i(TAG, "User selected file URI: $uri")
+                // Handle the selected file URI (read, process, copy, etc.)
+                processSelectedPcapFile(uri)
+            } else {
+                Log.w(TAG, "User cancelled file selection.")
+                showToast("File selection cancelled.")
+                // Maybe reset VM state if needed?
+                captureViewModel.fileProcessingDone() // Treat cancellation as done with file ready state
+            }
+        }
+    }
+
+    // Called from CaptureScreen via the callback
+    private fun handleOpenFileRequest(expectedFileName: String) {
+        Log.d(TAG, "Request to open file: $expectedFileName")
+        // Use SAF to let the user pick the file.
+        // We suggest the MIME type for PCAP files.
+        // ACTION_OPEN_DOCUMENT lets the user pick, grants persistent read access.
+        try {
+            // You could try suggesting a starting directory, but it's complex and
+            // often doesn't work reliably across Android versions/OEMs for Downloads.
+            // Let the user navigate.
+            // val downloadsDirUri = DocumentsContract.buildDocumentUri(
+            //    "com.android.providers.downloads.documents", "downloads")
+            // intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, downloadsDirUri) // Often ignored
+
+            openPcapFileLauncher.launch(arrayOf("application/vnd.tcpdump.pcap", "*/*")) // PCAP MIME type + fallback
+
+        } catch (e: ActivityNotFoundException) {
+            Log.e(TAG, "No file picker found.", e)
+            showToast("Cannot open file picker. No suitable application found.")
+            captureViewModel.fileProcessingDone() // Cannot proceed
+        } catch (e: Exception) {
+            Log.e(TAG, "Error launching file picker.", e)
+            showToast("Error opening file picker.")
+            captureViewModel.fileProcessingDone() // Cannot proceed
+        }
+    }
+
+    // --- Process the URI obtained from SAF ---
+    private fun processSelectedPcapFile(sourceFileUri: Uri) {
+        // Get source filename for display/logging
+        val sourceFileName = DocumentFile.fromSingleUri(this, sourceFileUri)?.name ?: "unknown_capture.pcap"
+        showToast("Copying '$sourceFileName' to app storage...")
+
+        // Perform file copy in a background thread
+        CoroutineScope(Dispatchers.IO).launch {
+            var destinationFile: File? = null
+            var bytesCopied: Long = 0
+            try {
+                // 1. Define Destination in App's External Storage
+                val appStorageDir = getExternalFilesDir(null) // -> Android/data/your.package.name/files/
+                if (appStorageDir == null) {
+                    throw IOException("Cannot access app external storage directory.")
+                }
+                // Ensure the directory exists (usually does, but good practice)
+                if (!appStorageDir.exists()) {
+                    appStorageDir.mkdirs()
+                }
+                destinationFile = File(appStorageDir, "copied_${sourceFileName}") // Add prefix or use original name
+
+                Log.d(TAG, "Source URI: $sourceFileUri")
+                Log.d(TAG, "Destination File: ${destinationFile.absolutePath}")
+
+                // 2. Open Streams using 'use' for automatic closing
+                contentResolver.openInputStream(sourceFileUri)?.use { inputStream ->
+                    FileOutputStream(destinationFile).use { outputStream ->
+                        // 3. Copy Data
+                        bytesCopied = inputStream.copyTo(outputStream) // Efficient Kotlin copy function
+                    }
+                } ?: run {
+                    // Handle case where InputStream couldn't be opened
+                    throw IOException("Could not open InputStream for source URI.")
+                }
+
+                // 4. Success: Report and maybe process the copied file
+                Log.i(TAG, "Successfully copied $bytesCopied bytes to ${destinationFile.absolutePath}")
+                withContext(Dispatchers.Main) {
+                    showToast("Copied '$sourceFileName' (${bytesCopied / 1024} KB) to app storage.")
+                    // Now you can work with 'destinationFile' within your app's storage
+                    // Example: processCopiedFileInternally(destinationFile)
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error copying file URI: $sourceFileUri to ${destinationFile?.absolutePath}", e)
+                withContext(Dispatchers.Main) { showToast("Error copying file: ${e.message}") }
+                // Clean up partially copied file if it exists on error
+                destinationFile?.delete()
+            } finally {
+                // Optionally update ViewModel state if needed after copy attempt
+                // viewModel.fileProcessingDone() // Or similar signal
+            }
+        }
+        // Reset VM state after *initiating* the copy, don't wait for completion here
+        // This was moved from the Composable based on previous feedback
+        // viewModel.fileProcessingDone()
+    }
+
+    // Optional: function to process the file now that it's in app storage
+    private fun processCopiedFileInternally(localFile: File) {
+        Log.d(TAG, "Processing the copied file: ${localFile.absolutePath}")
+        // Add your PCAP parsing logic here, reading directly from 'localFile'
+        // This can now use standard File APIs
+    }
+
+
     // --- Utility ---
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
@@ -247,6 +372,10 @@ class MainActivity : ComponentActivity() {
             // Recreate the activity to apply changes immediately
             recreate()
         }
+    }
+
+    companion object {
+        private const val TAG = "MainActivity" // Consistent tag
     }
 
 }

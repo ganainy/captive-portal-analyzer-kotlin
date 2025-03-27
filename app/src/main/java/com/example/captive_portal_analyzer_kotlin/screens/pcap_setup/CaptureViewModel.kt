@@ -1,56 +1,40 @@
-package com.example.captive_portal_analyzer_kotlin.screens.pcap_setup
 
-
+// import android.content.Context // Context no longer needed directly for intent creation here
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.activity.result.ActivityResult
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.captive_portal_analyzer_kotlin.PcapdroidConstants
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.net.BindException
-import java.net.DatagramPacket
-import java.net.DatagramSocket
-import java.net.InetAddress
-import java.net.SocketException
 
-// Enum to represent capture state (remains the same)
+// Enum remains the same
 enum class CaptureState {
-    IDLE, STARTING, RUNNING, STOPPING, STOPPED, ERROR
+    IDLE, STARTING, RUNNING, STOPPING, STOPPED, FILE_READY, ERROR
 }
 
 class CaptureViewModel : ViewModel() {
 
-    // --- StateFlow for UI State ---
+    // --- StateFlow ---
     private val _captureState = MutableStateFlow(CaptureState.IDLE)
     val captureState: StateFlow<CaptureState> = _captureState.asStateFlow()
 
-    private val _statusMessage = MutableStateFlow("Initializing...")
+    private val _statusMessage = MutableStateFlow("Ready to capture to file.")
     val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
 
-    private val _receivedPacketCount = MutableStateFlow(0L)
-    val receivedPacketCount: StateFlow<Long> = _receivedPacketCount.asStateFlow()
-
-    // --- Internal State ---
-    private var udpListenerJob: Job? = null
-    private var udpSocket: DatagramSocket? = null
+    // Store the filename we asked PCAPdroid to use
+    private val _targetPcapName = MutableStateFlow<String?>(null)
+    val targetPcapName: StateFlow<String?> = _targetPcapName.asStateFlow()
 
     companion object {
         private const val TAG = "CaptureViewModel"
-        private const val UDP_BUFFER_SIZE = 65535
+        // Define the filename we'll request
+        private const val DEFAULT_PCAP_FILENAME = "captive_portal_analyzer.pcap"
     }
 
-    // --- Intent Creation (Requires Context for package name) ---
+    // --- Intent Creation ---
 
     private fun createPcapdroidIntent(): Intent {
         val intent = Intent(Intent.ACTION_VIEW)
@@ -58,21 +42,26 @@ class CaptureViewModel : ViewModel() {
         return intent
     }
 
-    // Now requires Context
-    fun createStartIntent(context: Context): Intent {
+    // No longer needs Context directly if package name isn't needed for broadcast receiver
+    fun createStartIntent(): Intent {
+        val filename = DEFAULT_PCAP_FILENAME // Or make dynamic if needed
+        _targetPcapName.value = filename // Store the name we're using
+
         val intent = createPcapdroidIntent()
         intent.putExtra(PcapdroidConstants.EXTRA_ACTION, PcapdroidConstants.ACTION_START)
-        intent.putExtra(PcapdroidConstants.EXTRA_PCAP_DUMP_MODE, PcapdroidConstants.DUMP_MODE_UDP_EXPORTER)
-        intent.putExtra(PcapdroidConstants.EXTRA_COLLECTOR_IP, PcapdroidConstants.LOCALHOST_IP)
-        intent.putExtra(PcapdroidConstants.EXTRA_COLLECTOR_PORT, PcapdroidConstants.UDP_LISTENER_PORT)
-        intent.putExtra(PcapdroidConstants.EXTRA_APP_FILTER, context.packageName) // Use context here
+        // *** Use pcap_file mode ***
+        intent.putExtra(PcapdroidConstants.EXTRA_PCAP_DUMP_MODE, "pcap_file")
+        // *** Specify the filename within Download/PCAPdroid/ ***
+        intent.putExtra("pcap_name", filename) // Use the 'pcap_name' extra
+        // Filter for own app still useful
+        // intent.putExtra(PcapdroidConstants.EXTRA_APP_FILTER, context.packageName) // Need context if filtering
+        // dump_extensions might still be useful if PCAPdroid adds metadata even in file mode
         intent.putExtra(PcapdroidConstants.EXTRA_DUMP_EXTENSIONS, true)
-        // Optional: BroadcastReceiver - requires fully qualified name if used
-        // intent.putExtra(PcapdroidConstants.EXTRA_BROADCAST_RECEIVER, "${context.packageName}.capture.CaptureStatusReceiver")
+
+        Log.d(TAG, "Creating start intent for pcap_file mode, filename: $filename")
         return intent
     }
 
-    // These don't need context
     fun createStopIntent(): Intent {
         val intent = createPcapdroidIntent()
         intent.putExtra(PcapdroidConstants.EXTRA_ACTION, PcapdroidConstants.ACTION_STOP)
@@ -85,14 +74,14 @@ class CaptureViewModel : ViewModel() {
         return intent
     }
 
-    // --- Action Initiation (Called by UI/Composable) ---
+    // --- Action Initiation ---
 
     fun requestStartCapture() {
-        if (_captureState.value == CaptureState.IDLE || _captureState.value == CaptureState.STOPPED || _captureState.value == CaptureState.ERROR) {
+        if (_captureState.value == CaptureState.IDLE || _captureState.value == CaptureState.STOPPED || _captureState.value == CaptureState.ERROR || _captureState.value == CaptureState.FILE_READY) {
             _captureState.value = CaptureState.STARTING
-            _statusMessage.value = "Requesting start capture..."
-            _receivedPacketCount.value = 0L // Reset count on new start request
-            // The actual intent launch must happen in the Activity via callback
+            _statusMessage.value = "Requesting file capture start..."
+            // Reset filename? Or keep the last one? Let's keep it until next successful start.
+            // _targetPcapName.value = null // Reset if needed
         } else {
             Log.w(TAG, "Start request ignored, state is ${_captureState.value}")
         }
@@ -101,8 +90,7 @@ class CaptureViewModel : ViewModel() {
     fun requestStopCapture() {
         if (_captureState.value == CaptureState.RUNNING || _captureState.value == CaptureState.STARTING) {
             _captureState.value = CaptureState.STOPPING
-            _statusMessage.value = "Requesting stop capture..."
-            // The actual intent launch must happen in the Activity via callback
+            _statusMessage.value = "Requesting capture stop..."
         } else {
             Log.w(TAG, "Stop request ignored, state is ${_captureState.value}")
         }
@@ -110,35 +98,37 @@ class CaptureViewModel : ViewModel() {
 
     fun requestGetStatus() {
         _statusMessage.value = "Requesting capture status..."
-        // The actual intent launch must happen in the Activity via callback
     }
 
-
-    // --- Result Handling (Called from Activity's ActivityResultLauncher) ---
+    // --- Result Handling ---
 
     fun handleStartResult(result: ActivityResult) {
         if (result.resultCode == Activity.RESULT_OK) {
             _captureState.value = CaptureState.RUNNING
-            _statusMessage.value = "Capture started by PCAPdroid. Listening..."
-            startUdpListener()
+            _statusMessage.value = "PCAPdroid capturing to file: ${_targetPcapName.value ?: "Unknown"}"
+            // Ensure the filename is set if the start was successful
+            if (_targetPcapName.value == null) { _targetPcapName.value = DEFAULT_PCAP_FILENAME } // Fallback
         } else {
             _captureState.value = CaptureState.ERROR
-            _statusMessage.value = "Failed to start capture (Result: ${result.resultCode}). User denied? PCAPdroid issue?"
+            _statusMessage.value = "Failed to start file capture (Result: ${result.resultCode})."
+            _targetPcapName.value = null // Reset filename on failure
             Log.e(TAG, "PCAPdroid start failed. Result code: ${result.resultCode}")
-            stopUdpListener()
         }
     }
 
     fun handleStopResult(result: ActivityResult) {
-        stopUdpListener() // Stop listener regardless
+        val targetFile = _targetPcapName.value
         if (result.resultCode == Activity.RESULT_OK) {
-            _captureState.value = CaptureState.STOPPED
+            // Capture stopped successfully, file *should* be ready.
+            _captureState.value = CaptureState.FILE_READY
             val stats = extractStatsFromResult(result.data)
-            _statusMessage.value = "Capture stopped by PCAPdroid. $stats"
+            _statusMessage.value = "Capture stopped. File '${targetFile ?: "Unknown"}' should be ready. $stats"
         } else {
-            _captureState.value = CaptureState.STOPPED // Assume stopped even on API error
-            _statusMessage.value = "Capture stop command sent (Result: ${result.resultCode}). Assuming stopped."
+            // Stop command failed, but maybe it was already stopped? Treat as stopped.
+            _captureState.value = CaptureState.STOPPED // Or ERROR? Let's use STOPPED.
+            _statusMessage.value = "Capture stop command sent (Result: ${result.resultCode}). File state unknown."
             Log.w(TAG, "PCAPdroid stop potentially failed. Result code: ${result.resultCode}")
+            // Keep _targetPcapName, the file *might* exist.
         }
     }
 
@@ -146,31 +136,26 @@ class CaptureViewModel : ViewModel() {
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             val data = result.data!!
             val isRunning = data.getBooleanExtra(PcapdroidConstants.RESULT_EXTRA_RUNNING, false)
-            val pcapVersion = data.getStringExtra(PcapdroidConstants.RESULT_EXTRA_VERSION_NAME) ?: "N/A"
-            val pcapVersionCode = data.getIntExtra(PcapdroidConstants.RESULT_EXTRA_VERSION_CODE, 0)
+            // ... (version logging etc. same as before)
             val stats = extractStatsFromResult(data)
+            val pcapVersion = data.getStringExtra(PcapdroidConstants.RESULT_EXTRA_VERSION_NAME) ?: "N/A"
 
-            val currentState = if (isRunning) CaptureState.RUNNING else CaptureState.STOPPED
-            // Only update state if it has actually changed based on the status check
-            // This prevents overwriting STARTING/STOPPING states unnecessarily
-            if (_captureState.value != currentState &&
-                _captureState.value != CaptureState.STARTING &&
-                _captureState.value != CaptureState.STOPPING) {
-                _captureState.value = currentState
-            }
-            _statusMessage.value = "Status: ${currentState.name}. PCAPdroid v$pcapVersion ($pcapVersionCode). $stats"
+            val currentState = _captureState.value
+            val reportedState = if (isRunning) CaptureState.RUNNING else CaptureState.STOPPED
 
-            // Correct listener state based on reported status
-            if (isRunning && !isUdpListenerRunning()) {
-                Log.w(TAG, "Status is RUNNING, but listener wasn't. Starting listener.")
-                startUdpListener()
-            } else if (!isRunning && isUdpListenerRunning()) {
-                Log.w(TAG, "Status is STOPPED, but listener was running. Stopping listener.")
-                stopUdpListener()
+            _statusMessage.value = "Status: ${reportedState.name}. PCAPdroid v$pcapVersion. $stats"
+
+            // Update state more carefully based on status report
+            if (reportedState == CaptureState.RUNNING && (currentState == CaptureState.STOPPED || currentState == CaptureState.IDLE || currentState == CaptureState.FILE_READY || currentState == CaptureState.ERROR)) {
+                _captureState.value = CaptureState.RUNNING // Correct state if it was wrong
+                _statusMessage.value += " (State corrected to RUNNING)"
+            } else if (reportedState == CaptureState.STOPPED && currentState == CaptureState.RUNNING) {
+                _captureState.value = CaptureState.FILE_READY // Assume file is ready if status says stopped
+                _statusMessage.value += " (State corrected to FILE_READY)"
             }
+            // Don't overwrite STARTING or STOPPING
 
         } else {
-            // Avoid changing core state on status check failure, just report message
             _statusMessage.value = "Failed to get status (Result: ${result.resultCode})."
             Log.e(TAG, "PCAPdroid get_status failed. Result code: ${result.resultCode}")
         }
@@ -178,108 +163,38 @@ class CaptureViewModel : ViewModel() {
 
     fun handleActivityNotFound() {
         _captureState.value = CaptureState.ERROR
-        _statusMessage.value = "Error: PCAPdroid app not found. Please install it."
+        _statusMessage.value = "Error: PCAPdroid app not found."
         Log.e(TAG, "PCAPdroid ActivityNotFoundException")
-        stopUdpListener()
+        _targetPcapName.value = null
     }
 
-    // Called if BroadcastReceiver notifies of a stop event
     fun handleCaptureStoppedExternally() {
         if (_captureState.value == CaptureState.RUNNING || _captureState.value == CaptureState.STARTING) {
             Log.i(TAG, "Capture stopped externally.")
-            _captureState.value = CaptureState.STOPPED
-            _statusMessage.value = "Capture stopped externally."
-            stopUdpListener()
+            // Assume file is ready if stopped externally while running
+            _captureState.value = CaptureState.FILE_READY
+            _statusMessage.value = "Capture stopped externally. File '${_targetPcapName.value ?: "Unknown"}' may be ready."
         }
     }
 
-    // --- UDP Listener (Identical logic, uses viewModelScope) ---
-
-    private fun isUdpListenerRunning(): Boolean {
-        return udpListenerJob?.isActive == true && udpSocket?.isBound == true && udpSocket?.isClosed == false
-    }
-
-    private fun startUdpListener() {
-        if (isUdpListenerRunning()) return
-        stopUdpListener()
-
-        udpListenerJob = viewModelScope.launch(Dispatchers.IO) {
-            Log.i(TAG, "Attempting to start UDP Listener on port ${PcapdroidConstants.UDP_LISTENER_PORT}")
-            try {
-                udpSocket = DatagramSocket(PcapdroidConstants.UDP_LISTENER_PORT, InetAddress.getByName("0.0.0.0"))
-                Log.i(TAG, "UDP Listener started successfully.")
-                // Update status message on the main thread
-                withContext(Dispatchers.Main) {
-                    if (_captureState.value == CaptureState.RUNNING) { // Only if we are supposed to be running
-                        _statusMessage.value = "Capture running. Listening for packets..."
-                    }
-                }
-
-                val buffer = ByteArray(UDP_BUFFER_SIZE)
-                val packet = DatagramPacket(buffer, buffer.size)
-
-                while (isActive) {
-                    try {
-                        udpSocket?.receive(packet) // Blocking
-                        val receivedSize = packet.length
-                        // Process packet on IO thread if complex, update StateFlow on Main
-                        _receivedPacketCount.update { it + 1 } // Thread-safe update
-                        Log.v(TAG, "Received UDP packet: size=$receivedSize bytes, Total=${_receivedPacketCount.value}")
-                        packet.length = buffer.size // Reset for next receive
-                    } catch (e: SocketException) {
-                        if (isActive) Log.e(TAG, "SocketException in UDP loop: ${e.message}")
-                        break // Exit loop
-                    } catch (e: Exception) {
-                        if (isActive) Log.e(TAG, "Error receiving UDP packet: ${e.message}", e)
-                        // Consider adding a small delay here if errors are persistent but recoverable
-                    }
-                }
-            } catch (e: BindException) {
-                Log.e(TAG, "UDP Listener BindException on port ${PcapdroidConstants.UDP_LISTENER_PORT}", e)
-                withContext(Dispatchers.Main) {
-                    _captureState.value = CaptureState.ERROR
-                    _statusMessage.value = "Error: Port ${PcapdroidConstants.UDP_LISTENER_PORT} already in use."
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "UDP Listener failed to start or crashed: ${e.message}", e)
-                withContext(Dispatchers.Main) {
-                    // Only set error if we were supposed to be running
-                    if (_captureState.value == CaptureState.RUNNING || _captureState.value == CaptureState.STARTING) {
-                        _captureState.value = CaptureState.ERROR
-                        _statusMessage.value = "Error in UDP listener."
-                    }
-                }
-            } finally {
-                Log.i(TAG, "UDP Listener loop finished.")
-                udpSocket?.close()
-                udpSocket = null
-                // No need to update state here usually, should be handled by stop request or error handling
-            }
+    // Function called when UI indicates file processing is done or user navigated away
+    fun fileProcessingDone() {
+        if (_captureState.value == CaptureState.FILE_READY) {
+            _captureState.value = CaptureState.STOPPED // Move from FILE_READY to general STOPPED
         }
-    }
-
-    fun stopUdpListener() {
-        if (!isUdpListenerRunning() && udpListenerJob == null) return // Already stopped
-        Log.i(TAG, "Stopping UDP Listener...")
-        udpListenerJob?.cancel()
-        udpSocket?.close() // Interrupts receive()
-        udpListenerJob = null
-        udpSocket = null
-        Log.i(TAG, "UDP Listener stopped.")
-        // Don't reset packet count here
     }
 
     private fun extractStatsFromResult(data: Intent?): String {
-        // Same as before
+        // If capturing to file, bytes_dumped might be relevant
         if (data == null) return "No stats data."
-        val bytesSent = data.getLongExtra("bytes_sent", -1)
-        val bytesRcvd = data.getLongExtra("bytes_rcvd", -1)
-        return "Stats: [Sent: $bytesSent B, Rcvd: $bytesRcvd B]"
+        val bytesDumped = data.getLongExtra("bytes_dumped", -1)
+        // Add others if needed (pkts_sent etc)
+        return "Stats: [Dumped: $bytesDumped B]"
     }
+
 
     override fun onCleared() {
         super.onCleared()
-        Log.d(TAG, "ViewModel cleared. Stopping listener.")
-        stopUdpListener()
+        Log.d(TAG, "ViewModel cleared.")
     }
 }

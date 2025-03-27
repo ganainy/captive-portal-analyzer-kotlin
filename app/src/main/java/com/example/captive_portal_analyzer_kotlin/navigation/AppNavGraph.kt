@@ -1,5 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.navigation
 
+import CaptureViewModel
 import NetworkSessionRepository
 import android.content.Intent
 import androidx.annotation.StringRes
@@ -21,8 +22,6 @@ import com.example.captive_portal_analyzer_kotlin.screens.about.AboutScreen
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.manual_connect.ManualConnectScreen
-import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.CaptureScreen
-import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.CaptureViewModel
 import com.example.captive_portal_analyzer_kotlin.screens.request_details_screen.RequestDetailsScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session.SessionScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
@@ -30,6 +29,7 @@ import com.example.captive_portal_analyzer_kotlin.screens.settings.SettingsScree
 import com.example.captive_portal_analyzer_kotlin.screens.webpage_content.WebpageContentScreen
 import com.example.captive_portal_analyzer_kotlin.screens.welcome.WelcomeScreen
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
+import com.yourcompany.yourapp.ui.CaptureScreen
 import java.util.Locale
 
 /**
@@ -94,6 +94,7 @@ fun AppNavGraph(
     onStartIntentLaunchRequested: (Intent) -> Unit,
     onStopIntentLaunchRequested: (Intent) -> Unit,
     onStatusIntentLaunchRequested: (Intent) -> Unit,
+    onOpenFileRequested: (String) -> Unit,
 ) {
     // Remember navigation actions for the navController
     val actions = remember(navController) { NavigationActions(navController) }
@@ -211,6 +212,7 @@ fun AppNavGraph(
                 onStartIntentLaunchRequested = onStartIntentLaunchRequested,
                 onStopIntentLaunchRequested = onStopIntentLaunchRequested,
                 onStatusIntentLaunchRequested = onStatusIntentLaunchRequested,
+                onOpenFileRequested = onOpenFileRequested
             )
         }
 

@@ -1,8 +1,8 @@
-package com.example.captive_portal_analyzer_kotlin.screens.pcap_setup
+package com.yourcompany.yourapp.ui
 
-
+import CaptureState
+import CaptureViewModel
 import android.content.Intent
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,46 +18,41 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-// Define typealias for the callback for clarity
 typealias IntentLauncher = (Intent) -> Unit
+// Callback specifically for opening the file, passing the expected filename
+typealias FileOpener = (fileName: String) -> Unit
 
 @Composable
 fun CaptureScreen(
-    // Callbacks to the Activity/Host to actually launch the intents
     onStartIntentLaunchRequested: IntentLauncher,
     onStopIntentLaunchRequested: IntentLauncher,
     onStatusIntentLaunchRequested: IntentLauncher,
-    // Obtain ViewModel using lifecycle-viewmodel-compose artifact
-    modifier: Modifier = Modifier,
-    viewModel: CaptureViewModel
+    onOpenFileRequested: FileOpener,
+    viewModel: CaptureViewModel,
+    modifier: Modifier = Modifier
 ) {
-    // Collect StateFlow using lifecycle-aware collection
     val captureState by viewModel.captureState.collectAsStateWithLifecycle()
     val statusMessage by viewModel.statusMessage.collectAsStateWithLifecycle()
-    val receivedPacketCount by viewModel.receivedPacketCount.collectAsStateWithLifecycle()
+    val targetPcapName by viewModel.targetPcapName.collectAsStateWithLifecycle()
 
-    // Get context for creating the start intent
-    val context = LocalContext.current
+    // Used only if filtering by app name in createStartIntent
+    // val context = LocalContext.current
 
     CaptureScreenContent(
         modifier = modifier,
         captureState = captureState,
         statusMessage = statusMessage,
-        receivedPacketCount = receivedPacketCount,
-        // Pass lambdas that call ViewModel requests AND trigger Activity callbacks
+        targetPcapName = targetPcapName,
         onStartClick = {
-            viewModel.requestStartCapture() // Tell VM the intention
-            // Immediately request launch *if* state changed to STARTING
-            // (Or rely on Activity observing a dedicated signal Flow/Channel from VM - more complex)
-            // Simpler: Assume VM state updated and let Activity handle it via the callback
-            // Need to create the intent here or have VM expose it? Let's create in VM and pass via callback
-            onStartIntentLaunchRequested(viewModel.createStartIntent(context)) // Ask Activity to launch
+            viewModel.requestStartCapture()
+            // Use createStartIntent which now sets pcap_file mode
+            // Pass context only if createStartIntent requires it
+            onStartIntentLaunchRequested(viewModel.createStartIntent(/* context */))
         },
         onStopClick = {
             viewModel.requestStopCapture()
@@ -66,6 +61,13 @@ fun CaptureScreen(
         onStatusClick = {
             viewModel.requestGetStatus()
             onStatusIntentLaunchRequested(viewModel.createGetStatusIntent())
+        },
+        onOpenFileClick = {
+            targetPcapName?.let { filename ->
+                onOpenFileRequested(filename) // Trigger Activity action
+                // Optionally update VM state after requesting open
+                viewModel.fileProcessingDone()
+            }
         }
     )
 }
@@ -75,10 +77,11 @@ fun CaptureScreenContent(
     modifier: Modifier = Modifier,
     captureState: CaptureState,
     statusMessage: String,
-    receivedPacketCount: Long,
+    targetPcapName: String?,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
-    onStatusClick: () -> Unit
+    onStatusClick: () -> Unit,
+    onOpenFileClick: () -> Unit // New click handler
 ) {
     Column(
         modifier = modifier
@@ -87,38 +90,36 @@ fun CaptureScreenContent(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Action Buttons Row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Row(/* ... same as before ... */) {
             Button(
                 onClick = onStartClick,
-                // Enable based on VM state
-                enabled = captureState == CaptureState.IDLE || captureState == CaptureState.STOPPED || captureState == CaptureState.ERROR,
+                enabled = captureState == CaptureState.IDLE || captureState == CaptureState.STOPPED || captureState == CaptureState.ERROR || captureState == CaptureState.FILE_READY,
                 modifier = Modifier.weight(1f)
-            ) {
-                Text("Start Capture")
-            }
+            ) { Text("Start Capture") }
             Button(
                 onClick = onStopClick,
-                // Enable based on VM state
                 enabled = captureState == CaptureState.RUNNING || captureState == CaptureState.STARTING,
                 modifier = Modifier.weight(1f)
-            ) {
-                Text("Stop Capture")
-            }
+            ) { Text("Stop Capture") }
         }
-
         Spacer(modifier = Modifier.height(8.dp))
-
-        // Status Button
         Button(
             onClick = onStatusClick,
             enabled = true,
             modifier = Modifier.fillMaxWidth()
+        ) { Text("Get Status") }
+
+        Spacer(modifier = Modifier.height(16.dp)) // More space
+
+        // *** Button to Open/Process File ***
+        Button(
+            onClick = onOpenFileClick,
+            enabled = captureState == CaptureState.FILE_READY && targetPcapName != null, // Enabled when file should be ready
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Get Status")
+            Text(if (targetPcapName != null) "Open '$targetPcapName'" else "Open Capture File")
         }
+
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -126,55 +127,32 @@ fun CaptureScreenContent(
         StatusInfoRow(label = "State:", value = captureState.name)
         Spacer(modifier = Modifier.height(8.dp))
         StatusInfoRow(label = "Message:", value = statusMessage)
-        Spacer(modifier = Modifier.height(8.dp))
-        StatusInfoRow(label = "Packets Received:", value = receivedPacketCount.toString())
+        // Removed Packet Count Row
     }
 }
 
 @Composable
 fun StatusInfoRow(label: String, value: String) {
     // (Same as before)
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(140.dp) // Adjust width as needed
-        )
-        Text(text = value)
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, fontWeight = FontWeight.Bold, modifier = Modifier.width(80.dp)) // Adjusted width
+        Text(value)
     }
 }
 
 // --- Preview ---
-
 @Preview(showBackground = true)
 @Composable
-fun PreviewCaptureScreenIdle() {
+fun PreviewCaptureScreenFileReady() {
     MaterialTheme {
         CaptureScreenContent(
-            captureState = CaptureState.IDLE,
-            statusMessage = "Ready.",
-            receivedPacketCount = 0,
+            captureState = CaptureState.FILE_READY,
+            statusMessage = "Capture stopped. File 'my_app_capture.pcap' should be ready.",
+            targetPcapName = "my_app_capture.pcap",
             onStartClick = {},
             onStopClick = {},
-            onStatusClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewCaptureScreenRunning() {
-    MaterialTheme {
-        CaptureScreenContent(
-            captureState = CaptureState.RUNNING,
-            statusMessage = "Running, 123 packets",
-            receivedPacketCount = 123,
-            onStartClick = {},
-            onStopClick = {},
-            onStatusClick = {}
+            onStatusClick = {},
+            onOpenFileClick = {}
         )
     }
 }
