@@ -1332,7 +1332,7 @@ public class Utils {
         }
 
         Context context = icon.getContext();
-        int resid = (conn.isCleartext() || conn.isDecrypted()) ? R.drawable.unlock : R.drawable.lock;
+        int resid = (conn.isCleartext() || conn.isDecrypted()) ? R.drawable.unlock : R.drawable.ic_lock;
 
         icon.setColorFilter(ContextCompat.getColor(context, color));
         icon.setImageDrawable(ContextCompat.getDrawable(context, resid));

@@ -7,4 +7,10 @@
     <color name="danger">#FA1D0C</color>
     <color name="lightGray">#8F8E8E</color>
     <color name="in_progress">#FFEB3B</color>
+    <color name="statusOpen">#28BC36</color>
+    <color name="statusClosed">#AAAAAA</color>
+    <color name="statusError">#F20015</color>
+    <color name="colorAccent">#D81B60</color>
+    <color name="colorAccentLight">#D8ADBD</color>
+    <color name="backgroundColor">@color/background_material_light</color>
 </resources>

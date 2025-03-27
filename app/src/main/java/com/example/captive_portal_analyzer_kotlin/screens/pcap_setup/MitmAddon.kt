@@ -22,6 +22,7 @@ import androidx.preference.PreferenceManager
 import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.MitmAPI
 import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.MitmListener
 import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.Prefs
+import com.example.captive_portal_analyzer_kotlin.screens.pcap_setup.Utils
 import java.io.IOException
 import java.lang.ref.WeakReference
 

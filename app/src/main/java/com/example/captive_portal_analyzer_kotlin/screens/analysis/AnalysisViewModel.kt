@@ -728,10 +728,10 @@ class AnalysisViewModel(
 
 
 
-
+//todo
     /** Packet capture related functions*/
     fun startCapture() {
-        if (VpnReconnectService.isAvailable()) VpnReconnectService.stopService()
+/*        if (VpnReconnectService.isAvailable()) VpnReconnectService.stopService()
 
         if (showRemoteServerAlert()) return
 
@@ -743,7 +743,7 @@ class AnalysisViewModel(
                 startActivity(intent)
                 return
             }
-       doStartCaptureService(null)
+       doStartCaptureService(null)*/
     }
 
 }

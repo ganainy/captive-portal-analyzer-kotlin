@@ -27,7 +27,6 @@ import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
@@ -52,7 +51,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.MutableLiveData;
@@ -176,7 +174,7 @@ public class CaptureService extends VpnService implements Runnable {
             CaptureService.initPlatformInfo(Utils.getAppVersionString(), Utils.getDeviceModel(), Utils.getOsVersion());
         } catch (UnsatisfiedLinkError e) {
             // This should only happen while running tests
-            //e.printStackTrace();
+            e.printStackTrace();
         }
     }
 
@@ -551,8 +549,9 @@ public class CaptureService extends VpnService implements Runnable {
             mDumperThread.start();
         }
 
+        //todo
         if(mFirewallEnabled) {
-            mNewAppsInstallReceiver = new BroadcastReceiver() {
+         /*   mNewAppsInstallReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     // executed on the main thread
@@ -604,7 +603,7 @@ public class CaptureService extends VpnService implements Runnable {
             IntentFilter filter = new IntentFilter();
             filter.addAction(Intent.ACTION_PACKAGE_ADDED);
             filter.addDataScheme("package");
-            registerReceiver(mNewAppsInstallReceiver, filter);
+            registerReceiver(mNewAppsInstallReceiver, filter);*/
         }
 
         // Start the native capture thread
@@ -708,11 +707,12 @@ public class CaptureService extends VpnService implements Runnable {
             return;
 
         Notification notification = getStatusNotification();
-        NotificationManagerCompat.from(this).notify(NOTIFY_ID_VPNSERVICE, notification);
+        //TODO NotificationManagerCompat.from(this).notify(NOTIFY_ID_VPNSERVICE, notification);
     }
 
+//TODO
     public void notifyBlacklistedConnection(ConnectionDescriptor conn) {
-        int uid = conn.uid;
+/*        int uid = conn.uid;
 
         AppsResolver resolver = new AppsResolver(this);
         AppDescriptor app = resolver.getAppByUid(conn.uid, 0);
@@ -721,7 +721,6 @@ public class CaptureService extends VpnService implements Runnable {
 
         FilterDescriptor filter = new FilterDescriptor();
         filter.onlyBlacklisted = true;
-
         Intent intent = new Intent(this, ConnectionsActivity.class)
                 .putExtra(ConnectionsFragment.FILTER_EXTRA, filter)
                 .putExtra(ConnectionsFragment.QUERY_EXTRA, app.getPackageName());
@@ -747,7 +746,7 @@ public class CaptureService extends VpnService implements Runnable {
         Notification notification = mMalwareBuilder.build();
 
         // Use the UID as the notification ID to group alerts from the same app
-        mHandler.post(() -> Utils.sendImportantNotification(this, uid, notification));
+        mHandler.post(() -> Utils.sendImportantNotification(this, uid, notification));*/
     }
 
     public void notifyLowMemory(CharSequence msg) {

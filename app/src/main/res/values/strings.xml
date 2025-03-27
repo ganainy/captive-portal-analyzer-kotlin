@@ -313,7 +313,8 @@
     <string name="pcap_read_error">Error reading the capture file. Check the log for details</string>
     <string name="malicious_connection_description">A connection from app \"%1$s\" triggered a malware detection rule (%2$s)</string>
     <string name="low_memory">Low memory</string>
-
-
+    <string name="injected">Injected</string>
+    <string name="redirected">redirected</string>
+    <string name="start_capture_first">Start the capture first</string>
 
 </resources>

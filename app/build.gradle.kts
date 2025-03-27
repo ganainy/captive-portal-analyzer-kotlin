@@ -1,3 +1,4 @@
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,10 +9,22 @@ plugins {
 }
 
 android {
+    ndkVersion = "26.3.11579264"
     namespace = "com.example.captive_portal_analyzer_kotlin"
     compileSdk = 35
 
     defaultConfig {
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+        }
+        externalNativeBuild {
+            cmake {
+                // Optional: Add arguments if needed (copy from Project A if necessary)
+                // arguments "-DANDROID_STL=c++_shared"
+                // Optional: Specify specific ABIs if needed
+                // abiFilters 'armeabi-v7a', 'arm64-v8a'
+            }
+        }
         applicationId = "com.example.captive_portal_analyzer_kotlin"
         minSdk = 24
         targetSdk = 34
@@ -30,6 +43,15 @@ android {
         }
         debug {
             isDebuggable = true
+            /*applicationIdSuffix = ".debug"*/
+            versionNameSuffix = "-beta"
+
+            packagingOptions {
+                if (project.hasProperty("doNotStrip")) {
+                    doNotStrip("**/libpcapd.so")
+                    doNotStrip("**/libcapture.so")
+                }
+            }
         }
     }
     compileOptions {
@@ -37,7 +59,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
         freeCompilerArgs += "-Xjvm-default=all"
     }
 
@@ -45,6 +67,17 @@ android {
         compose = true
         buildConfig = true
     }
+
+/*    externalNativeBuild {
+        cmake {
+            path = file("src/main/jni/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }*/
+
+
+
+
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.3"
     }
@@ -105,10 +138,10 @@ dependencies {
     implementation(libs.timeago)
 
     // Brotli dependency
-    implementation (libs.brotli.dec)
+    implementation(libs.brotli.dec)
 
     //MaxMind GeoIP2
-    implementation (libs.db.maxmind.db)
+    implementation(libs.db.maxmind.db)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

@@ -50,7 +50,7 @@
         </activity>
 
         <service
-            android:name=".CaptureService"
+          android:name=".screens.analysis.pcap_capture.capture_service.CaptureService"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:foregroundServiceType="specialUse"
             android:exported="false">

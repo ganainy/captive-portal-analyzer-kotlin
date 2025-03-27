@@ -28,6 +28,7 @@ import androidx.annotation.NonNull;
 import androidx.collection.ArraySet;
 import androidx.preference.PreferenceManager;
 
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.pcap_capture.capture_service.MitmAddon;
 
 import java.util.Set;
 
