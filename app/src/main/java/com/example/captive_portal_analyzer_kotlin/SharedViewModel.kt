@@ -3,6 +3,7 @@ package com.example.captive_portal_analyzer_kotlin
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
@@ -30,7 +31,7 @@ enum class ThemeMode {
 }
 
 
-class SharedViewModel(
+open class SharedViewModel(
     private val connectivityObserver: NetworkConnectivityObserver,
     private val dataStore: DataStore<Preferences>,
 ) : ViewModel() {
@@ -74,6 +75,10 @@ class SharedViewModel(
     private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
     val themeMode = _themeMode.asStateFlow()
 
+    private val packetCapturePreferenceKey = booleanPreferencesKey("packet_capture_mode")  // Keys for DataStore
+    private val _packetCapturePreference = MutableStateFlow(false)
+    val packetCapturePreference = _packetCapturePreference.asStateFlow()
+
     //the clicked webpage content to show in the WebpageContent screen
     private val _clickedWebpageContent = MutableStateFlow<WebpageContentEntity?>(null)
     val clickedWebpageContent: StateFlow<WebpageContentEntity?> =
@@ -82,6 +87,7 @@ class SharedViewModel(
     init {
         getLocalePreference()
         getThemePreference()
+        getPacketCapturePreference()
         viewModelScope.launch {
             connectivityObserver.observe().collect { isConnected ->
                 _isConnected.value = isConnected
@@ -111,6 +117,29 @@ class SharedViewModel(
             }
         }
     }
+
+
+private fun getPacketCapturePreference() {
+    viewModelScope.launch(Dispatchers.IO) {
+        try {
+            dataStore.data
+                .map { preferences ->
+                    preferences[packetCapturePreferenceKey] ?: false
+                }
+                .catch { e ->
+                    Log.e("SharedViewModel", "Error reading packet capture preference", e)
+                    emit(false)
+                }
+                .firstOrNull()?.let {
+                    _packetCapturePreference.value = it
+                }
+        } catch (e: Exception) {
+            Log.e("SharedViewModel", "Unexpected error in getPacketCapturePreference", e)
+        }
+    }
+}
+
+
 
     fun updateLocale(locale: Locale) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -147,6 +176,16 @@ class SharedViewModel(
         }
     }
 
+fun updatePacketCapturePreference(packetCapturePreference: Boolean) {
+    viewModelScope.launch(Dispatchers.IO) {
+        dataStore.edit { preferences ->
+            preferences[packetCapturePreferenceKey] = packetCapturePreference
+        }
+        _packetCapturePreference.value = packetCapturePreference
+    }
+}
+
+
 
     fun showDialog(
         title: String,
@@ -172,12 +211,10 @@ class SharedViewModel(
 
 
     fun showToast(
-        title: String? = null,
         message: String,
         style: ToastStyle,
-        duration: Long? = 2000L
     ) {
-        _toastState.value = ToastState.Shown(title, message, style, duration)
+        _toastState.value = ToastState.Shown("", message, style,2000L )
     }
 
 

@@ -33,16 +33,11 @@ import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
  * It also contains a button to start the app.
  */
 @Composable
-fun WelcomeScreen(
-    navigateToNetworkList: () -> Unit,
-    navigateToPCAPSetupScreen: () -> Unit,
-
-    ) {
+fun WelcomeScreen(navigateToSetupPCAPDroidScreen: () -> Unit) {
     Scaffold() { paddingValues ->
         WelcomeContent(
             paddingValues = paddingValues,
-            navigateToNetworkList = navigateToNetworkList,
-            navigateToPCAPSetupScreen = navigateToPCAPSetupScreen,
+            navigateToSetupPCAPDroidScreen = navigateToSetupPCAPDroidScreen,
         )
     }
 }
@@ -55,8 +50,7 @@ fun WelcomeScreen(
 @Composable
 private fun WelcomeContent(
     paddingValues: PaddingValues,
-    navigateToNetworkList: () -> Unit,
-    navigateToPCAPSetupScreen : () -> Unit,
+    navigateToSetupPCAPDroidScreen: () -> Unit,
 ) {
     val typography = MaterialTheme.typography
     val colors = MaterialTheme.colorScheme
@@ -99,17 +93,9 @@ private fun WelcomeContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Setup PCAP button
-        RoundCornerButton(
-            onClick = navigateToPCAPSetupScreen,
-            buttonText = stringResource(R.string.setup_packet_capture),
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
         // Start app button
         RoundCornerButton(
-            onClick = navigateToNetworkList,
+            onClick = navigateToSetupPCAPDroidScreen,
             buttonText = stringResource(R.string.start),
         )
 
@@ -135,8 +121,7 @@ private fun WelcomeContentPreview() {
     AppTheme {
         WelcomeContent(
             paddingValues = PaddingValues(0.dp),
-            navigateToNetworkList = {},
-            navigateToPCAPSetupScreen = {},
+            navigateToSetupPCAPDroidScreen = {},
         )
     }
 }

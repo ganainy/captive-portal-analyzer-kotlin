@@ -5,7 +5,6 @@ import CaptivePortalResult
 import NetworkSessionRepository
 import android.app.Application
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.net.ConnectivityManager
@@ -15,8 +14,6 @@ import android.os.NetworkOnMainThreadException
 import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
-import androidx.appcompat.app.AlertDialog
-import androidx.core.content.ContextCompat.startActivity
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -42,28 +39,18 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.reflect.KFunction4
 
 /**
  * A sealed class representing the different UI states for analysis.
  */
 sealed class AnalysisUiState {
 
-    /**
-     * Represents the loading state with a message resource ID.
-     *
-     * @property messageStringResource The resource ID for the loading message.
-     */
+
+    object PreferenceSetup :
+        AnalysisUiState()// initial setup to let user choose to continue with or without PCAPDroid packet capture
+
     data class Loading(val messageStringResource: Int) : AnalysisUiState()
-
-    /**
-     * Represents the state when a captive URL has been detected.
-     */
     object CaptiveUrlDetected : AnalysisUiState()
-
-    /**
-     * Represents the state when analysis is complete.
-     */
     object AnalysisComplete : AnalysisUiState()
 
     /**
@@ -79,11 +66,6 @@ sealed class AnalysisUiState {
         InvalidState
     }
 
-    /**
-     * Represents an error state with a specific error type.
-     *
-     * @property type The type of error that occurred.
-     */
     data class Error(val type: ErrorType) : AnalysisUiState()
 }
 
@@ -92,7 +74,7 @@ data class AnalysisUiData
     val portalUrl: String? = null,
     val webViewType: WebViewType = WebViewType.CustomWebView,
     val showedHint: Boolean = false,
-    val selectedTab: Int = 0, // 0 for WebView, 1 for PCABdroid capture
+    val isPCAPDroidPacketCaptureEnabled: Boolean = false
 )
 
 /**
@@ -119,7 +101,7 @@ class AnalysisViewModel(
     application: Application,
     private val sessionManager: NetworkSessionManager,
     private val repository: NetworkSessionRepository,
-    private val showToast: (title: String?, message: String, style: ToastStyle, duration: Long?) -> Unit,
+    private val showToast: (message: String, style: ToastStyle) -> Unit,
 ) : AndroidViewModel(application) {
     /**
      * Gets the application context.
@@ -131,8 +113,10 @@ class AnalysisViewModel(
      *
      * The UI state can be an instance of Loading, CaptiveUrlDetected, AnalysisComplete, or Error.
      */
+
     private val _uiState =
-        MutableStateFlow<AnalysisUiState>(AnalysisUiState.Loading(R.string.detecting_captive_portal_page))
+        MutableStateFlow<AnalysisUiState>(AnalysisUiState.PreferenceSetup)
+
     val uiState: StateFlow<AnalysisUiState> = _uiState.asStateFlow()
 
     /**
@@ -154,6 +138,11 @@ class AnalysisViewModel(
      * @param showToast a lambda to show a toast message.
      */
     fun getCaptivePortalAddress(showToast: (message: String, style: ToastStyle) -> Unit) {
+
+       _uiState.update {
+           (AnalysisUiState.Loading(R.string.detecting_captive_portal_page))
+       }
+
         // Launch coroutine in IO dispatcher for network operations
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -294,10 +283,8 @@ class AnalysisViewModel(
                     )
                 } else {
                     showToast(
-                        null,
                         context.getString(R.string.unknown_session_id),
                         ToastStyle.ERROR,
-                        null
                     )
                 }
             } catch (e: IOException) {
@@ -438,7 +425,7 @@ class AnalysisViewModel(
                 it.copy(webViewType = WebViewType.NormalWebView)
             }
 
-            WebViewType.TestingWebView ->  _uiData.update {
+            WebViewType.TestingWebView -> _uiData.update {
                 it.copy(webViewType = WebViewType.TestingWebView)
             }
         }
@@ -462,7 +449,7 @@ class AnalysisViewModel(
     fun saveWebpageContent(
         webView: WebView,
         url: String,
-        showToast: (message: String, style: ToastStyle) -> Unit
+        showToast: (String, ToastStyle) -> Unit
     ) {
         viewModelScope.launch {
             val currentSessionId = sessionManager.getCurrentSessionId()
@@ -691,10 +678,8 @@ class AnalysisViewModel(
                             repository.insertScreenshot(screenshotEntity) // Already on IO thread
                         } else {
                             showToast(
-                                null,
                                 "Error saving screenshot: Session Id is null",
                                 ToastStyle.ERROR,
-                                null
                             )
                             Log.e("WebViewScreenshot", "currentSessionId is null")
                         }
@@ -718,31 +703,6 @@ class AnalysisViewModel(
         }
     }
 
-    fun updateSelectedTab(selectedTab: Int) {
-        _uiData.update {
-            it.copy().copy(selectedTab = selectedTab)
-        }
-    }
-
-
-
-//todo
-    /** Packet capture related functions*/
-    fun startCapture() {
-/*        if (VpnReconnectService.isAvailable()) VpnReconnectService.stopService()
-
-        if (showRemoteServerAlert()) return
-
-            if (MitmAddon.needsSetup(this)) {
-                val intent: Intent = Intent(
-                    this,
-                    MitmSetupWizard::class.java
-                )
-                startActivity(intent)
-                return
-            }
-       doStartCaptureService(null)*/
-    }
 
 }
 
@@ -784,7 +744,10 @@ class AnalysisViewModelFactory(
     private val application: Application,
     private val sessionManager: NetworkSessionManager,
     private val repository: NetworkSessionRepository,
-    private val showToast: KFunction4<String?, String, ToastStyle, Long?, Unit>,
+    private val showToast: (
+        message: String,
+        style: ToastStyle
+    ) -> Unit,
 ) : ViewModelProvider.Factory {
     /**
      * Creates an instance of a ViewModel.

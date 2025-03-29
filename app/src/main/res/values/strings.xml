@@ -316,5 +316,13 @@
     <string name="injected">Injected</string>
     <string name="redirected">redirected</string>
     <string name="start_capture_first">Start the capture first</string>
+    <string name="enable_packet_capture">Enable packet capture</string>
+    <string name="packet_capture_setting">PCAPDroid Packet capture</string>
+    <string name="app_uses_pcapdroid">
+    The app uses PCAPDroid to perform packet capture. Please follow the next steps to install and set it up.
+</string>
+    <string name="install_pcapdroid">Install PCAPDroid</string>
+    <string name="continue_with_packet_capture">Continue with packet capture (Recommended)</string>
+    <string name="continue_without_packet_capture">Continue without packet capture </string>
 
 </resources>

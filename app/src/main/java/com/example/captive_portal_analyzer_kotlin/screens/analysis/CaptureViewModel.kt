@@ -2,6 +2,7 @@
 // import android.content.Context // Context no longer needed directly for intent creation here
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.activity.result.ActivityResult
 import androidx.lifecycle.ViewModel
@@ -27,6 +28,16 @@ class CaptureViewModel : ViewModel() {
     // Store the filename we asked PCAPdroid to use
     private val _targetPcapName = MutableStateFlow<String?>(null)
     val targetPcapName: StateFlow<String?> = _targetPcapName.asStateFlow()
+
+    // The URI of the copied PCAP file (due to Android storage restrictions we can't access the original directly so we do a workaround and make a copy with help of SAF)
+    private val _copiedPcapFileUri = MutableStateFlow<Uri?>(null)
+    val copiedPcapFileUri: StateFlow<Uri?> = _copiedPcapFileUri.asStateFlow()
+
+    private val _selectedTabIndex = MutableStateFlow<Int>(0)
+    val selectedTabIndex: StateFlow<Int> = _selectedTabIndex.asStateFlow()
+
+    private val _isPacketCaptureEnabled = MutableStateFlow<Boolean>(false)
+    val isPacketCaptureEnabled: StateFlow<Boolean> = _isPacketCaptureEnabled.asStateFlow()
 
     companion object {
         private const val TAG = "CaptureViewModel"
@@ -182,6 +193,18 @@ class CaptureViewModel : ViewModel() {
         if (_captureState.value == CaptureState.FILE_READY) {
             _captureState.value = CaptureState.STOPPED // Move from FILE_READY to general STOPPED
         }
+    }
+
+    fun setCopiedPcapFileUri(uri: Uri?) {
+        _copiedPcapFileUri.value = uri
+    }
+
+    fun setSelectedTabIndex(index: Int) {
+        _selectedTabIndex.value = index
+    }
+
+    fun updateIsPacketCaptureEnabled(isEnabled: Boolean) {
+        _isPacketCaptureEnabled.value = isEnabled
     }
 
     private fun extractStatsFromResult(data: Intent?): String {

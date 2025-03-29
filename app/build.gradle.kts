@@ -89,6 +89,7 @@ dependencies {
     //coil for image loading
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation("io.coil-kt:coil-video:2.6.0")
 
     //Firebase
     implementation(platform(libs.firebase.bom))

@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.captive_portal_analyzer_kotlin.datastore.settingsDataStore
@@ -39,7 +40,6 @@ import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import com.google.firebase.FirebaseApp
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -113,6 +113,7 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val dialogState by sharedViewModel.dialogState.collectAsState()
             val themeMode by sharedViewModel.themeMode.collectAsState()
+            val packetCapturePreference by sharedViewModel.packetCapturePreference.collectAsState()
             val scope = rememberCoroutineScope()
 
 
@@ -124,31 +125,34 @@ class MainActivity : ComponentActivity() {
             }
 
 
-
             AppTheme(darkTheme = isDarkTheme) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AppScaffold(
                         navController = navController,
-                    ) {
-                        AppNavGraph(
-                            navController = navController,
-                            sessionManager = sessionManager,
-                            repository = repository,
-                            sharedViewModel = sharedViewModel,
-                            dialogState = dialogState,
-                            themeMode = themeMode,
-                            currentLanguage = currentLocale.toLanguageTag(),
-                            onThemeChanged = sharedViewModel::updateThemeMode,
-                            onLocalChanged = sharedViewModel::updateLocale,
-                            captureViewModel = captureViewModel,
-                            onStartIntentLaunchRequested =onStartIntentLaunchRequested,
-                            onStopIntentLaunchRequested =onStopIntentLaunchRequested,
-                            onStatusIntentLaunchRequested =onStatusIntentLaunchRequested,
-                            onOpenFileRequested = ::handleOpenFileRequest,
-                        )
-                    }
+                        content = {
+                            AppNavGraph(
+                                navController = navController,
+                                sessionManager = sessionManager,
+                                repository = repository,
+                                sharedViewModel = sharedViewModel,
+                                dialogState = dialogState,
+                                themeMode = themeMode,
+                                currentLanguage = currentLocale.toLanguageTag(),
+                                onThemeChanged = sharedViewModel::updateThemeMode,
+                                onLocalChanged = sharedViewModel::updateLocale,
+                                captureViewModel = captureViewModel,
+                                onStartIntentLaunchRequested = onStartIntentLaunchRequested,
+                                onStopIntentLaunchRequested = onStopIntentLaunchRequested,
+                                onStatusIntentLaunchRequested = onStatusIntentLaunchRequested,
+                                onOpenFileRequested = ::handleOpenFileRequest,
+                                onPacketCapturePreferenceChange = sharedViewModel::updatePacketCapturePreference,
+                                packetCapturePreference = packetCapturePreference,
+                            )
+                        }
+                    )
                 }
             }
+
 
         }
     }
@@ -246,23 +250,31 @@ class MainActivity : ComponentActivity() {
     }
 
     // --- SAF Setup and Handling ---
-
     private fun setupSafLauncher() {
         openPcapFileLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             if (uri != null) {
                 Log.i(TAG, "User selected file URI: $uri")
-                // Handle the selected file URI (read, process, copy, etc.)
-                processSelectedPcapFile(uri)
+                // Launch a coroutine to handle the suspend function
+                lifecycleScope.launch {
+                    val copiedUri = processSelectedPcapFile(uri)
+                    if (copiedUri != null) {
+                        // the .pcap file from PCAPdroid is copied to our app storage
+                        captureViewModel.setCopiedPcapFileUri(copiedUri) // Treat as done with file ready state
+                        Log.i(TAG, "File successfully copied to: $copiedUri")
+                        // Handle the copied URI as needed
+                    } else {
+                        Log.w(TAG, "File copy operation failed")
+                    }
+                }
             } else {
                 Log.w(TAG, "User cancelled file selection.")
                 showToast("File selection cancelled.")
-                // Maybe reset VM state if needed?
                 captureViewModel.fileProcessingDone() // Treat cancellation as done with file ready state
             }
         }
     }
 
-    // Called from CaptureScreen via the callback
+    // Called from AnalysisScreen via the callback
     private fun handleOpenFileRequest(expectedFileName: String) {
         Log.d(TAG, "Request to open file: $expectedFileName")
         // Use SAF to let the user pick the file.
@@ -290,13 +302,12 @@ class MainActivity : ComponentActivity() {
     }
 
     // --- Process the URI obtained from SAF ---
-    private fun processSelectedPcapFile(sourceFileUri: Uri) {
+    private suspend fun processSelectedPcapFile(sourceFileUri: Uri): Uri? {
         // Get source filename for display/logging
         val sourceFileName = DocumentFile.fromSingleUri(this, sourceFileUri)?.name ?: "unknown_capture.pcap"
-        showToast("Copying '$sourceFileName' to app storage...")
+        //showToast("Copying '$sourceFileName' to app storage...")
 
-        // Perform file copy in a background thread
-        CoroutineScope(Dispatchers.IO).launch {
+        return withContext(Dispatchers.IO) {
             var destinationFile: File? = null
             var bytesCopied: Long = 0
             try {
@@ -328,26 +339,28 @@ class MainActivity : ComponentActivity() {
                 // 4. Success: Report and maybe process the copied file
                 Log.i(TAG, "Successfully copied $bytesCopied bytes to ${destinationFile.absolutePath}")
                 withContext(Dispatchers.Main) {
-                    showToast("Copied '$sourceFileName' (${bytesCopied / 1024} KB) to app storage.")
+                    //showToast("Copied '$sourceFileName' (${bytesCopied / 1024} KB) to app storage.")
                     // Now you can work with 'destinationFile' within your app's storage
                     // Example: processCopiedFileInternally(destinationFile)
                 }
+
+                // Return the URI of the copied file
+                Uri.fromFile(destinationFile)
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error copying file URI: $sourceFileUri to ${destinationFile?.absolutePath}", e)
                 withContext(Dispatchers.Main) { showToast("Error copying file: ${e.message}") }
                 // Clean up partially copied file if it exists on error
                 destinationFile?.delete()
+                null // Return null on failure
             } finally {
                 // Optionally update ViewModel state if needed after copy attempt
                 // viewModel.fileProcessingDone() // Or similar signal
             }
         }
-        // Reset VM state after *initiating* the copy, don't wait for completion here
-        // This was moved from the Composable based on previous feedback
-        // viewModel.fileProcessingDone()
     }
 
+    //todo maybe find alibrary to show the parsed .pcap file in app like in the pcapdroid app
     // Optional: function to process the file now that it's in app storage
     private fun processCopiedFileInternally(localFile: File) {
         Log.d(TAG, "Processing the copied file: ${localFile.absolutePath}")

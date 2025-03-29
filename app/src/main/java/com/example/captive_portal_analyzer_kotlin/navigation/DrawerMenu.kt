@@ -47,12 +47,13 @@ data class DrawerMenuItem(
  *
  * @param navController The NavHostController used for navigation.
  * @param content The content to be displayed within the scaffold.
+ * @param showTopBar Boolean flag to indicate if the top bar should be shown. Defaults to true.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppScaffold(
     navController: NavHostController,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -112,36 +113,39 @@ fun AppScaffold(
     ) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = stringResource(
-                                when (currentRoute) {
-                                    Screen.Welcome.route -> Screen.Welcome.titleStringResource
-                                    Screen.SessionList.route -> Screen.SessionList.titleStringResource
-                                    Screen.ManualConnect.route -> Screen.ManualConnect.titleStringResource
-                                    Screen.Settings.route -> Screen.Settings.titleStringResource
-                                    Screen.About.route -> Screen.About.titleStringResource
-                                    Screen.Session.route -> Screen.Session.titleStringResource
-                                    Screen.WebPageContent.route -> Screen.WebPageContent.titleStringResource
-                                    else -> R.string.app_name
-                                }
-                            ),
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = {
-                                scope.launch { drawerState.open() }
-                            }
-                        ) {
-                            Icon(
-                                Icons.Default.Menu,
-                                contentDescription = stringResource(R.string.menu)
+                // analysis screen will handle its own top bar
+                if (currentRoute != Screen.Analysis.route ) {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = stringResource(
+                                    when (currentRoute) {
+                                        Screen.Welcome.route -> Screen.Welcome.titleStringResource
+                                        Screen.SessionList.route -> Screen.SessionList.titleStringResource
+                                        Screen.ManualConnect.route -> Screen.ManualConnect.titleStringResource
+                                        Screen.Settings.route -> Screen.Settings.titleStringResource
+                                        Screen.About.route -> Screen.About.titleStringResource
+                                        Screen.Session.route -> Screen.Session.titleStringResource
+                                        Screen.WebPageContent.route -> Screen.WebPageContent.titleStringResource
+                                        else -> R.string.app_name
+                                    }
+                                ),
                             )
+                        },
+                        navigationIcon = {
+                            IconButton(
+                                onClick = {
+                                    scope.launch { drawerState.open() }
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.Menu,
+                                    contentDescription = stringResource(R.string.menu)
+                                )
+                            }
                         }
-                    }
-                )
+                    )
+                }
             }
         ) { paddingValues ->
             Box(

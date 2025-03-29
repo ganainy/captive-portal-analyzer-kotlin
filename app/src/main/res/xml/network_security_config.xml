@@ -1,18 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Allow all domain names -->
+
+    <!-- Trust all system and user certificates -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />  <!-- System-provided CAs -->
+            <certificates src="user" overridePins="true"/>   <!-- User-installed CAs -->
+        </trust-anchors>
+    </base-config>
+
+    <!-- Allow connections to ALL domains -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">*</domain>
     </domain-config>
 
-    <!-- Allow specific IP addresses -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">8.8.8.8</domain>
-        <domain includeSubdomains="false">0.0.0.0</domain>
-    </domain-config>
-    <base-config cleartextTrafficPermitted="true">
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-    </base-config>
 </network-security-config>

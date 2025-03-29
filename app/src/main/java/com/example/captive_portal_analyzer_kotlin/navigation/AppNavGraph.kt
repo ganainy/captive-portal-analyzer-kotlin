@@ -20,16 +20,19 @@ import com.example.captive_portal_analyzer_kotlin.components.DialogState
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.screens.about.AboutScreen
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreen
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreenConfig
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.IntentLaunchConfig
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.NavigationConfig
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.manual_connect.ManualConnectScreen
 import com.example.captive_portal_analyzer_kotlin.screens.request_details_screen.RequestDetailsScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session.SessionScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session_list.SessionListScreen
 import com.example.captive_portal_analyzer_kotlin.screens.settings.SettingsScreen
+import com.example.captive_portal_analyzer_kotlin.screens.setup_pcapdroid.SetupPCAPDroidScreen
 import com.example.captive_portal_analyzer_kotlin.screens.webpage_content.WebpageContentScreen
 import com.example.captive_portal_analyzer_kotlin.screens.welcome.WelcomeScreen
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
-import com.yourcompany.yourapp.ui.CaptureScreen
 import java.util.Locale
 
 /**
@@ -61,7 +64,7 @@ sealed class Screen(val route: String, @StringRes val titleStringResource: Int) 
 
     object RequestDetails : Screen("request_details", R.string.request_details)
 
-    object PCAPSetup : Screen("pcap_setup", R.string.pcap_setup_screen_title)
+    object PCAPDroidSetup : Screen("pcapdroid_setup", R.string.pcap_setup_screen_title)
 }
 
 /**
@@ -95,6 +98,8 @@ fun AppNavGraph(
     onStopIntentLaunchRequested: (Intent) -> Unit,
     onStatusIntentLaunchRequested: (Intent) -> Unit,
     onOpenFileRequested: (String) -> Unit,
+    onPacketCapturePreferenceChange: (Boolean) -> Unit,
+    packetCapturePreference: Boolean
 ) {
     // Remember navigation actions for the navController
     val actions = remember(navController) { NavigationActions(navController) }
@@ -124,29 +129,44 @@ fun AppNavGraph(
     //Setup the navigation graph,parameters needed for each screen and which screen to use when the app starts
     NavHost(navController = navController, startDestination = Screen.Welcome.route) {
         composable(route = Screen.Welcome.route) {
+            // No need to pass showTopBar, as the default is true and we want it here
             WelcomeScreen(
-                navigateToNetworkList = actions.navigateToManualConnectScreen,
-                navigateToPCAPSetupScreen = actions.navigateToPCAPSetupScreen
+                navigateToSetupPCAPDroidScreen = actions.navigateToSetupPCAPDroidScreen,
             )
         }
         composable(route = Screen.ManualConnect.route) {
+            // No need to pass showTopBar, as the default is true and we want it here
             ManualConnectScreen(
                 navigateToAnalysis = actions.navigateToAnalysisScreen,
             )
         }
 
         composable(route = Screen.Analysis.route) {
+            //Pass showTopBar = false to hide the top bar on this screen
             AnalysisScreen(
-                repository = repository,
-                navigateToSessionList = actions.navigateToSessionListScreen,
-                navigateToManualConnect = actions.navigateToManualConnectScreen,
-                sessionManager = sessionManager,
-                sharedViewModel = sharedViewModel,
+                screenConfig = AnalysisScreenConfig(
+                    repository = repository,
+                    sessionManager = sessionManager,
+                    sharedViewModel = sharedViewModel,
+                    captureViewModel = captureViewModel
+                ),
+                navigationConfig = NavigationConfig(
+                    onNavigateToSessionList = actions.navigateToSessionListScreen,
+                    onNavigateToManualConnect = actions.navigateToManualConnectScreen,
+                    onNavigateToSetupPCAPDroidScreen = actions.navigateToSetupPCAPDroidScreen,
+                ),
+                intentLaunchConfig = IntentLaunchConfig(
+                    onStartIntent = onStartIntentLaunchRequested,
+                    onStopIntent = onStopIntentLaunchRequested,
+                    onStatusIntent = onStatusIntentLaunchRequested,
+                    onOpenFile = onOpenFileRequested
+                )
             )
         }
         composable(
             route = Screen.SessionList.route,
         ) {
+            // No need to pass showTopBar, as the default is true and we want it here
             SessionListScreen(
                 repository = repository,
                 navigateToWelcome = actions.navigateToWelcomeScreen,
@@ -157,6 +177,7 @@ fun AppNavGraph(
         composable(
             route = Screen.Session.route,
         ) {
+            // No need to pass showTopBar, as the default is true and we want it here
             SessionScreen(
                 repository = repository,
                 sharedViewModel = sharedViewModel,
@@ -168,12 +189,14 @@ fun AppNavGraph(
         composable(
             route = Screen.About.route,
         ) {
+            // No need to pass showTopBar, as the default is true and we want it here
             AboutScreen()
         }
 
         composable(
             route = Screen.AutomaticAnalysis.route,
         ) {
+            // No need to pass showTopBar, as the default is true and we want it here
             AutomaticAnalysisScreen(
                 sharedViewModel = sharedViewModel,
                 repository = repository,
@@ -183,16 +206,20 @@ fun AppNavGraph(
         composable(
             route = Screen.Settings.route,
         ) {
+            // No need to pass showTopBar, as the default is true and we want it here
             SettingsScreen(
                 themeMode = themeMode,
                 currentLanguage = currentLanguage,
                 onThemeChange = onThemeChanged,
-                onLocalChanged = onLocalChanged
+                onLocalChanged = onLocalChanged,
+                onPacketCapturePreferenceChange = onPacketCapturePreferenceChange,
+                packetCapturePreference = packetCapturePreference
             )
         }
         composable(
             route = Screen.WebPageContent.route,
         ) {
+            // No need to pass showTopBar, as the default is true and we want it here
             WebpageContentScreen(
                 sharedViewModel = sharedViewModel,
             )
@@ -200,21 +227,20 @@ fun AppNavGraph(
         composable(
             route = Screen.RequestDetails.route,
         ) {
+            // No need to pass showTopBar, as the default is true and we want it here
             RequestDetailsScreen(
                 sharedViewModel = sharedViewModel,
             )
         }
+
         composable(
-            route = Screen.PCAPSetup.route,
+            route = Screen.PCAPDroidSetup.route,
         ) {
-            CaptureScreen(
-                viewModel = captureViewModel,
-                onStartIntentLaunchRequested = onStartIntentLaunchRequested,
-                onStopIntentLaunchRequested = onStopIntentLaunchRequested,
-                onStatusIntentLaunchRequested = onStatusIntentLaunchRequested,
-                onOpenFileRequested = onOpenFileRequested
+            SetupPCAPDroidScreen(
+                navigateToManualConnectScreen = actions.navigateToManualConnectScreen,
             )
         }
+
 
     }
 }
@@ -258,11 +284,13 @@ class NavigationActions(private val navController: NavHostController) {
     val navigateToRequestDetailsScreen: () -> Unit =
         { navController.navigate(Screen.RequestDetails.route) }
 
+    val navigateToSetupPCAPDroidScreen: () -> Unit = {
+        navController.navigate(Screen.PCAPDroidSetup.route)
+    }
+
     val navigateBack: () -> Unit = {
         navController.popBackStack()
     }
 
-    val navigateToPCAPSetupScreen: () -> Unit =
-        { navController.navigate(Screen.PCAPSetup.route) }
 
 }

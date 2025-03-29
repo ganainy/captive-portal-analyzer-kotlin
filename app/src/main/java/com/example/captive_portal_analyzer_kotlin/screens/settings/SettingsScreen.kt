@@ -3,6 +3,7 @@ package com.example.captive_portal_analyzer_kotlin.screens.settings
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,12 +15,14 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,6 +46,8 @@ import java.util.Locale
 fun SettingsScreen(
     onLocalChanged: (Locale) -> Unit,
     onThemeChange: (ThemeMode) -> Unit,
+    onPacketCapturePreferenceChange: (Boolean) -> Unit,
+    packetCapturePreference: Boolean, // true if packet capture is enabled
     themeMode: ThemeMode,
     currentLanguage: String
 ) {
@@ -55,36 +60,79 @@ fun SettingsScreen(
     }
 
 
-    Column(
+Column(
+    modifier = Modifier
+        .fillMaxSize()
+        .padding(16.dp),
+    verticalArrangement = Arrangement.spacedBy(16.dp)
+) {
+    // Language Section
+    Text(
+        text = stringResource(id = R.string.language_settings),
+        style = MaterialTheme.typography.titleLarge
+    )
+
+    // Language Dropdown
+    LanguageDropdown(
+        currentLanguage = currentLanguage,
+        onLocalChanged = onLocalChanged
+    )
+
+    Spacer(modifier = Modifier.height(24.dp))
+
+    // Theme Section
+    Text(
+        text = stringResource(id = R.string.theme_settings),
+        style = MaterialTheme.typography.titleLarge
+    )
+
+    // Theme selector
+    ThemeDropDown(themeMode = themeMode, onThemeModeChanged = onThemeChange)
+
+    Spacer(modifier = Modifier.height(24.dp))
+
+    // Packet Capture Section
+    Text(
+        text = stringResource(id = R.string.packet_capture_setting),
+        style = MaterialTheme.typography.titleLarge
+    )
+
+    // Packet Capture Switch
+    PacketCaptureSwitch(
+        packetCaptureEnabled = packetCapturePreference,
+        onPacketCapturePreferenceChange = onPacketCapturePreferenceChange
+    )
+}
+}
+
+/**
+ * PacketCaptureSwitch is a composable that displays a switch for enabling/disabling packet capture.
+ *
+ * @param packetCaptureEnabled function returning whether packet capture is currently enabled
+ * @param onPacketCapturePreferenceChange callback for when the packet capture preference changes
+ */
+@Composable
+fun PacketCaptureSwitch(
+    packetCaptureEnabled:  Boolean,
+    onPacketCapturePreferenceChange: (Boolean) -> Unit
+) {
+    Row(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Language Section
         Text(
-            text = stringResource(id = R.string.language_settings),
-            style = MaterialTheme.typography.titleLarge
+            text = stringResource(id = R.string.enable_packet_capture),
+            modifier = Modifier.weight(1f)
         )
-
-        // Language Dropdown
-        LanguageDropdown(
-            currentLanguage = currentLanguage,
-            onLocalChanged = onLocalChanged
+        Switch(
+            checked = packetCaptureEnabled,
+            onCheckedChange = { onPacketCapturePreferenceChange(it) }
         )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Theme Section
-        Text(
-            text = stringResource(id = R.string.theme_settings),
-            style = MaterialTheme.typography.titleLarge
-        )
-
-        // Theme selector
-        ThemeDropDown(themeMode = themeMode, onThemeModeChanged = onThemeChange)
     }
 }
+
 
 /**
  * ThemeDropDown is a composable that displays a dropdown menu for selecting the theme.
@@ -212,7 +260,9 @@ fun SettingsScreenPreview() {
             onLocalChanged = { },
             onThemeChange = { },
             themeMode = ThemeMode.SYSTEM,
-            currentLanguage = "en"
+            currentLanguage = "en",
+            onPacketCapturePreferenceChange = { },
+            packetCapturePreference =  true
         )
     }
 }
