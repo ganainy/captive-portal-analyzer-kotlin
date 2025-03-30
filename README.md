@@ -3,6 +3,7 @@
 ## Overview
 
 This app focuses on analyzing captive portals. It provides an interface for interacting with captive portals directly through the app by gathering POST request bodies, headers, creating sessions, capturing screenshots, and analyzing their data collection and privacy using AI-powered analysis. Additionally, the app allows uploading analyzed data for further examination by our team.
+> **Note:** The app is designed to work with physical devices only since it interacts with real captive portals. 
 
 ---
 ## Project Structure
@@ -65,7 +66,14 @@ For detailed information about the project files structure and architecture, see
 | **Screenshots related to Privacy policy/ToS<br/> uploaded to back end for analysis** | ![7.png](preview/screenshots/7.png) |
 ---
 
-
+### 🆕: Integration with [PCAPDroid](https://github.com/emanuele-f/PCAPdroid) (See branch `android-pcap-api`)
+| Feature                                                                                                                  | Screenshot                                     |
+|--------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
+| ** Instructions screen to help user do the one time setup of PCAPDroid **                                                | ![pcap-setup.gif](preview/gifs/pcap-setup.gif) |
+| ** User can choose to use the JS injection WebView only or JS injection WebView + PCAPDroid packet capture **            | ![10.jpg](preview/screenshots/10.jpg)          |
+| ** The resulting .pcap file from PCAPDroid is uploaded to the remote server with the previously collected network data** | ![11.jpg](preview/screenshots/11.jpg)          |
+---
+> **Note:** The starting and ending of packet capture is directly handled within the app.
 
 ## How to Run the App
 
