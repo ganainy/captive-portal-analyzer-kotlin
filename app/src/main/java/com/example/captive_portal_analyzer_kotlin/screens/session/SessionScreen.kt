@@ -74,7 +74,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.MainViewModel
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
 import com.example.captive_portal_analyzer_kotlin.components.CustomChip
@@ -99,21 +99,21 @@ import com.example.captive_portal_analyzer_kotlin.utils.AppUtils.Companion.forma
 /**
  * Composable function to display the session details of a network with captive portal.
  *
- * @param sharedViewModel The shared view model containing the clicked session ID and
+ * @param mainViewModel The shared view model containing the clicked session ID and
  * connectivity status.
  * @param repository The repository to access network session data.
  * @param navigateToAutomaticAnalysis A function that navigates to the automatic analysis screen.
  */
 @Composable
 fun SessionScreen(
-    sharedViewModel: SharedViewModel,
+    mainViewModel: MainViewModel,
     repository: NetworkSessionRepository,
     navigateToAutomaticAnalysis: () -> Unit,
     navigateToWebpageContentScreen: () -> Unit,
     navigateToRequestDetailsScreen: () -> Unit
 ) {
     // Collect the clicked session ID from the shared view model.
-    val clickedSessionId by sharedViewModel.clickedSessionId.collectAsState()
+    val clickedSessionId by mainViewModel.clickedSessionId.collectAsState()
 
     // Create a view model for the session data.
     val sessionViewModel: SessionViewModel = viewModel(
@@ -131,11 +131,11 @@ fun SessionScreen(
     val sessionState by sessionViewModel.sessionState.collectAsState()
 
     // Collect the connectivity status from the shared view model.
-    val isConnected by sharedViewModel.isConnected.collectAsState()
+    val isConnected by mainViewModel.isConnected.collectAsState()
 
     // A function to show a toast message that will be passed to viewModel to show toast when needed.
     val showToast = { message: String, style: ToastStyle ->
-        sharedViewModel.showToast(
+        mainViewModel.showToast(
             message = message, style = style,
         )
     }
@@ -154,8 +154,8 @@ fun SessionScreen(
         toggleIsBodyEmpty = sessionViewModel::toggleIsBodyEmpty,
         modifySelectedMethods = sessionViewModel::modifySelectedMethods,
         resetFilters = sessionViewModel::resetFilters,
-        updateClickedContent = sharedViewModel::updateClickedContent,
-        updateClickedRequest = sharedViewModel::updateClickedRequest
+        updateClickedContent = mainViewModel::updateClickedContent,
+        updateClickedRequest = mainViewModel::updateClickedRequest
     )
 
 }
@@ -480,13 +480,7 @@ private fun SessionGeneralDetails(clickedSessionData: SessionData?) {
                             modifier = Modifier.padding(vertical = 2.dp)
                         )
                     }
-                    securityType?.let {
-                        Text(
-                            stringResource(R.string.security, it),
-                            style = typography.bodyMedium,
-                            modifier = Modifier.padding(vertical = 2.dp)
-                        )
-                    }
+
                     captivePortalUrl?.let {
                         Text(
                             stringResource(R.string.portal_url, it),
@@ -895,7 +889,6 @@ fun SessionScreenContentPreview_Requests() {
             captivePortalUrl = null,
             ipAddress = "192.168.1.1",
             gatewayAddress = "192.168.1.254",
-            securityType = "WPA2",
             isCaptiveLocal = null,
             isUploadedToRemoteServer = false
         ),
@@ -958,7 +951,6 @@ fun SessionScreenContentPreview_NoRequests() {
             captivePortalUrl = null,
             ipAddress = "192.168.1.1",
             gatewayAddress = "192.168.1.254",
-            securityType = "WPA2",
             isCaptiveLocal = null,
             isUploadedToRemoteServer = false
         ),

@@ -198,4 +198,73 @@
 <string name="after_authentication">Nach der Authentifizierung</string>
     <string name="after_authentication_request">Nach der Authentifizierung Anfrage</string>
     <string name="before_authentication_request">Vor der Authentifizierung Anfrage</string>
+
+    <!--PCAP-->
+    <string name="app_uses_pcapdroid">
+    Die App verwendet PCAPDroid zur Paketerfassung. Bitte folgen Sie den nächsten Schritten, um es zu installieren und einzurichten.
+</string>
+    <string name="install_pcapdroid">PCAPDroid installieren</string>
+    <string name="continue_with_packet_capture">Mit Paketerfassung fortfahren (Empfohlen)</string>
+    <string name="continue_without_packet_capture">Ohne Paketerfassung fortfahren</string>
+    <string name="continue_analysis">Analyse fortsetzen</string>
+    <string name="capturing">Erfassen...</string>
+    <string name="setup_pcapdroid">PCAPDroid einrichten</string>
+    <string name="in_order_to_use_the_advanced_mode_please_make_sure_to_if_you_haven_t_already">
+    "Um den erweiterten Modus zu nutzen, stellen Sie bitte sicher, dass Sie (falls Sie es noch nicht getan haben) "
+</string>
+    <string name="default_uses_custom_webview">• Standard: Verwendet benutzerdefiniertes WebView\n</string>
+    <string name="advanced_uses_pcapdroid_for_packet_capture_custom_webview">
+    <![CDATA[• Erweitert: Verwendet PCAPDroid zur Paketerfassung & benutzerdefiniertes WebView]]>
+</string>
+    <string name="this_app_offers_two_analysis_modes">Diese App bietet zwei Analysemodi:</string>
+    <string name="choose_your_analysis_mode">Wählen Sie Ihren Analysemodus</string>
+    <string name="packet_capture_disabled">Paketerfassung deaktiviert</string>
+    <string name="you_choose_to_continue_without_packet_capture_end_the_analysis_to_proceed">
+    Sie haben sich entschieden, ohne Paketerfassung fortzufahren. Beenden Sie die Analyse, um weiterzumachen.
+</string>
+    <string name="please_stop_packet_capture_after_finishing_interacting_with_the_webview">
+    Bitte stoppen Sie die Paketerfassung, nachdem Sie mit dem WebView fertig interagiert haben.
+</string>
+    <string name="capture_state">Erfassungsstatus</string>
+    <string name="please_press_open_file_and_select_this_file">
+    Bitte drücken Sie auf "Datei öffnen" und wählen Sie diese Datei aus: %1$s
+</string>
+    <string name="open_file">Datei öffnen</string>
+    <string name="step_2">Schritt 2</string>
+    <string name="filed_copied_as">Datei kopiert als: %1$s</string>
+    <string name="step_3">Schritt 3</string>
+    <string name="end_analysis_and_save_results">Analyse beenden und Ergebnisse speichern</string>
+    <string name="stop">Stoppen</string>
+    <string name="loading">Laden</string>
+    <string name="step_1">Schritt 1</string>
+    <string name="swipe_left_to_continue">Nach links wischen, um fortzufahren</string>
+    <string name="skip_pcapdroid_setup">PCAPDroid-Einrichtung überspringen</string>
+    <string name="step_1_install_pcapdroid">Schritt 1: PCAPDroid installieren</string>
+    <string name="step_2_enable_tls_decryption">Schritt 2: TLS-Entschlüsselung aktivieren</string>
+    <string name="in_pcapdroid_settings_top_right_icon_toggle_tls_decryption_switch_under_traffic_inspection_menu">
+    In den PCAPDroid-Einstellungen (Symbol oben rechts ⚙️), schalten Sie den **TLS-Entschlüsselung**-Schalter im Menü **Verkehrsinspektion** um.
+</string>
+    <string name="follow_the_pcapdroid_instructions_to_install_the_mitm_addon_and_the_ca_certificate_on_your_device">
+    Folgen Sie den PCAPDroid-Anweisungen, um das MITM-Add-on und das CA-Zertifikat auf Ihrem Gerät zu installieren.
+</string>
+    <string name="step_3_add_decryption_rules">Schritt 3: Entschlüsselungsregeln hinzufügen</string>
+    <string name="from_app_menu_select_decryption_rules_then_click_the_icon_then_select_app_then_add_the_two_apps_captive_portal_analyzer_captive_portal_login">
+    <![CDATA[Aus dem App-Menü wählen Sie **Entschlüsselungsregeln**, klicken Sie dann auf das **+**-Symbol, wählen Sie **App** und fügen Sie die beiden Apps **Captive Portal Analyzer** & **Captive Portal Login** hinzu]]>
+</string>
+    <string name="step_4_select_target_apps">Schritt 4: Ziel-Apps auswählen</string>
+    <string name="from_target_apps_on_main_screen_please_select_captive_portal_analyzer_captive_portal_login">
+    <![CDATA[Von **Ziel-Apps** auf dem Hauptbildschirm wählen Sie bitte **Captive Portal Analyzer** & **Captive Portal Login**]]>
+</string>
+    <string name="step_5_done">Schritt 5: Fertig</string>
+    <string name="great_you_are_all_set_to_start_capturing_packets">
+    Super! Sie sind bereit, mit der Paketerfassung zu beginnen. 🎊
+</string>
+    <string name="pcapdroid_is_installed_on_your_device">PCAPDroid ist auf Ihrem Gerät installiert.</string>
+    <string name="pcapdroid_is_required_to_capture_network_traffic_please_install_it_from_google_play">
+    PCAPDroid ist erforderlich, um Netzwerkverkehr zu erfassen. Bitte installieren Sie es aus dem Google Play Store.
+</string>
+
+  <string name="error_saving_pcap_to_session">Fehler beim Speichern des .pcap-Dateipfads in der Sitzung</string>
+<string name="no_need_to_open_pcapdroid">Es ist nicht mehr nötig, die PCAPDroid-App zu öffnen, ab jetzt steuern wir sie direkt über unsere App</string>
+
 </resources>

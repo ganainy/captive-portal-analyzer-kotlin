@@ -1,6 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.navigation
 
-import CaptureViewModel
+
 import NetworkSessionRepository
 import android.content.Intent
 import androidx.annotation.StringRes
@@ -11,13 +11,12 @@ import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.captive_portal_analyzer_kotlin.MainViewModel
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.ThemeMode
 import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.AppToast
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
-import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.screens.about.AboutScreen
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreen
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreenConfig
@@ -74,7 +73,7 @@ sealed class Screen(val route: String, @StringRes val titleStringResource: Int) 
  *
  * @param navController The navController to use for navigating between screens.
  * @param sessionManager The sessionManager to use for managing the network sessions.
- * @param sharedViewModel The sharedViewModel to use for shared state between screens.
+ * @param mainViewModel The sharedViewModel to use for shared state between screens.
  * @param dialogState The dialogState to use for showing and hiding dialogs.
  * @param repository The repository to use for storing and retrieving data both locally and remotely.
  * @param themeMode The theme mode to use for the app.
@@ -86,44 +85,35 @@ sealed class Screen(val route: String, @StringRes val titleStringResource: Int) 
 fun AppNavGraph(
     navController: NavHostController,
     sessionManager: NetworkSessionManager,
-    sharedViewModel: SharedViewModel,
+    mainViewModel: MainViewModel,
     dialogState: DialogState,
     repository: NetworkSessionRepository,
     themeMode: ThemeMode,
     currentLanguage: String,
     onThemeChanged: (mode: ThemeMode) -> Unit,
     onLocalChanged: (locale: Locale) -> Unit,
-    captureViewModel: CaptureViewModel,
     onStartIntentLaunchRequested: (Intent) -> Unit,
     onStopIntentLaunchRequested: (Intent) -> Unit,
     onStatusIntentLaunchRequested: (Intent) -> Unit,
     onOpenFileRequested: (String) -> Unit,
-    onPacketCapturePreferenceChange: (Boolean) -> Unit,
-    packetCapturePreference: Boolean
+    skipSetup: Boolean,
 ) {
     // Remember navigation actions for the navController
     val actions = remember(navController) { NavigationActions(navController) }
 
     // Collect the current toast state from the shared ViewModel
-    val toastState by sharedViewModel.toastState.collectAsState()
-
-    // Lambda function to show a toast with a message and style
-    val showToast = { message: String, style: ToastStyle ->
-        sharedViewModel.showToast(
-            message = message, style = style,
-        )
-    }
+    val toastState by mainViewModel.toastState.collectAsState()
 
     // Passed to screens to give the ability to display a toast notification
     AppToast(
         toastState = toastState,
-        onDismissRequest = { sharedViewModel.hideToast() }
+        onDismissRequest = { mainViewModel.hideToast() }
     )
 
     // Passed to screens to give the ability to display an alert dialog
     ActionAlertDialog(
         dialogState = dialogState,
-        onDismissRequest = { sharedViewModel.hideDialog() }
+        onDismissRequest = { mainViewModel.hideDialog() }
     )
 
     //Setup the navigation graph,parameters needed for each screen and which screen to use when the app starts
@@ -132,6 +122,8 @@ fun AppNavGraph(
             // No need to pass showTopBar, as the default is true and we want it here
             WelcomeScreen(
                 navigateToSetupPCAPDroidScreen = actions.navigateToSetupPCAPDroidScreen,
+                navigateToManualConnectScreen = actions.navigateToManualConnectScreen,
+                skipSetup = skipSetup,
             )
         }
         composable(route = Screen.ManualConnect.route) {
@@ -147,8 +139,7 @@ fun AppNavGraph(
                 screenConfig = AnalysisScreenConfig(
                     repository = repository,
                     sessionManager = sessionManager,
-                    sharedViewModel = sharedViewModel,
-                    captureViewModel = captureViewModel
+                    mainViewModel = mainViewModel,
                 ),
                 navigationConfig = NavigationConfig(
                     onNavigateToSessionList = actions.navigateToSessionListScreen,
@@ -170,7 +161,7 @@ fun AppNavGraph(
             SessionListScreen(
                 repository = repository,
                 navigateToWelcome = actions.navigateToWelcomeScreen,
-                updateClickedSessionId = sharedViewModel::updateClickedSessionId,
+                updateClickedSessionId = mainViewModel::updateClickedSessionId,
                 navigateToSessionScreen = actions.navigateToSessionScreen
             )
         }
@@ -180,7 +171,7 @@ fun AppNavGraph(
             // No need to pass showTopBar, as the default is true and we want it here
             SessionScreen(
                 repository = repository,
-                sharedViewModel = sharedViewModel,
+                mainViewModel = mainViewModel,
                 navigateToAutomaticAnalysis = actions.navigateToAutomaticAnalysisScreen,
                 navigateToWebpageContentScreen = actions.navigateToWebpageContentScreen,
                 navigateToRequestDetailsScreen = actions.navigateToRequestDetailsScreen
@@ -198,7 +189,7 @@ fun AppNavGraph(
         ) {
             // No need to pass showTopBar, as the default is true and we want it here
             AutomaticAnalysisScreen(
-                sharedViewModel = sharedViewModel,
+                mainViewModel = mainViewModel,
                 repository = repository,
             )
         }
@@ -212,8 +203,6 @@ fun AppNavGraph(
                 currentLanguage = currentLanguage,
                 onThemeChange = onThemeChanged,
                 onLocalChanged = onLocalChanged,
-                onPacketCapturePreferenceChange = onPacketCapturePreferenceChange,
-                packetCapturePreference = packetCapturePreference
             )
         }
         composable(
@@ -221,7 +210,7 @@ fun AppNavGraph(
         ) {
             // No need to pass showTopBar, as the default is true and we want it here
             WebpageContentScreen(
-                sharedViewModel = sharedViewModel,
+                mainViewModel = mainViewModel,
             )
         }
         composable(
@@ -229,7 +218,7 @@ fun AppNavGraph(
         ) {
             // No need to pass showTopBar, as the default is true and we want it here
             RequestDetailsScreen(
-                sharedViewModel = sharedViewModel,
+                mainViewModel = mainViewModel,
             )
         }
 
@@ -238,6 +227,7 @@ fun AppNavGraph(
         ) {
             SetupPCAPDroidScreen(
                 navigateToManualConnectScreen = actions.navigateToManualConnectScreen,
+                updateSkipSetup = mainViewModel::updateSkipSetupPreference,
             )
         }
 

@@ -5,8 +5,6 @@ import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.Interaction
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,21 +33,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.acsbendi.requestinspectorwebview.WebViewRequest
+import com.example.captive_portal_analyzer_kotlin.MainViewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.InProgressOverlay
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisCallbacks
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisStatus
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.CaptureActions
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.EndAnalysisStepComponent
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.FileOpener
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.WebViewActions
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
 
 @Composable
 internal fun PacketCaptureTab(
-    captureState: CaptureState,
+    captureState: MainViewModel.CaptureState,
     onStartCapture: () -> Unit,
     onStopCapture: () -> Unit,
     onStatusCheck: () -> Unit,
@@ -62,6 +61,8 @@ internal fun PacketCaptureTab(
     modifier: Modifier = Modifier,
     targetPcapName: String?,
     isPacketCaptureEnabled: Boolean,
+    analysisStatus: AnalysisStatus,
+    updateSelectedTabIndex: (Int) -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -79,11 +80,14 @@ internal fun PacketCaptureTab(
             targetPcapName,
             context,
             webViewActions,
-            analysisCallbacks
+            analysisCallbacks,
+            analysisStatus,
+            updateSelectedTabIndex
         )
 
     } else {
-        PacketCaptureDisabledContent(webViewActions, context, analysisCallbacks)
+        PacketCaptureDisabledContent(webViewActions, context,
+            analysisCallbacks,analysisStatus, updateSelectedTabIndex)
     }
 
 
@@ -93,7 +97,9 @@ internal fun PacketCaptureTab(
 private fun PacketCaptureDisabledContent(
     webViewActions: WebViewActions,
     context: Context,
-    analysisCallbacks: AnalysisCallbacks
+    analysisCallbacks: AnalysisCallbacks,
+    analysisStatus: AnalysisStatus,
+    updateSelectedTabIndex: (Int) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -115,7 +121,7 @@ private fun PacketCaptureDisabledContent(
 
         // Title
         Text(
-            text = "Packet Capture Disabled",
+            text = stringResource(R.string.packet_capture_disabled),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
@@ -124,29 +130,21 @@ private fun PacketCaptureDisabledContent(
 
         // Description
         Text(
-            text = "You choose to continue without Packet capture. End the analysis to proceed.",
+            text = stringResource(R.string.you_choose_to_continue_without_packet_capture_end_the_analysis_to_proceed),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // End analysis Button
-        RoundCornerButton(
-            modifier = Modifier
-                .padding(end = 8.dp),
-            onClick = {
-                webViewActions.stopAnalysis {
-                    showUncompletedAnalysisDialog(
-                        context,
-                        analysisCallbacks.hideDialog,
-                        analysisCallbacks.showDialog,
-                        analysisCallbacks.navigateToSessionList
-                    )
-                }
-            },
-            buttonText = stringResource(R.string.end_analysis),
-        )
+            EndAnalysisStepComponent(
+                onNavigateToSessionList = analysisCallbacks.navigateToSessionList,
+                modifier = Modifier.padding(16.dp),
+                onStopAnalysis = webViewActions::stopAnalysis,
+                analysisStatus = analysisStatus,
+                isEndAnalysisEnabled = false,
+                updateSelectedTabIndex = updateSelectedTabIndex
+            )
     }
 }
 
@@ -154,7 +152,7 @@ private fun PacketCaptureDisabledContent(
 @Composable
 private fun PacketCaptureEnabledContent(
     modifier: Modifier,
-    captureState: CaptureState,
+    captureState: MainViewModel.CaptureState,
     onStartCapture: () -> Unit,
     onStopCapture: () -> Unit,
     onStatusCheck: () -> Unit,
@@ -164,7 +162,9 @@ private fun PacketCaptureEnabledContent(
     targetPcapName: String?,
     context: Context,
     webViewActions: WebViewActions,
-    analysisCallbacks: AnalysisCallbacks
+    analysisCallbacks: AnalysisCallbacks,
+    analysisStatus: AnalysisStatus,
+    updateSelectedTabIndex: (Int) -> Unit
 ) {
     Column(
         modifier = modifier
@@ -174,7 +174,7 @@ private fun PacketCaptureEnabledContent(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // Step 1: Stop Capture
-        if (captureState == CaptureState.FILE_READY) {
+        if (captureState == MainViewModel.CaptureState.FILE_READY) {
             CompletedOverlay(
             ) {
                 Step1Content(
@@ -231,8 +231,9 @@ private fun PacketCaptureEnabledContent(
                 webViewActions = webViewActions,
                 analysisCallbacks = analysisCallbacks,
                 captureState = captureState,
-                copiedPcapFileUri = copiedPcapFileUri
-
+                copiedPcapFileUri = copiedPcapFileUri,
+                analysisStatus = analysisStatus,
+                updateSelectedTabIndex = updateSelectedTabIndex
             )
         }
     }
@@ -241,7 +242,7 @@ private fun PacketCaptureEnabledContent(
 // Step 1 Content
 @Composable
 private fun Step1Content(
-    captureState: CaptureState,
+    captureState: MainViewModel.CaptureState,
     onStartCapture: () -> Unit,
     onStopCapture: () -> Unit,
     onStatusCheck: () -> Unit,
@@ -251,10 +252,10 @@ private fun Step1Content(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("Step 1", style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(R.string.step_1), style = MaterialTheme.typography.titleLarge)
 
         Text(
-            text = "Please stop packet capture after finishing interacting with the WebView.",
+            text = stringResource(R.string.please_stop_packet_capture_after_finishing_interacting_with_the_webview),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium
@@ -276,7 +277,7 @@ private fun Step1Content(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Capture State",
+                        text = stringResource(R.string.capture_state),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium
                     )
@@ -309,7 +310,7 @@ private fun Step1Content(
 // Step 2 Content
 @Composable
 private fun Step2Content(
-    captureState: CaptureState,
+    captureState: MainViewModel.CaptureState,
     onOpenFile: FileOpener,
     statusMessage: String,
     copiedPcapFileUri: Uri?,
@@ -319,10 +320,13 @@ private fun Step2Content(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("Step 2", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.step_2), style = MaterialTheme.typography.titleLarge)
 
         Text(
-            text = "Please press Open File and select this file: $targetPcapName",
+            text = stringResource(
+                R.string.please_press_open_file_and_select_this_file,
+                targetPcapName ?: "capture.pcap"
+            ),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 4.dp)
@@ -336,16 +340,16 @@ private fun Step2Content(
                     ?: "capture.pcap"
                 onOpenFile(fileName)
             },
-            buttonText = "Open File",
+            buttonText = stringResource(R.string.open_file),
             trailingIcon = painterResource(id = R.drawable.folder_open_24px),
-            enabled = captureState == CaptureState.FILE_READY
+            enabled = captureState == MainViewModel.CaptureState.FILE_READY
         )
 
 
 
         copiedPcapFileUri?.let {
             Text(
-                text = "Filed copied as: $copiedPcapFileUri",
+                text = stringResource(R.string.filed_copied_as, copiedPcapFileUri),
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -358,49 +362,44 @@ private fun Step3Content(
     context: Context,
     webViewActions: WebViewActions,
     analysisCallbacks: AnalysisCallbacks,
-    captureState: CaptureState,
-    copiedPcapFileUri: Uri?
+    captureState: MainViewModel.CaptureState,
+    copiedPcapFileUri: Uri?,
+    analysisStatus: AnalysisStatus,
+    updateSelectedTabIndex: (Int) -> Unit
 ) {
     Column(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("Step 3", style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(R.string.step_3), style = MaterialTheme.typography.titleLarge)
         Text(
-            text = "End analysis and save results.",
+            text = stringResource(R.string.end_analysis_and_save_results),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium
         )
-        RoundCornerButton(
-            modifier = Modifier
-                .padding(end = 8.dp),
-            onClick = {
-                webViewActions.stopAnalysis {
-                    showUncompletedAnalysisDialog(
-                        context,
-                        analysisCallbacks.hideDialog,
-                        analysisCallbacks.showDialog,
-                        analysisCallbacks.navigateToSessionList
-                    )
-                }
-            },
-            buttonText = stringResource(R.string.end_analysis),
-            enabled = captureState == CaptureState.FILE_READY && copiedPcapFileUri != null,
 
-            )
+        EndAnalysisStepComponent(
+            onNavigateToSessionList = analysisCallbacks.navigateToSessionList,
+            modifier = Modifier.padding(16.dp),
+            onStopAnalysis = webViewActions::stopAnalysis,
+            analysisStatus = analysisStatus,
+            isEndAnalysisEnabled = captureState == MainViewModel.CaptureState.FILE_READY && copiedPcapFileUri != null,
+            updateSelectedTabIndex = updateSelectedTabIndex
+        )
+
     }
 }
 
 
 @Composable
-private fun StatusBadge(captureState: CaptureState) {
+private fun StatusBadge(captureState: MainViewModel.CaptureState) {
     val (textColor, backgroundColor) = when (captureState) {
-        CaptureState.IDLE, CaptureState.STOPPED -> Color.Gray to Color.Gray.copy(alpha = 0.1f)
-        CaptureState.STARTING, CaptureState.STOPPING -> Color.Blue to Color.Blue.copy(alpha = 0.1f)
-        CaptureState.RUNNING -> Color.Green to Color.Green.copy(alpha = 0.1f)
-        CaptureState.FILE_READY -> Color.Green to Color.Green.copy(alpha = 0.1f)
-        CaptureState.ERROR -> Color.Red to Color.Red.copy(alpha = 0.1f)
+        MainViewModel.CaptureState.IDLE, MainViewModel.CaptureState.STOPPED -> Color.Gray to Color.Gray.copy(alpha = 0.1f)
+        MainViewModel.CaptureState.STARTING, MainViewModel.CaptureState.STOPPING -> Color.Blue to Color.Blue.copy(alpha = 0.1f)
+        MainViewModel.CaptureState.RUNNING -> Color.Green to Color.Green.copy(alpha = 0.1f)
+        MainViewModel.CaptureState.FILE_READY -> Color.Green to Color.Green.copy(alpha = 0.1f)
+        MainViewModel.CaptureState.ERROR -> Color.Red to Color.Red.copy(alpha = 0.1f)
         else -> MaterialTheme.colorScheme.onSurfaceVariant to MaterialTheme.colorScheme.surfaceVariant
     }
 
@@ -420,21 +419,21 @@ private fun StatusBadge(captureState: CaptureState) {
 
 @Composable
 private fun ControlButton(
-    captureState: CaptureState,
+    captureState: MainViewModel.CaptureState,
     onStartCapture: () -> Unit,
     onStopCapture: () -> Unit,
     onStatusCheck: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val (icon, label, onClick, isEnabled) = when (captureState) {
-        CaptureState.RUNNING ->
-            Quad(R.drawable.stop_24px, "Stop", onStopCapture, true)
+        MainViewModel.CaptureState.RUNNING ->
+            Quad(R.drawable.stop_24px, stringResource(R.string.stop), onStopCapture, true)
 
-        CaptureState.STOPPED, CaptureState.IDLE, CaptureState.FILE_READY ->
-            Quad(R.drawable.play_arrow_24px, "Start", onStartCapture, true)
+        MainViewModel.CaptureState.STOPPED, MainViewModel.CaptureState.IDLE, MainViewModel.CaptureState.FILE_READY ->
+            Quad(R.drawable.play_arrow_24px, stringResource(R.string.start), onStartCapture, true)
 
         else ->
-            Quad(null, "Loading", onStatusCheck, false)
+            Quad(null, stringResource(R.string.loading), onStatusCheck, false)
     }
 
     RoundCornerButton(
@@ -443,39 +442,15 @@ private fun ControlButton(
         buttonText = label,
         trailingIcon = icon?.let { painterResource(id = it) },
         enabled = isEnabled,
-        isLoading = captureState in listOf(CaptureState.STARTING, CaptureState.STOPPING)
+        isLoading = captureState in listOf(MainViewModel.CaptureState.STARTING, MainViewModel.CaptureState.STOPPING)
     )
-}
-
-// Helper class to disable ripple effect when button is disabled
-private class NoRippleInteractionSource : MutableInteractionSource {
-    override val interactions: Flow<Interaction> = emptyFlow()
-    override suspend fun emit(interaction: Interaction) {}
-    override fun tryEmit(interaction: Interaction) = true
 }
 
 // Helper data class for button configuration
 private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
 
-/**
- * Shows a dialog for uncompleted analysis warning.
- */
-private fun showUncompletedAnalysisDialog(
-    context: Context,
-    hideDialog: () -> Unit,
-    showDialog: (String, String, String, String, () -> Unit, () -> Unit) -> Unit,
-    navigateToSessionList: () -> Unit
-) {
-    showDialog(
-        context.getString(R.string.warning),
-        context.getString(R.string.it_looks_like_you_still_have_no_full_internet_connection_please_complete_the_login_process_of_the_captive_portal_before_stopping_the_analysis),
-        context.getString(R.string.stop_analysis_anyway),
-        context.getString(R.string.dismiss),
-        navigateToSessionList,
-        hideDialog
-    )
-}
+
 
 //Previews
 
@@ -497,9 +472,6 @@ private fun PacketCaptureTabPreview_Idle() {
 
     val analysisCallbacks = object : AnalysisCallbacks {
         override val showToast = { _: String, _: ToastStyle -> }
-        override val showDialog =
-            { _: String, _: String, _: String, _: String, _: () -> Unit, _: () -> Unit -> }
-        override val hideDialog = {}
         override val navigateToSessionList = {}
     }
 
@@ -515,13 +487,13 @@ private fun PacketCaptureTabPreview_Idle() {
         override fun takeScreenshot(webView: WebView, url: String) {}
         override suspend fun saveWebViewRequest(request: WebViewRequest) {}
         override fun updateShowedHint(showed: Boolean) {}
-        override fun stopAnalysis(onUncompleted: () -> Unit) {}
+        override fun stopAnalysis() {}
         override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
     }
 
     AppTheme {
         PacketCaptureTab(
-            captureState = CaptureState.IDLE,
+            captureState = MainViewModel.CaptureState.IDLE,
             onStartCapture = {},
             onStopCapture = {},
             onStatusCheck = {},
@@ -533,6 +505,8 @@ private fun PacketCaptureTabPreview_Idle() {
             copiedPcapFileUri = null,
             targetPcapName = "capture.pcap",
             isPacketCaptureEnabled = true,
+            analysisStatus = AnalysisStatus.NotCompleted,
+            updateSelectedTabIndex = {},
         )
     }
 }
@@ -554,9 +528,6 @@ private fun PacketCaptureTabPreview_Disabled() {
 
     val analysisCallbacks = object : AnalysisCallbacks {
         override val showToast = { _: String, _: ToastStyle -> }
-        override val showDialog =
-            { _: String, _: String, _: String, _: String, _: () -> Unit, _: () -> Unit -> }
-        override val hideDialog = {}
         override val navigateToSessionList = {}
     }
 
@@ -572,13 +543,13 @@ private fun PacketCaptureTabPreview_Disabled() {
         override fun takeScreenshot(webView: WebView, url: String) {}
         override suspend fun saveWebViewRequest(request: WebViewRequest) {}
         override fun updateShowedHint(showed: Boolean) {}
-        override fun stopAnalysis(onUncompleted: () -> Unit) {}
+        override fun stopAnalysis() {}
         override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
     }
 
     AppTheme {
         PacketCaptureTab(
-            captureState = CaptureState.IDLE,
+            captureState = MainViewModel.CaptureState.IDLE,
             onStartCapture = {},
             onStopCapture = {},
             onStatusCheck = {},
@@ -590,6 +561,8 @@ private fun PacketCaptureTabPreview_Disabled() {
             copiedPcapFileUri = null,
             targetPcapName = "capture.pcap",
             isPacketCaptureEnabled = false,
+            analysisStatus = AnalysisStatus.NotCompleted,
+            updateSelectedTabIndex = {},
         )
     }
 }
@@ -611,9 +584,6 @@ private fun PacketCaptureTabPreview_Completed() {
 
     val analysisCallbacks = object : AnalysisCallbacks {
         override val showToast = { _: String, _: ToastStyle -> }
-        override val showDialog =
-            { _: String, _: String, _: String, _: String, _: () -> Unit, _: () -> Unit -> }
-        override val hideDialog = {}
         override val navigateToSessionList = {}
     }
 
@@ -629,17 +599,17 @@ private fun PacketCaptureTabPreview_Completed() {
         override fun takeScreenshot(webView: WebView, url: String) {}
         override suspend fun saveWebViewRequest(request: WebViewRequest) {}
         override fun updateShowedHint(showed: Boolean) {}
-        override fun stopAnalysis(onUncompleted: () -> Unit) {}
+        override fun stopAnalysis() {}
         override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
     }
 
     AppTheme {
         PacketCaptureTab(
-            captureState = CaptureState.FILE_READY,
+            captureState = MainViewModel.CaptureState.FILE_READY,
             onStartCapture = {},
             onStopCapture = {},
             onStatusCheck = {},
-            statusMessage = "Capturing competed.",
+            statusMessage = "Capturing completed.",
             onOpenFile = {},
             captureActions = captureActions,
             webViewActions = webViewActions,
@@ -647,6 +617,8 @@ private fun PacketCaptureTabPreview_Completed() {
             copiedPcapFileUri = null,
             targetPcapName = "capture.pcap",
             isPacketCaptureEnabled = true,
+            analysisStatus = AnalysisStatus.Completed,
+            updateSelectedTabIndex = {},
         )
     }
 }

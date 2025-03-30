@@ -46,8 +46,6 @@ import java.util.Locale
 fun SettingsScreen(
     onLocalChanged: (Locale) -> Unit,
     onThemeChange: (ThemeMode) -> Unit,
-    onPacketCapturePreferenceChange: (Boolean) -> Unit,
-    packetCapturePreference: Boolean, // true if packet capture is enabled
     themeMode: ThemeMode,
     currentLanguage: String
 ) {
@@ -89,50 +87,9 @@ Column(
     // Theme selector
     ThemeDropDown(themeMode = themeMode, onThemeModeChanged = onThemeChange)
 
-    Spacer(modifier = Modifier.height(24.dp))
 
-    // Packet Capture Section
-    Text(
-        text = stringResource(id = R.string.packet_capture_setting),
-        style = MaterialTheme.typography.titleLarge
-    )
-
-    // Packet Capture Switch
-    PacketCaptureSwitch(
-        packetCaptureEnabled = packetCapturePreference,
-        onPacketCapturePreferenceChange = onPacketCapturePreferenceChange
-    )
 }
 }
-
-/**
- * PacketCaptureSwitch is a composable that displays a switch for enabling/disabling packet capture.
- *
- * @param packetCaptureEnabled function returning whether packet capture is currently enabled
- * @param onPacketCapturePreferenceChange callback for when the packet capture preference changes
- */
-@Composable
-fun PacketCaptureSwitch(
-    packetCaptureEnabled:  Boolean,
-    onPacketCapturePreferenceChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = stringResource(id = R.string.enable_packet_capture),
-            modifier = Modifier.weight(1f)
-        )
-        Switch(
-            checked = packetCaptureEnabled,
-            onCheckedChange = { onPacketCapturePreferenceChange(it) }
-        )
-    }
-}
-
 
 /**
  * ThemeDropDown is a composable that displays a dropdown menu for selecting the theme.
@@ -261,8 +218,6 @@ fun SettingsScreenPreview() {
             onThemeChange = { },
             themeMode = ThemeMode.SYSTEM,
             currentLanguage = "en",
-            onPacketCapturePreferenceChange = { },
-            packetCapturePreference =  true
         )
     }
 }

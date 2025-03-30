@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.MainViewModel
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
@@ -35,17 +35,17 @@ import com.example.captive_portal_analyzer_kotlin.components.MockWebView
 /**
  * Composable function for displaying the HTML content of a certain page of the captive portal
  *
- * @param sharedViewModel The shared view model containing the WebpageContentEntity which containts
+ * @param mainViewModel The shared view model containing the WebpageContentEntity which containts
  * the HTML content to be displayed.
  */
 @Composable
 fun WebpageContentScreen(
-    sharedViewModel: SharedViewModel,
+    mainViewModel: MainViewModel,
 ) {
 
 
     // Collect the clicked WebpageContentEntity from sharedViewModel
-    val clickedWebpageContent by sharedViewModel.clickedWebpageContent.collectAsState()
+    val clickedWebpageContent by mainViewModel.clickedWebpageContent.collectAsState()
 
     // Initialize the WebpageContentViewModel with the necessary dependencies
     val webpageContentViewModel: WebpageContentViewModel = viewModel(

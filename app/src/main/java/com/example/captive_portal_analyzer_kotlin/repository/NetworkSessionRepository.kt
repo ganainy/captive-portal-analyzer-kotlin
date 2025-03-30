@@ -1,5 +1,7 @@
 
 import android.net.Uri
+import android.util.Log
+import androidx.core.net.toUri
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
@@ -61,6 +63,13 @@ class NetworkSessionRepository(
      */
     suspend fun insertSession(session: NetworkSessionEntity) {
         sessionDao.insert(session)
+    }
+
+    /**
+     * Inserts a NetworkSessionEntity into the Room database.
+     */
+    suspend fun getSessionBySessionId(sessionId: String): NetworkSessionEntity? {
+        return sessionDao.getSession(sessionId)
     }
 
     /**
@@ -247,7 +256,21 @@ class NetworkSessionRepository(
                 )
             }
 
-            // 4. Create report
+            //4. Upload the .pcap file to firebase storage and include the download url in the session object
+            val result = uploadPcapFile(session.pcapFilePath, sessionId)
+            if (result.isFailure) {
+                Log.e("Upload", "Failed to upload PCAP file", result.exceptionOrNull())
+            } else {
+                val downloadUrl = result.getOrNull()
+                try {
+                    sessionDao.update(session.copy(pcapFileUrl = downloadUrl))
+                    Log.d("Upload", "PCAP file uploaded successfully: $downloadUrl")
+                } catch (e: Exception) {
+                    Log.e("Upload", "Failed to update session with download URL: $downloadUrl", e)
+                }
+            }
+
+            // 5. Create report
             val sessionData = SessionData(
                 session = session,
                 requests = requests,
@@ -255,7 +278,7 @@ class NetworkSessionRepository(
                 webpageContent = uploadedWebpageContent
             )
 
-            // 5. Upload session data to Firestore
+            // 6. Upload session data to Firestore
             val firestore = FirebaseFirestore.getInstance()
             val sessionRef = firestore.collection("sessions").document(sessionId)
 
@@ -332,6 +355,38 @@ class NetworkSessionRepository(
             }.let { Result.success(it) }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Uploads a single .pcap file to Firebase Storage and returns the download URL.
+     *
+     * @param pcapFilePath The URI of the .pcap file to be uploaded.
+     * @param sessionId The ID of the session to which the .pcap file belongs.
+     * @return A Result wrapping the download URL of the uploaded .pcap file or an Exception in case of failure.
+     */
+    private suspend fun uploadPcapFile(
+        pcapFilePath: String?, // URI of the .pcap file
+        sessionId: String // Session ID to organize storage
+    ): Result<String> {
+        return try {
+            val pcapUri = pcapFilePath?.toUri() ?: throw IllegalArgumentException("Invalid URI path")
+            // Get the file from the URI (assuming it's in app storage)
+            val pcapFile = File(pcapUri.path ?: throw IllegalArgumentException("Invalid URI path"))
+            val fileUri = Uri.fromFile(pcapFile)
+
+            // Reference to Firebase Storage location
+            val storageRef = storage.reference
+                .child("pcap_files/$sessionId/${pcapFile.nameWithoutExtension}_${System.currentTimeMillis()}.pcap")
+
+            // Upload the file with a 60-second timeout
+            withTimeout(60_000) {
+                storageRef.putFile(fileUri).await() // Upload the .pcap file
+                val downloadUrl = storageRef.downloadUrl.await() // Get the download URL
+                downloadUrl.toString() // Return the URL as a string
+            }.let { Result.success(it) }
+        } catch (e: Exception) {
+            Result.failure(e) // Return failure with the exception
         }
     }
 

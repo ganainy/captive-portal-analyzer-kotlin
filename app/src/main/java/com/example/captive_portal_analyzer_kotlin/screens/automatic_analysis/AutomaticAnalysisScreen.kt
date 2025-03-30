@@ -39,7 +39,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.MainViewModel
 import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.ErrorIcon
@@ -53,18 +53,18 @@ import dev.jeziellago.compose.markdowntext.MarkdownText
  * Composable function for displaying the results of the automatic analysis of collected
  * captive portal network data using an AI model.
  *
- * @param sharedViewModel The shared view model containing the clicked session ID and
+ * @param mainViewModel The shared view model containing the clicked session ID and
  * connectivity status.
  * @param repository The repository to access network session data.
  */
 @Composable
 fun AutomaticAnalysisScreen(
-    sharedViewModel: SharedViewModel,
+    mainViewModel: MainViewModel,
     repository: NetworkSessionRepository,
 ) {
 
     // Collect the clicked session ID from sharedViewModel
-    val clickedSessionId by sharedViewModel.clickedSessionId.collectAsState()
+    val clickedSessionId by mainViewModel.clickedSessionId.collectAsState()
 
     // Initialize the AutomaticAnalysisViewModel using a factory pattern
     val automaticAnalysisViewModel: AutomaticAnalysisViewModel = viewModel(
@@ -80,7 +80,7 @@ fun AutomaticAnalysisScreen(
 
 
     // Observe network connectivity status to show/hide internet banner
-    val isConnected by sharedViewModel.isConnected.collectAsState()
+    val isConnected by mainViewModel.isConnected.collectAsState()
 
     Scaffold(
 

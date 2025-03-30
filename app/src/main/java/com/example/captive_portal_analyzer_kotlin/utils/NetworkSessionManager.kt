@@ -245,14 +245,4 @@ class NetworkSessionManager(private val context: Context, private val repository
         }
     }
 
-    // Add cleanup method
-    fun stopMonitoring() {
-        try {
-            connectivityManager.unregisterNetworkCallback(networkCallback)
-        } catch (e: IllegalArgumentException) {
-            // Callback was not registered or already unregistered
-        }
-        scope.cancel()
-        currentSession = null
-    }
 }

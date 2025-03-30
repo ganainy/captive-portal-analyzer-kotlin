@@ -33,11 +33,17 @@ import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
  * It also contains a button to start the app.
  */
 @Composable
-fun WelcomeScreen(navigateToSetupPCAPDroidScreen: () -> Unit) {
+fun WelcomeScreen(
+    navigateToSetupPCAPDroidScreen: () -> Unit,
+    navigateToManualConnectScreen: () -> Unit,
+    skipSetup: Boolean
+) {
     Scaffold() { paddingValues ->
         WelcomeContent(
             paddingValues = paddingValues,
             navigateToSetupPCAPDroidScreen = navigateToSetupPCAPDroidScreen,
+            navigateToManualConnectScreen = navigateToManualConnectScreen,
+            skipSetup = skipSetup
         )
     }
 }
@@ -51,6 +57,8 @@ fun WelcomeScreen(navigateToSetupPCAPDroidScreen: () -> Unit) {
 private fun WelcomeContent(
     paddingValues: PaddingValues,
     navigateToSetupPCAPDroidScreen: () -> Unit,
+    navigateToManualConnectScreen: () -> Unit,
+    skipSetup: Boolean,
 ) {
     val typography = MaterialTheme.typography
     val colors = MaterialTheme.colorScheme
@@ -95,7 +103,7 @@ private fun WelcomeContent(
 
         // Start app button
         RoundCornerButton(
-            onClick = navigateToSetupPCAPDroidScreen,
+            onClick = if (skipSetup) navigateToManualConnectScreen else navigateToSetupPCAPDroidScreen,
             buttonText = stringResource(R.string.start),
         )
 
@@ -122,6 +130,8 @@ private fun WelcomeContentPreview() {
         WelcomeContent(
             paddingValues = PaddingValues(0.dp),
             navigateToSetupPCAPDroidScreen = {},
+            navigateToManualConnectScreen = {},
+            skipSetup = false,
         )
     }
 }

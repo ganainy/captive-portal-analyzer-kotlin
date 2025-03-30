@@ -22,16 +22,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.SharedViewModel
+import com.example.captive_portal_analyzer_kotlin.MainViewModel
 import com.example.captive_portal_analyzer_kotlin.components.RequestMethodView
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.RequestMethod
 
 @Composable
-fun RequestDetailsScreen(sharedViewModel: SharedViewModel) {
+fun RequestDetailsScreen(mainViewModel: MainViewModel) {
 
     // Collect the selected WebViewRequest from the sharedViewModel
-    val webViewRequest by sharedViewModel.clickedWebViewRequestEntity.collectAsState()
+    val webViewRequest by mainViewModel.clickedWebViewRequestEntity.collectAsState()
 
     Scaffold(
     ) { paddingValues ->

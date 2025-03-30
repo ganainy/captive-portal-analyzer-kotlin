@@ -19,6 +19,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.acsbendi.requestinspectorwebview.WebViewRequest
+import com.example.captive_portal_analyzer_kotlin.MainViewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
@@ -74,8 +75,19 @@ data class AnalysisUiData
     val portalUrl: String? = null,
     val webViewType: WebViewType = WebViewType.CustomWebView,
     val showedHint: Boolean = false,
-    val isPCAPDroidPacketCaptureEnabled: Boolean = false
+    val isPCAPDroidPacketCaptureEnabled: Boolean = false,
+    val analysisStatus: AnalysisStatus = AnalysisStatus.Initial, // initially is at Initial then
+    // when user click end analysis the function stopAnalysis
+    // checks for internet connection if true this means the registration to the captive
+    // portal is Completed is analysis is most likely done otherwise this is set to NotCompleted
+    // to warn user analysis might not be completed
 )
+
+enum class AnalysisStatus {
+    Initial,
+    Completed,
+    NotCompleted
+}
 
 /**
  * Enum class to represent the type of the WebView. The WebView can be of type
@@ -102,7 +114,14 @@ class AnalysisViewModel(
     private val sessionManager: NetworkSessionManager,
     private val repository: NetworkSessionRepository,
     private val showToast: (message: String, style: ToastStyle) -> Unit,
+    private val mainViewModel: MainViewModel
 ) : AndroidViewModel(application) {
+
+
+    companion object {
+        private const val TAG = "AnalysisViewModel"
+    }
+
     /**
      * Gets the application context.
      */
@@ -139,9 +158,9 @@ class AnalysisViewModel(
      */
     fun getCaptivePortalAddress(showToast: (message: String, style: ToastStyle) -> Unit) {
 
-       _uiState.update {
-           (AnalysisUiState.Loading(R.string.detecting_captive_portal_page))
-       }
+        _uiState.update {
+            (AnalysisUiState.Loading(R.string.detecting_captive_portal_page))
+        }
 
         // Launch coroutine in IO dispatcher for network operations
         viewModelScope.launch(Dispatchers.IO) {
@@ -584,21 +603,51 @@ class AnalysisViewModel(
      * @param onUncompletedAnalysis a lambda that will be called if the device is not
      * connected to the internet.
      */
-    fun stopAnalysis(onUncompletedAnalysis: () -> Unit) {
+    fun stopAnalysis() {
         _uiState.value = AnalysisUiState.Loading(R.string.processing_request)
         viewModelScope.launch(Dispatchers.IO) {
             if (hasFullInternetAccess(context)) {
                 withContext(Dispatchers.Main) {
                     _uiState.value = AnalysisUiState.AnalysisComplete
+                    _uiData.update { it.copy(analysisStatus = AnalysisStatus.Completed) }
                 }
             } else {
                 withContext(Dispatchers.Main) {
                     _uiState.value = AnalysisUiState.CaptiveUrlDetected
-                    onUncompletedAnalysis()
+                    _uiData.update { it.copy(analysisStatus = AnalysisStatus.NotCompleted) }
                 }
             }
+
+            // Add the .pcap file path to the session object
+            storePcapFilePathInTheSession()
+
         }
 
+    }
+
+    private suspend fun storePcapFilePathInTheSession() {
+        try {
+            sessionManager.getCurrentSessionId()?.let { sessionId ->
+                if (mainViewModel.copiedPcapFileUri.value != null) {
+                    val session = repository.getSessionBySessionId(sessionId)
+                    if (session != null) {
+                        repository.updateSession(session.copy(pcapFilePath =
+                            mainViewModel.copiedPcapFileUri.value.toString()))
+                    }
+                }
+            } ?: run {
+                showToast(
+                    context.getString(R.string.error_saving_pcap_to_session),
+                    ToastStyle.ERROR
+                )
+            }
+        } catch (e: Exception) {
+            showToast(
+                context.getString(R.string.error_saving_pcap_to_session),
+                ToastStyle.ERROR
+            )
+            Log.e(TAG, "Error saving pcap to session: ${e.message}")
+        }
     }
 
     /**
@@ -748,6 +797,8 @@ class AnalysisViewModelFactory(
         message: String,
         style: ToastStyle
     ) -> Unit,
+    private val mainViewModel: MainViewModel
+
 ) : ViewModelProvider.Factory {
     /**
      * Creates an instance of a ViewModel.
@@ -764,6 +815,7 @@ class AnalysisViewModelFactory(
                 sessionManager,
                 repository,
                 showToast,
+                mainViewModel
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

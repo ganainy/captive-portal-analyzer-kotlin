@@ -18,6 +18,9 @@ open class SetupPCAPDroidViewModel(
     private val application: Application
 ) : ViewModel() {
 
+
+
+
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == Intent.ACTION_PACKAGE_ADDED) {
@@ -29,6 +32,14 @@ open class SetupPCAPDroidViewModel(
         }
     }
 
+    // SharedPreferences to store the skipSetup value
+    private val _skipSetup = MutableStateFlow(false)
+    val skipSetup: StateFlow<Boolean> get() = _skipSetup
+
+    // current step of the pager
+    private val _currentStep = MutableStateFlow(0)
+    val currentStep: StateFlow<Int> get() = _currentStep
+
     private val _isPcapDroidInstalled = MutableStateFlow(false)
     open val isPcapDroidInstalled: StateFlow<Boolean> get() = _isPcapDroidInstalled
 
@@ -39,6 +50,11 @@ open class SetupPCAPDroidViewModel(
             addDataScheme("package")
         }
         application.registerReceiver(packageReceiver, filter)
+    }
+
+    // Function to save the skipSetup value to SharedPreferences
+    fun setSkipSetup(value: Boolean) {
+        _skipSetup.value = value
     }
 
     override fun onCleared() {
@@ -62,6 +78,20 @@ open class SetupPCAPDroidViewModel(
     fun refreshPcapDroidStatus() {
         checkPcapDroidInstalled()
     }
+
+    //  functions to control steps
+    fun setStep(step: Int) {
+        _currentStep.value = step.coerceIn(0, 5) // Ensure step stays within valid range (0-5)
+    }
+
+    fun nextStep() {
+        _currentStep.value = (_currentStep.value + 1).coerceAtMost(5)
+    }
+
+    fun previousStep() {
+        _currentStep.value = (_currentStep.value - 1).coerceAtLeast(0)
+    }
+
 }
 
 class SetupPCAPDroidViewModelFactory(private val application: Application) : ViewModelProvider.Factory {

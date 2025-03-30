@@ -345,7 +345,6 @@ fun NetworkSessionCard(
                         captivePortalUrl = "TODO()",
                         ipAddress = "192.168.0.2",
                         gatewayAddress = "192.168.0.1",
-                        securityType = "WPA2",
                         isCaptiveLocal = false
                     ),
                     // empty list of requests
@@ -388,7 +387,6 @@ fun NetworkSessionCard(
                         captivePortalUrl = "TODO()",
                         ipAddress = "192.168.0.2",
                         gatewayAddress = "192.168.0.1",
-                        securityType = "WPA2",
                         isCaptiveLocal = false
                     ),
                     requests = emptyList(),

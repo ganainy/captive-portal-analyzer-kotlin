@@ -1,7 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.screens.analysis
 
-import CaptureState
-import CaptureViewModel
+
 import NetworkSessionRepository
 import PacketCaptureTab
 import android.annotation.SuppressLint
@@ -71,8 +70,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acsbendi.requestinspectorwebview.RequestInspectorWebViewClient
 import com.acsbendi.requestinspectorwebview.WebViewRequest
+import com.example.captive_portal_analyzer_kotlin.MainViewModel
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.SharedViewModel
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
@@ -91,8 +90,7 @@ import kotlinx.coroutines.launch
 data class AnalysisScreenConfig(
     val repository: NetworkSessionRepository,
     val sessionManager: NetworkSessionManager,
-    val sharedViewModel: SharedViewModel,
-    val captureViewModel: CaptureViewModel
+    val mainViewModel: MainViewModel,
 )
 
 data class NavigationConfig(
@@ -113,7 +111,7 @@ data class WebViewContentConfig(
     val portalUrl: String?,
     val showedHint: Boolean,
     val contentPadding: PaddingValues,
-    val captureState: CaptureState,
+    val captureState: MainViewModel.CaptureState,
     val statusMessage: String,
     val targetPcapName: String?
 )
@@ -121,8 +119,6 @@ data class WebViewContentConfig(
 // Callback interfaces remain unchanged
 interface AnalysisCallbacks {
     val showToast: (String, ToastStyle) -> Unit
-    val showDialog: (String, String, String, String, () -> Unit, () -> Unit) -> Unit
-    val hideDialog: () -> Unit
     val navigateToSessionList: () -> Unit
 }
 
@@ -137,7 +133,7 @@ interface WebViewActions {
     fun takeScreenshot(webView: WebView, url: String)
     suspend fun saveWebViewRequest(request: WebViewRequest)
     fun updateShowedHint(showed: Boolean)
-    fun stopAnalysis(onUncompleted: () -> Unit)
+    fun stopAnalysis()
     fun switchWebViewType(showToast: (String, ToastStyle) -> Unit)
 }
 
@@ -156,14 +152,17 @@ fun AnalysisScreen(
     intentLaunchConfig: IntentLaunchConfig
 ) {
 
+    // for testing purposes only, set packet capture to always be on
+    if (Secret.isAppInDebugMode) {
+        screenConfig.mainViewModel.updateIsPacketCaptureEnabled(true)
+    }
 
-
-    val captureState by screenConfig.captureViewModel.captureState.collectAsStateWithLifecycle()
-    val statusMessage by screenConfig.captureViewModel.statusMessage.collectAsStateWithLifecycle()
-    val targetPcapName by screenConfig.captureViewModel.targetPcapName.collectAsStateWithLifecycle()
-    val copiedPcapFileUri by screenConfig.captureViewModel.copiedPcapFileUri.collectAsStateWithLifecycle()
-    val selectedTabIndex by screenConfig.captureViewModel.selectedTabIndex.collectAsStateWithLifecycle()
-    val isPacketCaptureEnabled by screenConfig.captureViewModel.isPacketCaptureEnabled.collectAsStateWithLifecycle()
+    val captureState by screenConfig.mainViewModel.captureState.collectAsStateWithLifecycle()
+    val statusMessage by screenConfig.mainViewModel.statusMessage.collectAsStateWithLifecycle()
+    val targetPcapName by screenConfig.mainViewModel.targetPcapName.collectAsStateWithLifecycle()
+    val copiedPcapFileUri by screenConfig.mainViewModel.copiedPcapFileUri.collectAsStateWithLifecycle()
+    val selectedTabIndex by screenConfig.mainViewModel.selectedTabIndex.collectAsStateWithLifecycle()
+    val isPacketCaptureEnabled by screenConfig.mainViewModel.isPacketCaptureEnabled.collectAsStateWithLifecycle()
 
 
     val analysisViewModel: AnalysisViewModel = viewModel(
@@ -171,17 +170,19 @@ fun AnalysisScreen(
             application = LocalContext.current.applicationContext as Application,
             repository = screenConfig.repository,
             sessionManager = screenConfig.sessionManager,
-            showToast = screenConfig.sharedViewModel::showToast
+            showToast = screenConfig.mainViewModel::showToast,
+            mainViewModel = screenConfig.mainViewModel
         )
     )
 
-    val uiState by analysisViewModel.uiState.collectAsState()
     val uiData by analysisViewModel.uiData.collectAsState()
+    val analysisStatus: AnalysisStatus =  uiData.analysisStatus
+
+
+    val uiState by analysisViewModel.uiState.collectAsState()
 
     val analysisCallbacks = object : AnalysisCallbacks {
-        override val showToast = screenConfig.sharedViewModel::showToast
-        override val showDialog = screenConfig.sharedViewModel::showDialog
-        override val hideDialog = screenConfig.sharedViewModel::hideDialog
+        override val showToast = screenConfig.mainViewModel::showToast
         override val navigateToSessionList = navigationConfig.onNavigateToSessionList
     }
 
@@ -205,16 +206,16 @@ fun AnalysisScreen(
         override fun updateShowedHint(showed: Boolean) =
             analysisViewModel.updateShowedHint(showed)
 
-        override fun stopAnalysis(onUncompleted: () -> Unit) =
-            analysisViewModel.stopAnalysis(onUncompleted)
+        override fun stopAnalysis() =
+            analysisViewModel.stopAnalysis()
 
         override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) =
             analysisViewModel.switchWebViewType(showToast)
     }
 
     val captureActions = object : CaptureActions {
-        override fun requestStopCapture() = screenConfig.captureViewModel.requestStopCapture()
-        override fun requestStatusUpdate() = screenConfig.captureViewModel.requestGetStatus()
+        override fun requestStopCapture() = screenConfig.mainViewModel.requestStopCapture()
+        override fun requestStatusUpdate() = screenConfig.mainViewModel.requestGetStatus()
     }
 
     AnalysisScreenContent(
@@ -232,28 +233,29 @@ fun AnalysisScreen(
         onNavigateToSetupPCAPDroid = navigationConfig.onNavigateToSetupPCAPDroidScreen,
         getCaptivePortalAddress = { analysisViewModel.getCaptivePortalAddress(analysisCallbacks.showToast) },
         onStartCapture = {
-            screenConfig.captureViewModel.requestStartCapture()
-            intentLaunchConfig.onStartIntent(screenConfig.captureViewModel.createStartIntent())
+            screenConfig.mainViewModel.requestStartCapture()
+            intentLaunchConfig.onStartIntent(screenConfig.mainViewModel.createStartIntent())
         },
         onStopCapture = {
-            screenConfig.captureViewModel.requestStopCapture()
-            intentLaunchConfig.onStopIntent(screenConfig.captureViewModel.createStopIntent())
+            screenConfig.mainViewModel.requestStopCapture()
+            intentLaunchConfig.onStopIntent(screenConfig.mainViewModel.createStopIntent())
         },
         onStatusCheck = {
-            intentLaunchConfig.onStatusIntent(screenConfig.captureViewModel.createGetStatusIntent())
+            intentLaunchConfig.onStatusIntent(screenConfig.mainViewModel.createGetStatusIntent())
         },
         selectedTabIndex = selectedTabIndex,
-        updateSelectedTabIndex = screenConfig.captureViewModel::setSelectedTabIndex,
+        updateSelectedTabIndex = screenConfig.mainViewModel::setSelectedTabIndex,
         updateIsPacketCaptureEnabled = { isEnabled ->
-            screenConfig.captureViewModel.updateIsPacketCaptureEnabled(isEnabled)
+            screenConfig.mainViewModel.updateIsPacketCaptureEnabled(isEnabled)
         },
         isPacketCaptureEnabled = isPacketCaptureEnabled,
+        analysisStatus = analysisStatus
     )
 }
 
 @Composable
 private fun AnalysisScreenContent(
-    captureState: CaptureState,
+    captureState: MainViewModel.CaptureState,
     statusMessage: String,
     targetPcapName: String?,
     uiState: AnalysisUiState,
@@ -272,7 +274,8 @@ private fun AnalysisScreenContent(
     onStatusCheck: () -> Unit,
     updateSelectedTabIndex: (Int) -> Unit,
     onNavigateToSetupPCAPDroid: () -> Unit,
-    updateIsPacketCaptureEnabled : (Boolean) -> Unit,
+    updateIsPacketCaptureEnabled: (Boolean) -> Unit,
+    analysisStatus: AnalysisStatus,
 ) {
 
     val tabTitles = listOf("WebView", "Packet Capture")
@@ -355,6 +358,8 @@ private fun AnalysisScreenContent(
                     copiedPcapFileUri = copiedPcapFileUri,
                     targetPcapName = targetPcapName,
                     isPacketCaptureEnabled = isPacketCaptureEnabled,
+                    analysisStatus = analysisStatus,
+                    updateSelectedTabIndex = updateSelectedTabIndex,
                 )
             }
         }
@@ -364,7 +369,7 @@ private fun AnalysisScreenContent(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PreferenceSetupContent(
-    captureState: CaptureState,
+    captureState: MainViewModel.CaptureState,
     onStartCapture: () -> Unit,
     getCaptivePortalAddress: () -> Unit,
     onNavigateToSetupPCAPDroid: () -> Unit,
@@ -378,7 +383,7 @@ fun PreferenceSetupContent(
     ) {
         // Header Section
         Text(
-            text = "Choose Your Analysis Mode",
+            text = stringResource(R.string.choose_your_analysis_mode),
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -393,13 +398,13 @@ fun PreferenceSetupContent(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "This app offers two analysis modes:",
+                    text = stringResource(R.string.this_app_offers_two_analysis_modes),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "• Default: Uses custom WebView\n" +
-                            "• Advanced: Uses PCAPDroid for packet capture & custom WebView",
+                    text = stringResource(R.string.default_uses_custom_webview) +
+                            stringResource(R.string.advanced_uses_pcapdroid_for_packet_capture_custom_webview),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -409,14 +414,14 @@ fun PreferenceSetupContent(
         // PCAPDroid Setup Section
         Text(
             text = buildAnnotatedString {
-                append("In order to use the advanced mode please make sure to (if you haven't already) ")
+                append(stringResource(R.string.in_order_to_use_the_advanced_mode_please_make_sure_to_if_you_haven_t_already))
                 withStyle(
                     style = SpanStyle(
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                 ) {
-                    append("Setup PCAPDroid")
+                    append(stringResource(R.string.setup_pcapdroid))
                 }
             },
             style = MaterialTheme.typography.bodyMedium,
@@ -435,7 +440,7 @@ fun PreferenceSetupContent(
         ) {
             RoundCornerButton(
                 onClick = {
-                    if (captureState == CaptureState.IDLE) {
+                    if (captureState == MainViewModel.CaptureState.IDLE) {
                         onStartCapture()
                         updateIsPacketCaptureEnabled(true)
                     }
@@ -443,7 +448,7 @@ fun PreferenceSetupContent(
                 buttonText = stringResource(R.string.continue_with_packet_capture),
                 trailingIcon = painterResource(id = R.drawable.arrow_forward_ios_24px),
                 modifier = Modifier.fillMaxWidth(),
-                enabled = captureState != CaptureState.RUNNING
+                enabled = captureState != MainViewModel.CaptureState.RUNNING
             )
 
             GhostButton(
@@ -452,12 +457,14 @@ fun PreferenceSetupContent(
 
                           },
                 text = stringResource(R.string.continue_without_packet_capture),
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
             )
         }
 
         // Capture State Indicator
-        if (captureState == CaptureState.RUNNING) {
+        if (captureState == MainViewModel.CaptureState.RUNNING) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -468,7 +475,7 @@ fun PreferenceSetupContent(
                     strokeWidth = 2.dp
                 )
                 Text(
-                    text = "Capturing...",
+                    text = stringResource(R.string.capturing),
                     modifier = Modifier.padding(start = 8.dp),
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -477,7 +484,7 @@ fun PreferenceSetupContent(
 
         // Handle captive portal detection
         LaunchedEffect(captureState) {
-            if (captureState == CaptureState.RUNNING) {
+            if (captureState == MainViewModel.CaptureState.RUNNING) {
                 getCaptivePortalAddress()
             }
         }
@@ -877,6 +884,7 @@ private fun HintInfoBox(
 /**
  * WebView with custom client for request interception.
  */
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun WebViewWithCustomClient(
     portalUrl: String?,
@@ -942,16 +950,12 @@ private fun WebViewWithCustomClient(
 )
 private fun AnalysisScreenContentPreview_Success() {
     AppTheme {
-        val captureViewModel = remember { CaptureViewModel() }
-        val captureState = CaptureState.RUNNING
+        val captureState = MainViewModel.CaptureState.RUNNING
         val statusMessage = "Capturing to file..."
         val targetPcapName = "captive_portal_capture.pcap"
 
         val analysisCallbacks = object : AnalysisCallbacks {
             override val showToast = { _: String, _: ToastStyle -> }
-            override val showDialog =
-                { _: String, _: String, _: String, _: String, _: () -> Unit, _: () -> Unit -> }
-            override val hideDialog = {}
             override val navigateToSessionList = {}
         }
 
@@ -967,7 +971,7 @@ private fun AnalysisScreenContentPreview_Success() {
             override fun takeScreenshot(webView: WebView, url: String) {}
             override suspend fun saveWebViewRequest(request: WebViewRequest) {}
             override fun updateShowedHint(showed: Boolean) {}
-            override fun stopAnalysis(onUncompleted: () -> Unit) {}
+            override fun stopAnalysis() {}
             override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
         }
 
@@ -995,6 +999,7 @@ private fun AnalysisScreenContentPreview_Success() {
             onOpenFile = {},
             copiedPcapFileUri = null,
             selectedTabIndex = 0,
+            isPacketCaptureEnabled = true,
             onNavigateToManualConnect = {},
             getCaptivePortalAddress = {},
             onStartCapture = {},
@@ -1003,7 +1008,7 @@ private fun AnalysisScreenContentPreview_Success() {
             updateSelectedTabIndex = {},
             onNavigateToSetupPCAPDroid = {},
             updateIsPacketCaptureEnabled = {},
-            isPacketCaptureEnabled = true,
+            analysisStatus = AnalysisStatus.NotCompleted,
         )
     }
 }
@@ -1018,15 +1023,12 @@ private fun AnalysisScreenContentPreview_Success() {
 )
 private fun AnalysisScreenContentPreview_Error() {
     AppTheme {
-        val captureState = CaptureState.STOPPED
+        val captureState = MainViewModel.CaptureState.STOPPED
         val statusMessage = "Capture stopped"
         val targetPcapName = null
 
         val analysisCallbacks = object : AnalysisCallbacks {
             override val showToast = { _: String, _: ToastStyle -> }
-            override val showDialog =
-                { _: String, _: String, _: String, _: String, _: () -> Unit, _: () -> Unit -> }
-            override val hideDialog = {}
             override val navigateToSessionList = {}
         }
 
@@ -1042,7 +1044,7 @@ private fun AnalysisScreenContentPreview_Error() {
             override fun takeScreenshot(webView: WebView, url: String) {}
             override suspend fun saveWebViewRequest(request: WebViewRequest) {}
             override fun updateShowedHint(showed: Boolean) {}
-            override fun stopAnalysis(onUncompleted: () -> Unit) {}
+            override fun stopAnalysis() {}
             override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
         }
 
@@ -1070,6 +1072,7 @@ private fun AnalysisScreenContentPreview_Error() {
             onOpenFile = {},
             copiedPcapFileUri = null,
             selectedTabIndex = 0,
+            isPacketCaptureEnabled = true,
             onNavigateToManualConnect = {},
             getCaptivePortalAddress = {},
             onStartCapture = {},
@@ -1078,7 +1081,7 @@ private fun AnalysisScreenContentPreview_Error() {
             updateSelectedTabIndex = {},
             onNavigateToSetupPCAPDroid = {},
             updateIsPacketCaptureEnabled = {},
-            isPacketCaptureEnabled = true
+            analysisStatus = AnalysisStatus.NotCompleted,
         )
     }
 }
@@ -1094,7 +1097,7 @@ private fun AnalysisScreenContentPreview_Error() {
 private fun PreferenceSetupContentPreview() {
     AppTheme {
         PreferenceSetupContent(
-            captureState = CaptureState.IDLE,
+            captureState = MainViewModel.CaptureState.IDLE,
             onStartCapture = {},
             getCaptivePortalAddress = {},
             onNavigateToSetupPCAPDroid = {},

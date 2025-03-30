@@ -14,9 +14,9 @@ import androidx.room.PrimaryKey
  * @property captivePortalUrl the url of the captive portal if present
  * @property ipAddress the ip address that the device received from the dhcp server
  * @property gatewayAddress the ip address of the gateway of the network
- * @property securityType the type of security used by the network , TODO STILL NOT IMPLEMENTED
  * @property isCaptiveLocal whether the captive portal is hosted only locally or has remote auth server
  * @property isUploadedToRemoteServer whether the session data has been uploaded to the remote server
+ * @property pcapFilePath path to the .pcap file that was generated using PCAPDroid
  * or only exist on user device
  */
 @Entity(tableName = "network_sessions")
@@ -28,7 +28,8 @@ data class NetworkSessionEntity(
     val captivePortalUrl: String? = null,
     val ipAddress: String?,
     val gatewayAddress: String?,
-    val securityType: String? = null,
     val isCaptiveLocal: Boolean? = null,
     val isUploadedToRemoteServer: Boolean = false,
+    val pcapFilePath: String? = null, //local path
+    val pcapFileUrl: String? = null //remote path after upload to server
 )
