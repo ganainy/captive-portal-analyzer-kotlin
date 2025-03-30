@@ -86,9 +86,9 @@ open class MainViewModel(
         _clickedWebpageContent.asStateFlow()
 
 
-
     companion object {
         private const val TAG = "MainViewModel"
+
         // This file name will be used by PCAPDroid to use for the .pcap file
         private const val DEFAULT_PCAP_FILENAME = "captive_portal_analyzer.pcap"
     }
@@ -103,8 +103,6 @@ open class MainViewModel(
             }
         }
     }
-
-
 
 
     private fun getLocalePreference() {
@@ -166,8 +164,6 @@ open class MainViewModel(
     }
 
 
-
-
     fun showDialog(
         title: String,
         message: String,
@@ -195,7 +191,7 @@ open class MainViewModel(
         message: String,
         style: ToastStyle,
     ) {
-        _toastState.value = ToastState.Shown("", message, style,2000L )
+        _toastState.value = ToastState.Shown("", message, style, 2000L)
     }
 
 
@@ -220,7 +216,8 @@ open class MainViewModel(
     /**<<<<<<<<<<<<<<<   Capture packets related functions   >>>>>>>>>>>>>>**/
 
     enum class CaptureState {
-        IDLE, STARTING, RUNNING, STOPPING, STOPPED, FILE_READY, ERROR
+        IDLE, STARTING, RUNNING, STOPPING, STOPPED, FILE_READY,
+        WRONG_FILE_PICKED // user picked file other than the captive_portal_analyzer.pcap
     }
 
 
@@ -249,7 +246,10 @@ open class MainViewModel(
 
     private fun createPcapdroidIntent(): Intent {
         val intent = Intent(Intent.ACTION_VIEW)
-        intent.setClassName(PcapdroidConstants.PCAPDROID_PACKAGE, PcapdroidConstants.PCAPDROID_CAPTURE_CTRL_ACTIVITY)
+        intent.setClassName(
+            PcapdroidConstants.PCAPDROID_PACKAGE,
+            PcapdroidConstants.PCAPDROID_CAPTURE_CTRL_ACTIVITY
+        )
         return intent
     }
 
@@ -288,7 +288,7 @@ open class MainViewModel(
     // --- Action Initiation ---
 
     fun requestStartCapture() {
-        if (_captureState.value == CaptureState.IDLE || _captureState.value == CaptureState.STOPPED || _captureState.value == CaptureState.ERROR || _captureState.value == CaptureState.FILE_READY) {
+        if (_captureState.value == CaptureState.IDLE || _captureState.value == CaptureState.STOPPED || _captureState.value == CaptureState.WRONG_FILE_PICKED || _captureState.value == CaptureState.FILE_READY) {
             _captureState.value = CaptureState.STARTING
             _statusMessage.value = "Requesting file capture start..."
             // Reset filename? Or keep the last one? Let's keep it until next successful start.
@@ -316,11 +316,14 @@ open class MainViewModel(
     fun handleStartResult(result: ActivityResult) {
         if (result.resultCode == Activity.RESULT_OK) {
             _captureState.value = CaptureState.RUNNING
-            _statusMessage.value = "PCAPdroid capturing to file: ${_targetPcapName.value ?: "Unknown"}"
+            _statusMessage.value =
+                "PCAPdroid capturing to file: ${_targetPcapName.value ?: "Unknown"}"
             // Ensure the filename is set if the start was successful
-            if (_targetPcapName.value == null) { _targetPcapName.value = DEFAULT_PCAP_FILENAME } // Fallback
+            if (_targetPcapName.value == null) {
+                _targetPcapName.value = DEFAULT_PCAP_FILENAME
+            } // Fallback
         } else {
-            _captureState.value = CaptureState.ERROR
+            _captureState.value = CaptureState.WRONG_FILE_PICKED
             _statusMessage.value = "Failed to start file capture (Result: ${result.resultCode})."
             _targetPcapName.value = null // Reset filename on failure
             Log.e(TAG, "PCAPdroid start failed. Result code: ${result.resultCode}")
@@ -333,11 +336,13 @@ open class MainViewModel(
             // Capture stopped successfully, file *should* be ready.
             _captureState.value = CaptureState.FILE_READY
             val stats = extractStatsFromResult(result.data)
-            _statusMessage.value = "Capture stopped. File '${targetFile ?: "Unknown"}' should be ready. $stats"
+            _statusMessage.value =
+                "Capture stopped. File '${targetFile ?: "Unknown"}' should be ready. $stats"
         } else {
             // Stop command failed, but maybe it was already stopped? Treat as stopped.
             _captureState.value = CaptureState.STOPPED // Or ERROR? Let's use STOPPED.
-            _statusMessage.value = "Capture stop command sent (Result: ${result.resultCode}). File state unknown."
+            _statusMessage.value =
+                "Capture stop command sent (Result: ${result.resultCode}). File state unknown."
             Log.w(TAG, "PCAPdroid stop potentially failed. Result code: ${result.resultCode}")
             // Keep _targetPcapName, the file *might* exist.
         }
@@ -349,7 +354,8 @@ open class MainViewModel(
             val isRunning = data.getBooleanExtra(PcapdroidConstants.RESULT_EXTRA_RUNNING, false)
             // ... (version logging etc. same as before)
             val stats = extractStatsFromResult(data)
-            val pcapVersion = data.getStringExtra(PcapdroidConstants.RESULT_EXTRA_VERSION_NAME) ?: "N/A"
+            val pcapVersion =
+                data.getStringExtra(PcapdroidConstants.RESULT_EXTRA_VERSION_NAME) ?: "N/A"
 
             val currentState = _captureState.value
             val reportedState = if (isRunning) CaptureState.RUNNING else CaptureState.STOPPED
@@ -357,11 +363,12 @@ open class MainViewModel(
             _statusMessage.value = "Status: ${reportedState.name}. PCAPdroid v$pcapVersion. $stats"
 
             // Update state more carefully based on status report
-            if (reportedState == CaptureState.RUNNING && (currentState == CaptureState.STOPPED || currentState == CaptureState.IDLE || currentState == CaptureState.FILE_READY || currentState == CaptureState.ERROR)) {
+            if (reportedState == CaptureState.RUNNING && (currentState == CaptureState.STOPPED || currentState == CaptureState.IDLE || currentState == CaptureState.FILE_READY || currentState == CaptureState.WRONG_FILE_PICKED)) {
                 _captureState.value = CaptureState.RUNNING // Correct state if it was wrong
                 _statusMessage.value += " (State corrected to RUNNING)"
             } else if (reportedState == CaptureState.STOPPED && currentState == CaptureState.RUNNING) {
-                _captureState.value = CaptureState.FILE_READY // Assume file is ready if status says stopped
+                _captureState.value =
+                    CaptureState.FILE_READY // Assume file is ready if status says stopped
                 _statusMessage.value += " (State corrected to FILE_READY)"
             }
             // Don't overwrite STARTING or STOPPING
@@ -373,7 +380,7 @@ open class MainViewModel(
     }
 
     fun handleActivityNotFound() {
-        _captureState.value = CaptureState.ERROR
+        _captureState.value = CaptureState.WRONG_FILE_PICKED
         _statusMessage.value = "Error: PCAPdroid app not found."
         Log.e(TAG, "PCAPdroid ActivityNotFoundException")
         _targetPcapName.value = null
@@ -384,7 +391,8 @@ open class MainViewModel(
             Log.i(TAG, "Capture stopped externally.")
             // Assume file is ready if stopped externally while running
             _captureState.value = CaptureState.FILE_READY
-            _statusMessage.value = "Capture stopped externally. File '${_targetPcapName.value ?: "Unknown"}' may be ready."
+            _statusMessage.value =
+                "Capture stopped externally. File '${_targetPcapName.value ?: "Unknown"}' may be ready."
         }
     }
 
@@ -444,6 +452,10 @@ open class MainViewModel(
             }
             _skipSetup.value = shouldSkipSetupScreen
         }
+    }
+
+    fun updateCaptureState(captureState: CaptureState) {
+        _captureState.value = captureState
     }
 
 }

@@ -244,5 +244,8 @@
     <string name="pcap_setup_screen_title" translatable="false">PCAPDroid Setup</string>
     <string name="error_saving_pcap_to_session">Error saving the .pcap file path to session</string>
     <string name="no_need_to_open_pcapdroid">No need to open PCAPDroid app anymore, from now on we will controll it directly through our app</string>
+    <string name="end_analysis_anyway">End Analysis Anyway</string>
+    <string name="finish">Finish</string>
+    <string name="please_select_correct_file">Please select the right .pcap file</string>
 
 </resources>

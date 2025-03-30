@@ -251,18 +251,26 @@ class MainActivity : ComponentActivity() {
         openPcapFileLauncher =
             registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
                 if (uri != null) {
+                    //user selected from file picker the right .pcap file
                     Log.i(TAG, "User selected file URI: $uri")
-                    // Launch a coroutine to handle the suspend function
+
+                    if (DocumentFile.fromSingleUri(this, uri)?.name == "captive_portal_analyzer.pcap") {
+                        // Launch a coroutine to handle the suspend function
                     lifecycleScope.launch {
                         val copiedUri = processSelectedPcapFile(uri)
                         if (copiedUri != null) {
                             // the .pcap file from PCAPdroid is copied to our app storage
                             mainViewModel.setCopiedPcapFileUri(copiedUri) // Treat as done with file ready state
+                            mainViewModel.updateCaptureState(MainViewModel.CaptureState.FILE_READY)
                             Log.i(TAG, "File successfully copied to: $copiedUri")
                             // Handle the copied URI as needed
                         } else {
                             Log.w(TAG, "File copy operation failed")
                         }
+                    }
+                    }else{
+                        // user picked a wrong file from the explorer
+                        mainViewModel.updateCaptureState(MainViewModel.CaptureState.WRONG_FILE_PICKED)
                     }
                 } else {
                     Log.w(TAG, "User cancelled file selection.")

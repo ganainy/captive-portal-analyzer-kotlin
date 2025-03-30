@@ -15,13 +15,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.R
+import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 
 /**
@@ -31,20 +31,12 @@ import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EndAnalysisStepComponent(
-    onNavigateToSessionList: () -> Unit,
     modifier: Modifier = Modifier,
-    onStopAnalysis: () -> Unit,
+    onStopAnalysis: () -> Unit, //checks if analysis is actually completed
+    onForceStopAnalysis: () -> Unit, //force end the analysis even if not completed
     analysisStatus: AnalysisStatus,
-    isEndAnalysisEnabled: Boolean = true,
     updateSelectedTabIndex: (Int) -> Unit
 ) {
-
-    // This is used to navigate to the session list screen when the analysis is completed
-    LaunchedEffect(key1 = analysisStatus) {
-        if (analysisStatus == AnalysisStatus.Completed) {
-            onNavigateToSessionList()
-        }
-    }
 
     Column {
         if (analysisStatus == AnalysisStatus.NotCompleted) {
@@ -87,41 +79,43 @@ fun EndAnalysisStepComponent(
 
             Spacer(modifier = Modifier.size(8.dp))
 
-            // End analysis Button
-            RoundCornerButton(
+            // End analysis Button, shown initially before checking if analysis is completed
+            if (analysisStatus == AnalysisStatus.Initial) {
+                RoundCornerButton(
+                    modifier = Modifier
+                        .padding(end = 8.dp),
+                    onClick = {
+                        onStopAnalysis()
+                    },
+                    buttonText = stringResource(R.string.end_analysis),
+                )
+            }
+
+            Spacer(modifier = Modifier.size(8.dp))
+            // End analysis Anyway Button (shows when analysis is not completed)
+            if (analysisStatus == AnalysisStatus.NotCompleted) {
+            GhostButton(
                 modifier = Modifier
-                    .padding(end = 8.dp),
+                    .padding(horizontal =  16.dp, vertical = 8.dp).fillMaxWidth(),
                 onClick = {
-                    onStopAnalysis()
+                    onForceStopAnalysis()
+                    //onNavigateToSessionList()
                 },
-                buttonText = stringResource(R.string.end_analysis),
-                enabled = isEndAnalysisEnabled
+                text = stringResource(R.string.end_analysis_anyway),
             )
+        }
         }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun PreviewEndAnalysisStep_BeforeCheck_PreviousStepsNotYetCompleted() {
+fun PreviewEndAnalysisStep_BeforeCheck() {
     EndAnalysisStepComponent(
-        onNavigateToSessionList = {},
         onStopAnalysis = {},
         analysisStatus = AnalysisStatus.Initial,
-        isEndAnalysisEnabled = false,
         updateSelectedTabIndex = {},
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewEndAnalysisStep_BeforeCheck_PreviousStepsCompleted() {
-    EndAnalysisStepComponent(
-        onNavigateToSessionList = {},
-        onStopAnalysis = {},
-        analysisStatus = AnalysisStatus.Initial,
-        isEndAnalysisEnabled = true,
-        updateSelectedTabIndex = {},
+        onForceStopAnalysis = {},
     )
 }
 
@@ -129,11 +123,10 @@ fun PreviewEndAnalysisStep_BeforeCheck_PreviousStepsCompleted() {
 @Composable
 fun PreviewEndAnalysisStep_AnalysisComplete() {
     EndAnalysisStepComponent(
-        onNavigateToSessionList = {},
         onStopAnalysis = {},
         analysisStatus = AnalysisStatus.Completed,
-        isEndAnalysisEnabled = true,
         updateSelectedTabIndex = {},
+        onForceStopAnalysis = {},
     )
 }
 
@@ -141,10 +134,9 @@ fun PreviewEndAnalysisStep_AnalysisComplete() {
 @Composable
 fun PreviewEndAnalysisStep_AnalysisNotComplete() {
     EndAnalysisStepComponent(
-        onNavigateToSessionList = {},
         onStopAnalysis = {},
         analysisStatus = AnalysisStatus.NotCompleted,
-        isEndAnalysisEnabled = true,
         updateSelectedTabIndex = {},
+        onForceStopAnalysis = {},
     )
 }

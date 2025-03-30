@@ -135,6 +135,7 @@ interface WebViewActions {
     fun updateShowedHint(showed: Boolean)
     fun stopAnalysis()
     fun switchWebViewType(showToast: (String, ToastStyle) -> Unit)
+    fun forceStopAnalysis()
 }
 
 interface CaptureActions {
@@ -208,6 +209,9 @@ fun AnalysisScreen(
 
         override fun stopAnalysis() =
             analysisViewModel.stopAnalysis()
+
+        override fun forceStopAnalysis() =
+            analysisViewModel.forceStopAnalysis()
 
         override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) =
             analysisViewModel.switchWebViewType(showToast)
@@ -973,6 +977,9 @@ private fun AnalysisScreenContentPreview_Success() {
             override fun updateShowedHint(showed: Boolean) {}
             override fun stopAnalysis() {}
             override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
+            override fun forceStopAnalysis() {
+
+            }
         }
 
         val captureActions = object : CaptureActions {
@@ -1046,6 +1053,9 @@ private fun AnalysisScreenContentPreview_Error() {
             override fun updateShowedHint(showed: Boolean) {}
             override fun stopAnalysis() {}
             override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
+            override fun forceStopAnalysis() {
+
+            }
         }
 
         val captureActions = object : CaptureActions {

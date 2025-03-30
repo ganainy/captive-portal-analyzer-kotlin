@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -138,12 +139,11 @@ private fun PacketCaptureDisabledContent(
         )
 
             EndAnalysisStepComponent(
-                onNavigateToSessionList = analysisCallbacks.navigateToSessionList,
                 modifier = Modifier.padding(16.dp),
                 onStopAnalysis = webViewActions::stopAnalysis,
                 analysisStatus = analysisStatus,
-                isEndAnalysisEnabled = false,
-                updateSelectedTabIndex = updateSelectedTabIndex
+                updateSelectedTabIndex = updateSelectedTabIndex,
+                onForceStopAnalysis = webViewActions::forceStopAnalysis
             )
     }
 }
@@ -173,36 +173,68 @@ private fun PacketCaptureEnabledContent(
             .verticalScroll(rememberScrollState()), // Enable scrolling if content overflows
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Step 1: Stop Capture
-        if (captureState == MainViewModel.CaptureState.FILE_READY) {
+
+        // Step 1: End Analysis
+        if (analysisStatus == AnalysisStatus.Completed) {
             CompletedOverlay(
             ) {
-                Step1Content(
+                StepOneContent(
+                    context = context,
+                    webViewActions = webViewActions,
+                    analysisCallbacks = analysisCallbacks,
                     captureState = captureState,
-                    onStartCapture = onStartCapture,
-                    onStopCapture = onStopCapture,
-                    onStatusCheck = onStatusCheck,
-                    statusMessage = statusMessage
+                    analysisStatus = analysisStatus,
+                    updateSelectedTabIndex = updateSelectedTabIndex
                 )
             }
         } else {
             InProgressOverlay(
             ) {
-                Step1Content(
+                StepOneContent(
+                    context = context,
+                    webViewActions = webViewActions,
+                    analysisCallbacks = analysisCallbacks,
                     captureState = captureState,
-                    onStartCapture = onStartCapture,
-                    onStopCapture = onStopCapture,
-                    onStatusCheck = onStatusCheck,
-                    statusMessage = statusMessage
+                    analysisStatus = analysisStatus,
+                    updateSelectedTabIndex = updateSelectedTabIndex
                 )
             }
         }
 
-        // Step 2: Select and Copy PCAP File
-        if (copiedPcapFileUri != null) {
+        // Step 2: Stop Capture
+        if (captureState == MainViewModel.CaptureState.FILE_READY
+            || captureState == MainViewModel.CaptureState.WRONG_FILE_PICKED //this is a step3 error but should affect step2 being completed
+            ) {
             CompletedOverlay(
             ) {
-                Step2Content(
+                StepTwoContent(
+                    captureState = captureState,
+                    onStartCapture = onStartCapture,
+                    onStopCapture = onStopCapture,
+                    onStatusCheck = onStatusCheck,
+                    statusMessage = statusMessage,
+                    analysisStatus = analysisStatus,
+                )
+            }
+        } else {
+            InProgressOverlay(
+            ) {
+                StepTwoContent(
+                    captureState = captureState,
+                    onStartCapture = onStartCapture,
+                    onStopCapture = onStopCapture,
+                    onStatusCheck = onStatusCheck,
+                    statusMessage = statusMessage,
+                    analysisStatus = analysisStatus
+                )
+            }
+        }
+
+        // Step 3: Select and Copy PCAP File
+        if (copiedPcapFileUri != null ) {
+            CompletedOverlay(
+            ) {
+                StepThreeContent(
                     captureState = captureState,
                     onOpenFile = onOpenFile,
                     statusMessage = statusMessage,
@@ -213,7 +245,7 @@ private fun PacketCaptureEnabledContent(
         } else {
             InProgressOverlay(
             ) {
-                Step2Content(
+                StepThreeContent(
                     captureState = captureState,
                     onOpenFile = onOpenFile,
                     statusMessage = statusMessage,
@@ -223,36 +255,39 @@ private fun PacketCaptureEnabledContent(
             }
         }
 
-        // Step 3: End Analysis
-        InProgressOverlay(
-        ) {
-            Step3Content(
-                context = context,
-                webViewActions = webViewActions,
-                analysisCallbacks = analysisCallbacks,
-                captureState = captureState,
-                copiedPcapFileUri = copiedPcapFileUri,
-                analysisStatus = analysisStatus,
-                updateSelectedTabIndex = updateSelectedTabIndex
-            )
-        }
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Step 4 Content (Finish Button)
+        val isFinishButtonEnabled = captureState == MainViewModel.CaptureState.FILE_READY &&
+                copiedPcapFileUri != null && analysisStatus == AnalysisStatus.Completed
+
+        RoundCornerButton(
+            modifier = modifier,
+            onClick = { analysisCallbacks.navigateToSessionList() },
+            buttonText = stringResource(R.string.finish),
+            trailingIcon =  painterResource(id = R.drawable.sports_score_24px) ,
+            enabled =isFinishButtonEnabled,
+            isLoading = captureState in listOf(MainViewModel.CaptureState.STARTING, MainViewModel.CaptureState.STOPPING)
+        )
+
     }
 }
 
-// Step 1 Content
+// Step 2 Content
 @Composable
-private fun Step1Content(
+private fun StepTwoContent(
     captureState: MainViewModel.CaptureState,
     onStartCapture: () -> Unit,
     onStopCapture: () -> Unit,
     onStatusCheck: () -> Unit,
-    statusMessage: String
+    statusMessage: String,
+    analysisStatus: AnalysisStatus
 ) {
     Column(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(text = stringResource(R.string.step_1), style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(R.string.step_2), style = MaterialTheme.typography.titleLarge)
 
         Text(
             text = stringResource(R.string.please_stop_packet_capture_after_finishing_interacting_with_the_webview),
@@ -303,13 +338,14 @@ private fun Step1Content(
             onStartCapture = onStartCapture,
             onStopCapture = onStopCapture,
             onStatusCheck = onStatusCheck,
+            isWebViewAnalysisCompleted = analysisStatus == AnalysisStatus.Completed
         )
     }
 }
 
-// Step 2 Content
+// Step 3 Content
 @Composable
-private fun Step2Content(
+private fun StepThreeContent(
     captureState: MainViewModel.CaptureState,
     onOpenFile: FileOpener,
     statusMessage: String,
@@ -320,8 +356,9 @@ private fun Step2Content(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(stringResource(R.string.step_2), style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.step_3), style = MaterialTheme.typography.titleLarge)
 
+        // what to do description
         Text(
             text = stringResource(
                 R.string.please_press_open_file_and_select_this_file,
@@ -331,6 +368,15 @@ private fun Step2Content(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 4.dp)
         )
+        // error text if user select wrong file
+        if (captureState == MainViewModel.CaptureState.WRONG_FILE_PICKED) {
+            Text(
+                text = stringResource(R.string.please_select_correct_file),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
 
         RoundCornerButton(
             modifier = Modifier
@@ -342,7 +388,8 @@ private fun Step2Content(
             },
             buttonText = stringResource(R.string.open_file),
             trailingIcon = painterResource(id = R.drawable.folder_open_24px),
-            enabled = captureState == MainViewModel.CaptureState.FILE_READY
+            enabled = captureState == MainViewModel.CaptureState.FILE_READY ||
+                    captureState == MainViewModel.CaptureState.WRONG_FILE_PICKED, // keep button enabled if wrong file is picked to allow user to select another file
         )
 
 
@@ -356,14 +403,13 @@ private fun Step2Content(
     }
 }
 
-// Step 3 Content
+// Step 1 Content
 @Composable
-private fun Step3Content(
+private fun StepOneContent(
     context: Context,
     webViewActions: WebViewActions,
     analysisCallbacks: AnalysisCallbacks,
     captureState: MainViewModel.CaptureState,
-    copiedPcapFileUri: Uri?,
     analysisStatus: AnalysisStatus,
     updateSelectedTabIndex: (Int) -> Unit
 ) {
@@ -371,7 +417,7 @@ private fun Step3Content(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(text = stringResource(R.string.step_3), style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(R.string.step_1), style = MaterialTheme.typography.titleLarge)
         Text(
             text = stringResource(R.string.end_analysis_and_save_results),
             style = MaterialTheme.typography.bodyMedium,
@@ -380,16 +426,19 @@ private fun Step3Content(
         )
 
         EndAnalysisStepComponent(
-            onNavigateToSessionList = analysisCallbacks.navigateToSessionList,
             modifier = Modifier.padding(16.dp),
             onStopAnalysis = webViewActions::stopAnalysis,
             analysisStatus = analysisStatus,
-            isEndAnalysisEnabled = captureState == MainViewModel.CaptureState.FILE_READY && copiedPcapFileUri != null,
-            updateSelectedTabIndex = updateSelectedTabIndex
+            updateSelectedTabIndex = updateSelectedTabIndex,
+            onForceStopAnalysis = webViewActions::forceStopAnalysis,
         )
 
     }
 }
+
+
+
+
 
 
 @Composable
@@ -399,7 +448,7 @@ private fun StatusBadge(captureState: MainViewModel.CaptureState) {
         MainViewModel.CaptureState.STARTING, MainViewModel.CaptureState.STOPPING -> Color.Blue to Color.Blue.copy(alpha = 0.1f)
         MainViewModel.CaptureState.RUNNING -> Color.Green to Color.Green.copy(alpha = 0.1f)
         MainViewModel.CaptureState.FILE_READY -> Color.Green to Color.Green.copy(alpha = 0.1f)
-        MainViewModel.CaptureState.ERROR -> Color.Red to Color.Red.copy(alpha = 0.1f)
+        MainViewModel.CaptureState.WRONG_FILE_PICKED -> Color.Red to Color.Red.copy(alpha = 0.1f)
         else -> MaterialTheme.colorScheme.onSurfaceVariant to MaterialTheme.colorScheme.surfaceVariant
     }
 
@@ -423,7 +472,8 @@ private fun ControlButton(
     onStartCapture: () -> Unit,
     onStopCapture: () -> Unit,
     onStatusCheck: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isWebViewAnalysisCompleted: Boolean
 ) {
     val (icon, label, onClick, isEnabled) = when (captureState) {
         MainViewModel.CaptureState.RUNNING ->
@@ -441,7 +491,7 @@ private fun ControlButton(
         onClick = { if (isEnabled) onClick() },
         buttonText = label,
         trailingIcon = icon?.let { painterResource(id = it) },
-        enabled = isEnabled,
+        enabled = isEnabled && isWebViewAnalysisCompleted,
         isLoading = captureState in listOf(MainViewModel.CaptureState.STARTING, MainViewModel.CaptureState.STOPPING)
     )
 }
@@ -489,6 +539,9 @@ private fun PacketCaptureTabPreview_Idle() {
         override fun updateShowedHint(showed: Boolean) {}
         override fun stopAnalysis() {}
         override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
+        override fun forceStopAnalysis() {
+
+        }
     }
 
     AppTheme {
@@ -545,6 +598,9 @@ private fun PacketCaptureTabPreview_Disabled() {
         override fun updateShowedHint(showed: Boolean) {}
         override fun stopAnalysis() {}
         override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
+        override fun forceStopAnalysis() {
+
+        }
     }
 
     AppTheme {
@@ -601,6 +657,9 @@ private fun PacketCaptureTabPreview_Completed() {
         override fun updateShowedHint(showed: Boolean) {}
         override fun stopAnalysis() {}
         override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
+        override fun forceStopAnalysis() {
+
+        }
     }
 
     AppTheme {

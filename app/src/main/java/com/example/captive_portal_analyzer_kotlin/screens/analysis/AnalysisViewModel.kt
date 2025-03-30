@@ -625,6 +625,19 @@ class AnalysisViewModel(
 
     }
 
+    //end analysis even if not completed
+    fun forceStopAnalysis() {
+        _uiState.value = AnalysisUiState.Loading(R.string.processing_request)
+        viewModelScope.launch(Dispatchers.IO) {
+                withContext(Dispatchers.Main) {
+                    _uiState.value = AnalysisUiState.AnalysisComplete
+                    _uiData.update { it.copy(analysisStatus = AnalysisStatus.Completed) }
+                }
+            // Add the .pcap file path to the session object
+            storePcapFilePathInTheSession()
+        }
+    }
+
     private suspend fun storePcapFilePathInTheSession() {
         try {
             sessionManager.getCurrentSessionId()?.let { sessionId ->

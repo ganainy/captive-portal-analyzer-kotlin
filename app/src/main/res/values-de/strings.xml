@@ -267,4 +267,8 @@
   <string name="error_saving_pcap_to_session">Fehler beim Speichern des .pcap-Dateipfads in der Sitzung</string>
 <string name="no_need_to_open_pcapdroid">Es ist nicht mehr nötig, die PCAPDroid-App zu öffnen, ab jetzt steuern wir sie direkt über unsere App</string>
 
+   <string name="end_analysis_anyway">Analyse trotzdem beenden</string>
+<string name="finish">Fertig</string>
+<string name="please_select_correct_file">Bitte wählen Sie die richtige .pcap-Datei aus</string>
+
 </resources>
