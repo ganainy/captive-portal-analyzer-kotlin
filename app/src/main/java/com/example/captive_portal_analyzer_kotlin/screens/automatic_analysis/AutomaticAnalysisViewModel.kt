@@ -10,16 +10,15 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.captive_portal_analyzer_kotlin.BuildConfig
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionDataDTO
 import com.example.captive_portal_analyzer_kotlin.dataclasses.toSessionDataDTO
-import com.example.captive_portal_analyzer_kotlin.secret.Secret
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
 import com.google.ai.client.generativeai.type.generationConfig
 import kotlinx.coroutines.Dispatchers
-
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -221,7 +220,7 @@ class AutomaticAnalysisViewModelFactory(
             }
             val generativeModel = GenerativeModel(
                 modelName = "gemini-1.5-flash-latest", // Specifies the name of the generative model to be used for analysis
-                apiKey = Secret.apiKey,//apiKey to authenticate requests //todo replace with BuildConfig.apiKey
+                apiKey = BuildConfig.API_KEY_RELEASE,//apiKey to authenticate requests
                 generationConfig = config // Applies the configuration settings for generation
             )
             @Suppress("UNCHECKED_CAST")

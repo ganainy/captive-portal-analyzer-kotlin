@@ -47,13 +47,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.captive_portal_analyzer_kotlin.BuildConfig
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.StatusTextWithIcon
-import com.example.captive_portal_analyzer_kotlin.secret.Secret
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 
 /**
@@ -72,7 +72,7 @@ fun ManualConnectScreen(
 
     LaunchedEffect(Unit) {
         //ignore this screen in debug mode
-        if (Secret.isAppInDebugMode){
+        if (BuildConfig.IS_APP_IN_DEBUG_MODE){
             navigateToAnalysis()
         }
     }

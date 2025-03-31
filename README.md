@@ -86,9 +86,11 @@ For detailed information about the project files structure and architecture, see
 
    a. **Gemini AI API Key:**
     - Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-    - Add your Gemini AI API key to `local.properties` file in the project root 
+    - Create secrets.properties in the root directory of the project
+   (the same level where local.properties and local.defaults.properties are located)
+    - Add your Gemini AI API key to `secrets.properties` as follows:
       ```properties
-      apiKey=your_api_key_here
+      API_KEY_RELEASE="your_api_key_here"
       ```
 
    b. **Firebase Setup:**

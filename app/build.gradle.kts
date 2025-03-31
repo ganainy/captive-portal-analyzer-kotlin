@@ -1,3 +1,13 @@
+import com.android.build.api.dsl.BuildType
+
+// Helper function to make adding buildConfigFields cleaner
+fun BuildType.buildConfigStringField(name: String, value: String) {
+    buildConfigField("String", name, "\"$value\"")
+}
+
+fun BuildType.buildConfigBooleanField(name: String, value: Boolean) {
+    buildConfigField("Boolean", name, value.toString())
+}
 
 plugins {
     alias(libs.plugins.android.application)
@@ -22,18 +32,37 @@ android {
     }
 
     buildTypes {
-        release {
+        getByName("debug") {
+            // Define values specific to the 'debug' build type
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            // Add your debug-specific flag
+            buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", true)
         }
-        debug {
-            isDebuggable = true
-            versionNameSuffix = "-beta"
+        getByName("release") {
+            // Define values specific to the 'release' build type
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+
+            // Add your release-specific flag
+            buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", false)
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    secrets {
+        propertiesFileName = "secrets.properties"
+        defaultPropertiesFileName = "local.defaults.properties"
+    }
+
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

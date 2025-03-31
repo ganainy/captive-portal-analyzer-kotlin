@@ -70,6 +70,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.acsbendi.requestinspectorwebview.RequestInspectorWebViewClient
 import com.acsbendi.requestinspectorwebview.WebViewRequest
+import com.example.captive_portal_analyzer_kotlin.BuildConfig
 import com.example.captive_portal_analyzer_kotlin.MainViewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
@@ -80,7 +81,6 @@ import com.example.captive_portal_analyzer_kotlin.components.MockWebView
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
-import com.example.captive_portal_analyzer_kotlin.secret.Secret
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import kotlinx.coroutines.CoroutineScope
@@ -154,7 +154,7 @@ fun AnalysisScreen(
 ) {
 
     // for testing purposes only, set packet capture to always be on
-    if (Secret.isAppInDebugMode) {
+    if (BuildConfig.IS_APP_IN_DEBUG_MODE) {
         screenConfig.mainViewModel.updateIsPacketCaptureEnabled(true)
     }
 
@@ -303,7 +303,7 @@ private fun AnalysisScreenContent(
             when (selectedTabIndex) {
                 0 -> Box(modifier = Modifier.fillMaxSize()) {
                     val effectiveUiState =
-                        if (Secret.isAppInDebugMode) AnalysisUiState.CaptiveUrlDetected else uiState
+                        if (BuildConfig.IS_APP_IN_DEBUG_MODE) AnalysisUiState.CaptiveUrlDetected else uiState
                     when (effectiveUiState) {
                         is AnalysisUiState.Loading -> LoadingIndicator(
                             message = stringResource((uiState as AnalysisUiState.Loading).messageStringResource),
@@ -533,7 +533,7 @@ private fun WebViewInteractionContent(
     setSelectTabIndex: (Int) -> Unit
 ) {
     val effectiveWebViewType =
-        if (Secret.isAppInDebugMode) WebViewType.TestingWebView else config.webViewType
+        if (BuildConfig.IS_APP_IN_DEBUG_MODE) WebViewType.TestingWebView else config.webViewType
 
     Column(modifier = Modifier.fillMaxSize()) {
         HintTextWithIcon(
@@ -673,7 +673,7 @@ fun TestingWebView() {
             }
         })
 
-        if (Secret.isAppInDebugMode) {
+        if (BuildConfig.IS_APP_IN_DEBUG_MODE) {
             Text(
                 text = "DEBUG MODE: Testing WebView Active",
                 color = Color.Red,
