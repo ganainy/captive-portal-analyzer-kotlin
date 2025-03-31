@@ -72,6 +72,7 @@ import com.acsbendi.requestinspectorwebview.RequestInspectorWebViewClient
 import com.acsbendi.requestinspectorwebview.WebViewRequest
 import com.example.captive_portal_analyzer_kotlin.BuildConfig
 import com.example.captive_portal_analyzer_kotlin.MainViewModel
+import com.example.captive_portal_analyzer_kotlin.PcapDroidPacketCaptureStatus
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
@@ -155,7 +156,7 @@ fun AnalysisScreen(
 
     // for testing purposes only, set packet capture to always be on
     if (BuildConfig.IS_APP_IN_DEBUG_MODE) {
-        screenConfig.mainViewModel.updateIsPacketCaptureEnabled(true)
+        screenConfig.mainViewModel.updatePcapDroidPacketCaptureStatus(PcapDroidPacketCaptureStatus.ENABLED)
     }
 
     val captureState by screenConfig.mainViewModel.captureState.collectAsStateWithLifecycle()
@@ -163,7 +164,7 @@ fun AnalysisScreen(
     val targetPcapName by screenConfig.mainViewModel.targetPcapName.collectAsStateWithLifecycle()
     val copiedPcapFileUri by screenConfig.mainViewModel.copiedPcapFileUri.collectAsStateWithLifecycle()
     val selectedTabIndex by screenConfig.mainViewModel.selectedTabIndex.collectAsStateWithLifecycle()
-    val isPacketCaptureEnabled by screenConfig.mainViewModel.isPacketCaptureEnabled.collectAsStateWithLifecycle()
+    val pcapDroidPacketCaptureStatus by screenConfig.mainViewModel.pcapDroidPacketCaptureStatus.collectAsStateWithLifecycle()
 
 
     val analysisViewModel: AnalysisViewModel = viewModel(
@@ -249,11 +250,15 @@ fun AnalysisScreen(
         },
         selectedTabIndex = selectedTabIndex,
         updateSelectedTabIndex = screenConfig.mainViewModel::setSelectedTabIndex,
-        updateIsPacketCaptureEnabled = { isEnabled ->
-            screenConfig.mainViewModel.updateIsPacketCaptureEnabled(isEnabled)
+        updatePcapDroidPacketCaptureStatus = { pcapDroidPacketCaptureStatus ->
+            screenConfig.mainViewModel.updatePcapDroidPacketCaptureStatus(pcapDroidPacketCaptureStatus)
         },
-        isPacketCaptureEnabled = isPacketCaptureEnabled,
-        analysisStatus = analysisStatus
+        pcapDroidPacketCaptureStatus = pcapDroidPacketCaptureStatus,
+        analysisStatus = analysisStatus,
+        storePcapFileToSession =
+            analysisViewModel::storePcapFilePathInTheSession
+
+
     )
 }
 
@@ -270,7 +275,7 @@ private fun AnalysisScreenContent(
     onOpenFile: FileOpener,
     copiedPcapFileUri: Uri?,
     selectedTabIndex: Int,
-    isPacketCaptureEnabled: Boolean,
+    pcapDroidPacketCaptureStatus: PcapDroidPacketCaptureStatus,
     onNavigateToManualConnect: () -> Unit,
     getCaptivePortalAddress: () -> Unit,
     onStartCapture: () -> Unit,
@@ -278,8 +283,9 @@ private fun AnalysisScreenContent(
     onStatusCheck: () -> Unit,
     updateSelectedTabIndex: (Int) -> Unit,
     onNavigateToSetupPCAPDroid: () -> Unit,
-    updateIsPacketCaptureEnabled: (Boolean) -> Unit,
+    updatePcapDroidPacketCaptureStatus: (PcapDroidPacketCaptureStatus) -> Unit,
     analysisStatus: AnalysisStatus,
+    storePcapFileToSession:  () -> Unit,
 ) {
 
     val tabTitles = listOf("WebView", "Packet Capture")
@@ -342,8 +348,8 @@ private fun AnalysisScreenContent(
                             onStartCapture = onStartCapture,
                             getCaptivePortalAddress = getCaptivePortalAddress,
                             onNavigateToSetupPCAPDroid = onNavigateToSetupPCAPDroid,
-                            updateIsPacketCaptureEnabled = { isEnabled ->
-                                updateIsPacketCaptureEnabled(isEnabled)
+                            updatePcapDroidPacketCaptureStatus = { pcapDroidPacketCaptureStatus ->
+                                updatePcapDroidPacketCaptureStatus(pcapDroidPacketCaptureStatus)
                             }
                         )
                     }
@@ -361,9 +367,10 @@ private fun AnalysisScreenContent(
                     analysisCallbacks = analysisCallbacks,
                     copiedPcapFileUri = copiedPcapFileUri,
                     targetPcapName = targetPcapName,
-                    isPacketCaptureEnabled = isPacketCaptureEnabled,
+                    pcapDroidPacketCaptureStatus = pcapDroidPacketCaptureStatus,
                     analysisStatus = analysisStatus,
                     updateSelectedTabIndex = updateSelectedTabIndex,
+                    storePcapFileToSession = storePcapFileToSession
                 )
             }
         }
@@ -377,7 +384,7 @@ fun PreferenceSetupContent(
     onStartCapture: () -> Unit,
     getCaptivePortalAddress: () -> Unit,
     onNavigateToSetupPCAPDroid: () -> Unit,
-    updateIsPacketCaptureEnabled: (Boolean) -> Unit
+    updatePcapDroidPacketCaptureStatus: (PcapDroidPacketCaptureStatus) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -446,7 +453,7 @@ fun PreferenceSetupContent(
                 onClick = {
                     if (captureState == MainViewModel.CaptureState.IDLE) {
                         onStartCapture()
-                        updateIsPacketCaptureEnabled(true)
+                        updatePcapDroidPacketCaptureStatus(PcapDroidPacketCaptureStatus.ENABLED)
                     }
                 },
                 buttonText = stringResource(R.string.continue_with_packet_capture),
@@ -457,7 +464,7 @@ fun PreferenceSetupContent(
 
             GhostButton(
                 onClick = { getCaptivePortalAddress()
-                    updateIsPacketCaptureEnabled(false)
+                    updatePcapDroidPacketCaptureStatus(PcapDroidPacketCaptureStatus.DISABLED)
 
                           },
                 text = stringResource(R.string.continue_without_packet_capture),
@@ -1006,7 +1013,7 @@ private fun AnalysisScreenContentPreview_Success() {
             onOpenFile = {},
             copiedPcapFileUri = null,
             selectedTabIndex = 0,
-            isPacketCaptureEnabled = true,
+            pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.ENABLED,
             onNavigateToManualConnect = {},
             getCaptivePortalAddress = {},
             onStartCapture = {},
@@ -1014,8 +1021,9 @@ private fun AnalysisScreenContentPreview_Success() {
             onStatusCheck = {},
             updateSelectedTabIndex = {},
             onNavigateToSetupPCAPDroid = {},
-            updateIsPacketCaptureEnabled = {},
-            analysisStatus = AnalysisStatus.NotCompleted,
+            updatePcapDroidPacketCaptureStatus = {},
+            analysisStatus = AnalysisStatus.NOT_COMPLETED,
+            storePcapFileToSession =  {},
         )
     }
 }
@@ -1082,7 +1090,7 @@ private fun AnalysisScreenContentPreview_Error() {
             onOpenFile = {},
             copiedPcapFileUri = null,
             selectedTabIndex = 0,
-            isPacketCaptureEnabled = true,
+            pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.ENABLED,
             onNavigateToManualConnect = {},
             getCaptivePortalAddress = {},
             onStartCapture = {},
@@ -1090,8 +1098,9 @@ private fun AnalysisScreenContentPreview_Error() {
             onStatusCheck = {},
             updateSelectedTabIndex = {},
             onNavigateToSetupPCAPDroid = {},
-            updateIsPacketCaptureEnabled = {},
-            analysisStatus = AnalysisStatus.NotCompleted,
+            updatePcapDroidPacketCaptureStatus = {},
+            analysisStatus = AnalysisStatus.NOT_COMPLETED,
+            storePcapFileToSession = {},
         )
     }
 }
@@ -1111,7 +1120,7 @@ private fun PreferenceSetupContentPreview() {
             onStartCapture = {},
             getCaptivePortalAddress = {},
             onNavigateToSetupPCAPDroid = {},
-            updateIsPacketCaptureEnabled = {},
+            updatePcapDroidPacketCaptureStatus = {},
         )
     }
 }

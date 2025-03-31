@@ -33,29 +33,42 @@ android {
 
     buildTypes {
         getByName("debug") {
-            // Define values specific to the 'debug' build type
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-
-            // Add your debug-specific flag
-            buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", true)
+            buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", false)
         }
+
         getByName("release") {
-            // Define values specific to the 'release' build type
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-
-            // Add your release-specific flag
             buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", false)
+
             signingConfig = signingConfigs.getByName("debug")
         }
+
+        // ---  custom build type here for testing purposes ---
+        create("stagingDebug") {
+            //Inherit from debug and override
+            initWith(buildTypes.getByName("debug"))
+
+            // Override or add specific flags
+            buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", true) // Still a debug mode variant
+
+            // Optional: Add a suffix to the application ID to install side-by-side
+            applicationIdSuffix = ".staging"
+
+            // Optional: Add a suffix to the version name for clarity
+            versionNameSuffix = "-staging"
+
+        }
     }
+
 
     secrets {
         propertiesFileName = "secrets.properties"

@@ -3,6 +3,9 @@ package com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis
 import NetworkSessionRepository
 import android.app.Application
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,9 +21,13 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -28,6 +35,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -129,57 +139,85 @@ fun AutomaticAnalysisContent(
     analyzeWithAI: () -> Unit,
     isLoading: Boolean
 ) {
+    // State to control whether the input section is expanded or collapsed
+    var isInputExpanded by remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
     ) {
-
-        OutlinedTextField(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            value = inputText,
-            onValueChange = { onUpdateInputText(it) },
-            label = { Text(stringResource(R.string.custom_prompt)) },
-            singleLine = false,
-            maxLines = 5
-        )
-        FlowRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        // Collapsible input section
+        AnimatedVisibility(
+            visible = isInputExpanded,
+            enter = expandVertically(),
+            exit = shrinkVertically()
         ) {
-            // Button to start analysis with AI
-            RoundCornerButton(
-                onClick = analyzeWithAI,
-                buttonText = stringResource(R.string.analyze_captive_portal_with_ai),
-                enabled = !isLoading,
-                isLoading = isLoading,
-                fillWidth = false,
-            )
-            GhostButton(
-                onClick = { onUpdateInputText("") },
-                text = stringResource(R.string.clear_prompt),
-                enabled = inputText.isNotEmpty()
+            Column {
+                OutlinedTextField(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    value = inputText,
+                    onValueChange = { onUpdateInputText(it) },
+                    label = { Text(stringResource(R.string.custom_prompt)) },
+                    singleLine = false,
+                    maxLines = 5
+                )
+
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    RoundCornerButton(
+                        onClick = {
+                            analyzeWithAI()
+                            isInputExpanded = false // Collapse when analyze is clicked
+                        },
+                        buttonText = stringResource(R.string.analyze_captive_portal_with_ai),
+                        enabled = !isLoading,
+                        isLoading = isLoading,
+                        fillWidth = false,
+                    )
+                    GhostButton(
+                        onClick = { onUpdateInputText("") },
+                        text = stringResource(R.string.clear_prompt),
+                        enabled = inputText.isNotEmpty(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    )
+                }
+            }
+        }
+
+        // Toggle icon to expand or collapse the top section with the edittext and two buttons to make more space for result
+        IconButton(
+            onClick = { isInputExpanded = !isInputExpanded },
+            modifier = Modifier
+                .align(Alignment.End)
+                .padding(top = 8.dp)
+        ) {
+            Icon(
+                imageVector = if (isInputExpanded) Icons.Default.KeyboardArrowUp
+                else Icons.Default.KeyboardArrowDown,
+                contentDescription = if (isInputExpanded) "Collapse" else "Expand"
             )
         }
 
+        // Analysis result content
         if (automaticAnalysisUiState.isLoading) {
-            // Display a loading indicator if the analysis is in progress
             LoadingIndicator(message = stringResource(R.string.uploading_information_to_be_analyzed))
         } else if (automaticAnalysisUiState.error != null) {
-            // Display error component if there is an error
             ErrorComponent(
                 error = automaticAnalysisUiState.error,
                 icon = ErrorIcon.ResourceIcon(R.drawable.robot),
                 onRetryClick = onRetryClick
             )
         } else if (automaticAnalysisUiState.outputText.isNullOrEmpty()) {
-            // Display a hint text if no result is available
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -190,16 +228,12 @@ fun AutomaticAnalysisContent(
                     rowAllignment = Alignment.Center
                 )
             }
-        }
-        else {
-            // Display the result if there is a result
+        } else {
             AutomaticAnalysisResult(
                 automaticAnalysisUiState.outputText,
             )
         }
-
     }
-
 }
 
 /**

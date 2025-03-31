@@ -28,7 +28,7 @@
     <string name="back_button_description">Zurück gehen</string>
     <string name="forward_button_description">Vorwärts gehen</string>
     <string name="refresh_button_description">Aktualisieren</string>
-    <string name="about">Über die Anwendung</string>
+    <string name="about">Über die App</string>
     <string name="stop_analysis">Analyse beenden</string>
     <string name="reload">Webseite neu laden</string>
     <string name="about_app_text">Diese App wurde entwickelt, um das Verhalten von Captive Portals zu studieren, ihre Schwachstellen zu analysieren und zu bewerten, ob sie die Privatsphäre der Benutzer respektieren. Sie untersucht auch die Tiefe der Informationen, die sie von Benutzern erfordern.</string>
@@ -55,7 +55,7 @@
     <string name="welcome_to_app">Willkommen beim Captive Portal Analyzer</string>
     <string name="grant_permissions">Berechtigungen erteilen</string>
     <string name="never_show_again">Nie wieder anzeigen</string>
-    <string name="about_screen_title">Über die Anwendung</string>
+    <string name="about_screen_title">Über die App</string>
     <string name="change_detection_method">Erkennungsmodus ändern</string>
     <string name="retry_captive_detection">Versuche, die Captive URL erneut zu erkennen</string>
     <string name="operation_successful">Vorgang erfolgreich</string>
@@ -99,12 +99,13 @@
         <string name="are_you_sure_current_network_has_captive_portal">Sind Sie sicher, dass das aktuelle Netzwerk ein Captive Portal hat?</string>
         <string name="connect_to_another_network">Mit einem anderen Netzwerk verbinden</string>
         <string name="on_login_completed">Bitte melden Sie sich über die App beim Captive Portal an und klicken Sie dann auf die Schaltfläche „Analyse beenden“.</string>
-        <string name="we_wanted_to_create_a_database_of_different_captive_portals_and_which_data_they_collect_from_users_and_what_privacy_rules_they_have_to_help_in_the_research_field_of_privacy_and_security_of_wlan_networks_in_the">„Wir wollten eine Datenbank verschiedener Captive Portals erstellen und herausfinden, welche Daten sie von Benutzern sammeln und welche Datenschutzrichtlinien sie haben, um die Forschung im Bereich Datenschutz und Sicherheit von WLAN-Netzwerken zu unterstützen.“</string>
+        <string name="project_goal_captive_portals_revised">Unser Ziel ist es, eine Datenbank aufzubauen, die verschiedene Captive Portals dokumentiert, einschließlich der Benutzerdaten, die sie sammeln, und deren Datenschutzrichtlinien. Diese Ressource soll die Forschung zu den Herausforderungen im Bereich Datenschutz und Sicherheit in WLAN-Umgebungen unterstützen.</string>
         <string name="_1_connect_to_a_network_with_a_captive_portal">1- Mit einem Netzwerk mit einem Captive Portal verbinden\n</string>
-        <string name="_2_interact_with_as_many_pages_as_possible_within_the_captive_login_site_inside_the_app">2- Mit so vielen Seiten wie möglich innerhalb des Captive Login-Bereichs in der App interagieren\n</string>
-        <string name="_3_view_the_captive_portal_privacy_policy_and_terms_of_service_tos_if_found">3- Die Datenschutzrichtlinie und die Allgemeinen Geschäftsbedingungen (AGB) des Captive Portals einsehen, falls vorhanden\n</string>
-        <string name="_4_complete_login_to_the_captive_portal">4- Den Login beim Captive Portal abschließen\n</string>
-        <string name="_5_review_and_upload_the_session_data_for_more_analysis">5- Die Sitzungsdaten überprüfen und für weitere Analysen hochladen</string>
+  <string name="_2_enable_pcap_droid_packet_capture">2- Folgen Sie den Anweisungen im PCAPDroid Setup-Bildschirm, um die Erfassung von Netzwerkpaketen zu aktivieren\n</string>
+        <string name="_3_interact_with_as_many_pages_as_possible_within_the_captive_login_site_inside_the_app">3- Mit so vielen Seiten wie möglich innerhalb des Captive Login-Bereichs in der App interagieren\n</string>
+        <string name="_4_view_the_captive_portal_privacy_policy_and_terms_of_service_tos_if_found">4- Die Datenschutzrichtlinie und die Allgemeinen Geschäftsbedingungen (AGB) des Captive Portals einsehen, falls vorhanden\n</string>
+        <string name="_5_complete_login_to_the_captive_portal">5- Den Login beim Captive Portal abschließen\n</string>
+        <string name="_6_review_and_upload_the_session_data_for_more_analysis">6- Die Sitzungsdaten überprüfen und für weitere Analysen hochladen</string>
         <string name="after_you_successfully_create_a_session_it_is_only_stored_on_your_device_and_won_t_be_shared_with_us_until_you_review_the_content_and_approve_the_upload_from_the_sessions_page">Nachdem Sie eine Sitzung erfolgreich erstellt haben, wird diese nur auf Ihrem Gerät gespeichert und nicht mit uns geteilt, bis Sie den Inhalt überprüfen und das Hochladen auf der Sitzungsseite genehmigen.</string>
         <string name="what_data_will_i_share_with_you">Welche Daten werde ich mit Ihnen teilen?</string>
         <string name="why_was_this_app_created">Warum wurde diese App erstellt?</string>
@@ -270,5 +271,33 @@
    <string name="end_analysis_anyway">Analyse trotzdem beenden</string>
 <string name="finish">Fertig</string>
 <string name="please_select_correct_file">Bitte wählen Sie die richtige .pcap-Datei aus</string>
+
+<string name="pcap_file">PCAPDroid-Datei: %1$s</string>
+<string name="select_capture_mode">Bitte wählen Sie zuerst den Analysemodus aus.</string>
+<string name="select_capture_mode_description">Kehren Sie zum ersten Tab (WebView) zurück und wählen Sie den Analysemodus, um fortzufahren.</string>
+
+    <!-- Thank You Message -->
+    <string name="thanks_for_uploading_the_data_for_further_manual_review">Vielen Dank für das Hochladen der Daten zur weiteren manuellen Überprüfung.</string>
+
+    <!-- FAQ Questions -->
+    <string name="how_the_app_works">Wie funktioniert die App?</string>
+    <string name="why_the_app_uses_pcapdroid">Warum verwendet die App PCAPDroid?</string> <!-- Using "verwendet" (uses) -->
+    <string name="how_does_the_app_use_customwebview_for_network_analysis">Wie verwendet die App CustomWebView zur Netzwerkanalyse?</string> <!-- Using "verwendet" and "zur" -->
+
+    <!-- CustomWebView Explanation -->
+    <string name="this_app_utilizes_the_customwebview_library_an_advanced_webview_component">"Diese App nutzt die CustomWebView-Bibliothek, eine erweiterte WebView-Komponente. "</string> <!-- Using "nutzt" (utilizes), "erweiterte" (advanced) -->
+    <string name="it_allows_the_app_to_intercept_inspect_and_analyze_the_http_s_network_requests_and_responses_specifically_generated_by_the_web_content_loaded_within_the_app_s_integrated_browser">"Dies ermöglicht es der App, die HTTP/S-Netzwerkanfragen und -antworten abzufangen, zu untersuchen und zu analysieren, die speziell durch die im integrierten Browser der App geladenen Webinhalte generiert werden. "</string> <!-- Using "ermöglicht es" (allows/enables), "untersuchen" (inspect), adjusted structure for German -->
+    <string name="this_capability_is_crucial_for_understanding_the_network_behavior_of_visited_web_pages_directly_within_the_app_learn_more_about_the_library_here">"Diese Funktion ist entscheidend, um das Netzwerkverhalten besuchter Webseiten direkt in der App zu verstehen. Erfahren Sie hier mehr über die Bibliothek: "</string> <!-- Using "Funktion" (capability/feature), "entscheidend" (crucial), formal "Erfahren Sie" (Learn more) -->
+
+    <!-- PCAPdroid Explanation -->
+    <string name="why_does_the_app_use_pcapdroid">Warum verwendet die App PCAPdroid?</string> <!-- Consistent with above -->
+    <string name="to_perform_comprehensive_network_analysis_the_app_needs_to_capture_raw_network_packets">"Um eine umfassende Netzwerkanalyse durchzuführen, muss die App Roh-Netzwerkpakete erfassen. "</string> <!-- "umfassend" (comprehensive), "Roh-Netzwerkpakete" (raw network packets), "erfassen" (capture) -->
+    <string name="it_leverages_functionality_based_on_pcapdroid_which_enables_network_traffic_capture_on_android_devices">"Sie nutzt Funktionalität von PCAPdroid, die die Erfassung von Netzwerkverkehr auf Android-Geräten ermöglicht "</string> <!-- "Sie" (It, referring to the app), "Funktionalität von" (functionality based on), "Erfassung von Netzwerkverkehr" (network traffic capture), "ermöglicht" (enables) -->
+    <string name="pcapdroid_achieves_this_by_utilizing_android_s_vpnservice_api_to_create_a_local_vpn_tunnel_intercepting_network_packets_for_analysis_before_they_leave_the_device">". PCAPdroid erreicht dies durch die Nutzung der VpnService-API von Android, um einen lokalen VPN-Tunnel zu erstellen, der Netzwerkpakete zur Analyse abfängt, bevor sie das Gerät verlassen. "</string> <!-- "erreicht dies durch die Nutzung" (achieves this by utilizing), relative clause for intercepting -->
+    <string name="this_allows_the_app_to_provide_deep_packet_inspection_capabilities_on_standard_non_rooted_phones_find_more_details_about_pcapdroid_here">"Dies ermöglicht es der App, Funktionen zur Deep Packet Inspection (DPI) auf Standard-Smartphones ohne Root-Zugriff anzubieten. Finden Sie hier weitere Details zu PCAPdroid: "</string> <!-- "Funktionen zur Deep Packet Inspection (DPI)" (DPI capabilities), "Standard-Smartphones ohne Root-Zugriff" (standard, non-rooted phones), formal "Finden Sie" (Find) -->
+    <string name="without_requiring_root_access">ohne Root-Zugriff</string>
+
+    <!-- Translation Disclaimer -->
+    <string name="translations_are_automatically_generated">Übersetzungen werden automatisch generiert und sind möglicherweise nicht perfekt.</string> <!-- "werden automatisch generiert" (are automatically generated), "möglicherweise nicht perfekt" (may not be perfect) -->
 
 </resources>

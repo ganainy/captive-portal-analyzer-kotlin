@@ -212,10 +212,12 @@ class NetworkSessionRepository(
      * @param sessionId The ID of the session to be uploaded.
      * @return A Result wrapping a Unit in case of success or an Exception in case of failure.
      */
+
+
     suspend fun uploadSessionData(sessionId: String): Result<Unit> {
         return try {
             // 1. Collect all session data
-            val session = sessionDao.getSession(sessionId)
+            var session = sessionDao.getSession(sessionId)
                 ?: return Result.failure(Exception("Session not found"))
 
             val requests = withTimeout(30_000) {
@@ -256,21 +258,40 @@ class NetworkSessionRepository(
                 )
             }
 
-            //4. Upload the .pcap file to firebase storage and include the download url in the session object
-            val result = uploadPcapFile(session.pcapFilePath, sessionId)
-            if (result.isFailure) {
-                Log.e("Upload", "Failed to upload PCAP file", result.exceptionOrNull())
-            } else {
-                val downloadUrl = result.getOrNull()
-                try {
-                    sessionDao.update(session.copy(pcapFileUrl = downloadUrl))
-                    Log.d("Upload", "PCAP file uploaded successfully: $downloadUrl")
-                } catch (e: Exception) {
-                    Log.e("Upload", "Failed to update session with download URL: $downloadUrl", e)
+            // 4. Upload the .pcap file to firebase storage and update the session object
+            // We will update the 'session' variable itself if successful
+            if (session.pcapFilePath != null && session.pcapFilePath.isNotEmpty()) { // Check if there's a path
+                val result = uploadPcapFile(session.pcapFilePath, sessionId)
+                if (result.isFailure) {
+                    // If .pcap file upload fails, log the error but continue with uploading other data
+                    Log.e("Upload", "Failed to upload PCAP file for session $sessionId", result.exceptionOrNull())
+                } else {
+                    val downloadUrl = result.getOrNull()
+                    if (downloadUrl != null) {
+                        try {
+                            // Create the updated session copy
+                            val updatedSessionWithPcapUrl = session.copy(pcapFileUrl = downloadUrl)
+
+                            // Update the local session with the download URL
+                            sessionDao.update(updatedSessionWithPcapUrl) // Update DB first
+
+                            //  Update the session variable to reflect the new state with the pcap URL
+                            session = updatedSessionWithPcapUrl
+
+                            Log.d("Upload", "PCAP file uploaded successfully for session $sessionId: $downloadUrl")
+                        } catch (e: Exception) {
+                            Log.e("Upload", "Failed to update local session for $sessionId with PCAP URL: $downloadUrl", e)
+                        }
+                    } else {
+                        Log.w("Upload", "PCAP file upload succeeded for session $sessionId but returned null URL.")
+                    }
                 }
+            } else {
+                Log.w("Upload", "No PCAP file path found for session $sessionId, skipping PCAP upload.")
             }
 
-            // 5. Create report
+
+            // 5. Create report - uses the potentially updated 'session' variable
             val sessionData = SessionData(
                 session = session,
                 requests = requests,
@@ -284,10 +305,12 @@ class NetworkSessionRepository(
 
             withTimeout(60_000) {
                 sessionRef.set(sessionData).await()
+                Log.d("Upload", "Session data uploaded successfully to Firestore for $sessionId")
             }
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e("Upload", "Failed to upload session data for session $sessionId", e)
             Result.failure(e)
         }
     }

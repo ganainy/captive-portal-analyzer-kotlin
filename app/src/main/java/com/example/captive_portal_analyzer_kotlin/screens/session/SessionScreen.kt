@@ -73,8 +73,8 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
-import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.MainViewModel
+import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
 import com.example.captive_portal_analyzer_kotlin.components.CustomChip
@@ -459,6 +459,28 @@ private fun SessionGeneralDetails(clickedSessionData: SessionData?) {
                             modifier = Modifier.padding(vertical = 2.dp)
                         )
                     }
+               pcapFilePath?.let {
+                   Row(
+                       verticalAlignment = Alignment.CenterVertically,
+                       modifier = Modifier.padding(vertical = 2.dp)
+                   ) {
+                       Text(
+                           stringResource(R.string.pcap_file, it),
+                           style = typography.bodyMedium,
+                           maxLines = 1,
+                           overflow = TextOverflow.Ellipsis,
+                           modifier = Modifier.weight(1f)
+                       )
+                       Spacer(modifier = Modifier.width(4.dp))
+                       Icon(
+                           painter = painterResource(id = R.drawable.fiber_new_24px),
+                           contentDescription = null,
+                           modifier = Modifier.size(16.dp),
+                           tint = MaterialTheme.colorScheme.primary
+                       )
+
+                   }
+               }
                     bssid?.let {
                         Text(
                             stringResource(R.string.bssid, it),
@@ -558,7 +580,10 @@ private fun SessionActionButtons(
 
         GhostButton(
             onClick = onAnalysisClick,
-            text = stringResource(R.string.automatic_analysis_button)
+            text = stringResource(R.string.automatic_analysis_button),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         )
     }
 }
@@ -829,6 +854,8 @@ fun FilterBottomSheet(
     }
 }
 
+//Preview functions
+
 @Composable
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
 @Preview(
@@ -889,6 +916,7 @@ fun SessionScreenContentPreview_Requests() {
             captivePortalUrl = null,
             ipAddress = "192.168.1.1",
             gatewayAddress = "192.168.1.254",
+            pcapFilePath = "file:///storage/emulated/0/Android/data/com.example.captive_portal_analyzer_kotlin/files/copied_captive_portal_analyzer.pcap",
             isCaptiveLocal = null,
             isUploadedToRemoteServer = false
         ),
@@ -951,6 +979,7 @@ fun SessionScreenContentPreview_NoRequests() {
             captivePortalUrl = null,
             ipAddress = "192.168.1.1",
             gatewayAddress = "192.168.1.254",
+            pcapFilePath = "file:///storage/emulated/0/Android/data/com.example.captive_portal_analyzer_kotlin/files/copied_captive_portal_analyzer.pcap",
             isCaptiveLocal = null,
             isUploadedToRemoteServer = false
         ),

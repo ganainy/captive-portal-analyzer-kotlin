@@ -47,8 +47,8 @@ fun AboutScreen() {
             FAQItem(
                 question = stringResource(R.string.why_was_this_app_created),
                 answer = buildAnnotatedString {
-                    append(stringResource(R.string.we_wanted_to_create_a_database_of_different_captive_portals_and_which_data_they_collect_from_users_and_what_privacy_rules_they_have_to_help_in_the_research_field_of_privacy_and_security_of_wlan_networks_in_the))
-                    pushStringAnnotation(tag = "if-is", annotation = "https://internet-sicherheit.de/ueber-uns/das-institut/")
+                    append(stringResource(R.string.project_goal_captive_portals_revised))
+                    pushStringAnnotation(tag = "URL", annotation = "https://internet-sicherheit.de/ueber-uns/das-institut/")
                     withStyle(
                         style = SpanStyle(
                             color = MaterialTheme.colorScheme.primary,
@@ -62,14 +62,67 @@ fun AboutScreen() {
                 }
             )
 
+
+            FAQItem(
+                // Use stringResource(R.string.how_the_app_works) if you have it defined
+                question = stringResource(R.string.how_does_the_app_use_customwebview_for_network_analysis),
+                answer = buildAnnotatedString {
+                    append(stringResource(R.string.this_app_utilizes_the_customwebview_library_an_advanced_webview_component))
+                    append(stringResource(R.string.it_allows_the_app_to_intercept_inspect_and_analyze_the_http_s_network_requests_and_responses_specifically_generated_by_the_web_content_loaded_within_the_app_s_integrated_browser))
+                    append(stringResource(R.string.this_capability_is_crucial_for_understanding_the_network_behavior_of_visited_web_pages_directly_within_the_app_learn_more_about_the_library_here))
+
+                    // Link to CustomWebView repo
+                    pushStringAnnotation(tag = "URL", annotation = "https://github.com/vknow360/CustomWebView")
+                    withStyle(
+                        style = SpanStyle(
+                            color = MaterialTheme.colorScheme.primary,
+                            textDecoration = TextDecoration.Underline,
+                            fontWeight = FontWeight.Bold
+                        )
+                    ) {
+                        append("https://github.com/vknow360/CustomWebView")
+                    }
+                    pop()
+                    append(".") // Added punctuation
+                }
+            )
+
+            FAQItem(
+                // Use stringResource(R.string.why_the_app_uses_pcapdroid) if you have it defined
+                question = stringResource(R.string.why_does_the_app_use_pcapdroid),
+                answer = buildAnnotatedString {
+                    append(stringResource(R.string.to_perform_comprehensive_network_analysis_the_app_needs_to_capture_raw_network_packets))
+                    append(stringResource(R.string.it_leverages_functionality_based_on_pcapdroid_which_enables_network_traffic_capture_on_android_devices))
+                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) { // Emphasize non-root
+                        append(stringResource(R.string.without_requiring_root_access))
+                    }
+                    append(stringResource(R.string.pcapdroid_achieves_this_by_utilizing_android_s_vpnservice_api_to_create_a_local_vpn_tunnel_intercepting_network_packets_for_analysis_before_they_leave_the_device))
+                    append(stringResource(R.string.this_allows_the_app_to_provide_deep_packet_inspection_capabilities_on_standard_non_rooted_phones_find_more_details_about_pcapdroid_here))
+
+                    // Link to PCAPdroid repo
+                    pushStringAnnotation(tag = "URL", annotation = "https://github.com/emanuele-f/PCAPdroid")
+                    withStyle(
+                        style = SpanStyle(
+                            color = MaterialTheme.colorScheme.primary,
+                            textDecoration = TextDecoration.Underline,
+                            fontWeight = FontWeight.Bold
+                        )
+                    ) {
+                        append("https://github.com/emanuele-f/PCAPdroid")
+                    }
+                    pop()
+                    append(".") // Added punctuation
+                }
+            )
+
             FAQItem(
                 question = stringResource(R.string.how_to_create_a_good_report),
                 answer = buildAnnotatedString {
                     append(stringResource(R.string._1_connect_to_a_network_with_a_captive_portal))
-                    append(stringResource(R.string._2_interact_with_as_many_pages_as_possible_within_the_captive_login_site_inside_the_app))
-                    append(stringResource(R.string._3_view_the_captive_portal_privacy_policy_and_terms_of_service_tos_if_found))
-                    append(stringResource(R.string._4_complete_login_to_the_captive_portal))
-                    append(stringResource(R.string._5_review_and_upload_the_session_data_for_more_analysis))
+                    append(stringResource(R.string._3_interact_with_as_many_pages_as_possible_within_the_captive_login_site_inside_the_app))
+                    append(stringResource(R.string._4_view_the_captive_portal_privacy_policy_and_terms_of_service_tos_if_found))
+                    append(stringResource(R.string._5_complete_login_to_the_captive_portal))
+                    append(stringResource(R.string._6_review_and_upload_the_session_data_for_more_analysis))
                 }
             )
 
@@ -79,6 +132,11 @@ fun AboutScreen() {
                     append(stringResource(R.string.after_you_successfully_create_a_session_it_is_only_stored_on_your_device_and_won_t_be_shared_with_us_until_you_review_the_content_and_approve_the_upload_from_the_sessions_page))
                 }
             )
+
+
+
+
+
         }
     }
 }

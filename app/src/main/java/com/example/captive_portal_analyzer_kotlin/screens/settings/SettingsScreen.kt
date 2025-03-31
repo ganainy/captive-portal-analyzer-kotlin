@@ -3,7 +3,6 @@ package com.example.captive_portal_analyzer_kotlin.screens.settings
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,20 +14,19 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.ThemeMode
+import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import java.util.Locale
 
@@ -70,10 +68,15 @@ Column(
         style = MaterialTheme.typography.titleLarge
     )
 
+
     // Language Dropdown
     LanguageDropdown(
         currentLanguage = currentLanguage,
         onLocalChanged = onLocalChanged
+    )
+    HintTextWithIcon(
+        hint = stringResource(R.string.translations_are_automatically_generated),
+        iconResId = R.drawable.info
     )
 
     Spacer(modifier = Modifier.height(24.dp))

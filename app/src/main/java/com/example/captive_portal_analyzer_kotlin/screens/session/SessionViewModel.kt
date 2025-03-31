@@ -262,6 +262,10 @@ class SessionViewModel(
                             )
                         )
                         _sessionState.value = SessionState.Success
+                        showToast(
+                            (getApplication<Application>().getString(R.string.thanks_for_uploading_the_data_for_further_manual_review)),
+                            ToastStyle.SUCCESS
+                        )
                     } catch (e: Exception) {
                         _sessionState.value = SessionState.ErrorUploading(
                             e.localizedMessage

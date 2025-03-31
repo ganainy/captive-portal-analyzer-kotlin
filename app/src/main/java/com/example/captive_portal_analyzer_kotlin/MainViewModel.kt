@@ -34,6 +34,11 @@ enum class ThemeMode {
     LIGHT, DARK, SYSTEM
 }
 
+enum class PcapDroidPacketCaptureStatus {
+    INITIAL,   // user still didnt choose to go with packet capture enabled or not
+    ENABLED,
+    DISABLED
+}
 
 open class MainViewModel(
     private val connectivityObserver: NetworkConnectivityObserver,
@@ -239,8 +244,8 @@ open class MainViewModel(
     private val _selectedTabIndex = MutableStateFlow<Int>(0)
     val selectedTabIndex: StateFlow<Int> = _selectedTabIndex.asStateFlow()
 
-    private val _isPacketCaptureEnabled = MutableStateFlow<Boolean>(false)
-    val isPacketCaptureEnabled: StateFlow<Boolean> = _isPacketCaptureEnabled.asStateFlow()
+    private val _pcapDroidPacketCaptureStatus = MutableStateFlow<PcapDroidPacketCaptureStatus>(PcapDroidPacketCaptureStatus.INITIAL)
+    val pcapDroidPacketCaptureStatus: StateFlow<PcapDroidPacketCaptureStatus> = _pcapDroidPacketCaptureStatus.asStateFlow()
 
     // --- Intent Creation ---
 
@@ -411,8 +416,8 @@ open class MainViewModel(
         _selectedTabIndex.value = index
     }
 
-    fun updateIsPacketCaptureEnabled(isEnabled: Boolean) {
-        _isPacketCaptureEnabled.value = isEnabled
+    fun updatePcapDroidPacketCaptureStatus(pcapDroidPacketCaptureStatus: PcapDroidPacketCaptureStatus) {
+        _pcapDroidPacketCaptureStatus.value = pcapDroidPacketCaptureStatus
     }
 
     private fun extractStatsFromResult(data: Intent?): String {

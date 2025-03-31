@@ -39,7 +39,7 @@ fun EndAnalysisStepComponent(
 ) {
 
     Column {
-        if (analysisStatus == AnalysisStatus.NotCompleted) {
+        if (analysisStatus == AnalysisStatus.NOT_COMPLETED) {
             Row(
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -65,7 +65,7 @@ fun EndAnalysisStepComponent(
                 .padding(top = 16.dp),
             horizontalArrangement = Arrangement.End
         ) {
-            if (analysisStatus == AnalysisStatus.NotCompleted) {
+            if (analysisStatus == AnalysisStatus.NOT_COMPLETED) {
                 // Continue analysis Button
                 RoundCornerButton(
                     modifier = Modifier
@@ -80,7 +80,7 @@ fun EndAnalysisStepComponent(
             Spacer(modifier = Modifier.size(8.dp))
 
             // End analysis Button, shown initially before checking if analysis is completed
-            if (analysisStatus == AnalysisStatus.Initial) {
+            if (analysisStatus == AnalysisStatus.INITIAL) {
                 RoundCornerButton(
                     modifier = Modifier
                         .padding(end = 8.dp),
@@ -93,7 +93,7 @@ fun EndAnalysisStepComponent(
 
             Spacer(modifier = Modifier.size(8.dp))
             // End analysis Anyway Button (shows when analysis is not completed)
-            if (analysisStatus == AnalysisStatus.NotCompleted) {
+            if (analysisStatus == AnalysisStatus.NOT_COMPLETED) {
             GhostButton(
                 modifier = Modifier
                     .padding(horizontal =  16.dp, vertical = 8.dp).fillMaxWidth(),
@@ -113,7 +113,7 @@ fun EndAnalysisStepComponent(
 fun PreviewEndAnalysisStep_BeforeCheck() {
     EndAnalysisStepComponent(
         onStopAnalysis = {},
-        analysisStatus = AnalysisStatus.Initial,
+        analysisStatus = AnalysisStatus.INITIAL,
         updateSelectedTabIndex = {},
         onForceStopAnalysis = {},
     )
@@ -124,7 +124,7 @@ fun PreviewEndAnalysisStep_BeforeCheck() {
 fun PreviewEndAnalysisStep_AnalysisComplete() {
     EndAnalysisStepComponent(
         onStopAnalysis = {},
-        analysisStatus = AnalysisStatus.Completed,
+        analysisStatus = AnalysisStatus.COMPLETED,
         updateSelectedTabIndex = {},
         onForceStopAnalysis = {},
     )
@@ -135,7 +135,7 @@ fun PreviewEndAnalysisStep_AnalysisComplete() {
 fun PreviewEndAnalysisStep_AnalysisNotComplete() {
     EndAnalysisStepComponent(
         onStopAnalysis = {},
-        analysisStatus = AnalysisStatus.NotCompleted,
+        analysisStatus = AnalysisStatus.NOT_COMPLETED,
         updateSelectedTabIndex = {},
         onForceStopAnalysis = {},
     )

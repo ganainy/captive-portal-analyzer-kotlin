@@ -70,13 +70,14 @@ sealed class AnalysisUiState {
     data class Error(val type: ErrorType) : AnalysisUiState()
 }
 
+
+
 data class AnalysisUiData
     (
     val portalUrl: String? = null,
     val webViewType: WebViewType = WebViewType.CustomWebView,
     val showedHint: Boolean = false,
-    val isPCAPDroidPacketCaptureEnabled: Boolean = false,
-    val analysisStatus: AnalysisStatus = AnalysisStatus.Initial, // initially is at Initial then
+    val analysisStatus: AnalysisStatus = AnalysisStatus.INITIAL, // initially is at Initial then
     // when user click end analysis the function stopAnalysis
     // checks for internet connection if true this means the registration to the captive
     // portal is Completed is analysis is most likely done otherwise this is set to NotCompleted
@@ -84,9 +85,9 @@ data class AnalysisUiData
 )
 
 enum class AnalysisStatus {
-    Initial,
-    Completed,
-    NotCompleted
+    INITIAL,
+    COMPLETED,
+    NOT_COMPLETED
 }
 
 /**
@@ -609,17 +610,14 @@ class AnalysisViewModel(
             if (hasFullInternetAccess(context)) {
                 withContext(Dispatchers.Main) {
                     _uiState.value = AnalysisUiState.AnalysisComplete
-                    _uiData.update { it.copy(analysisStatus = AnalysisStatus.Completed) }
+                    _uiData.update { it.copy(analysisStatus = AnalysisStatus.COMPLETED) }
                 }
             } else {
                 withContext(Dispatchers.Main) {
                     _uiState.value = AnalysisUiState.CaptiveUrlDetected
-                    _uiData.update { it.copy(analysisStatus = AnalysisStatus.NotCompleted) }
+                    _uiData.update { it.copy(analysisStatus = AnalysisStatus.NOT_COMPLETED) }
                 }
             }
-
-            // Add the .pcap file path to the session object
-            storePcapFilePathInTheSession()
 
         }
 
@@ -631,14 +629,16 @@ class AnalysisViewModel(
         viewModelScope.launch(Dispatchers.IO) {
                 withContext(Dispatchers.Main) {
                     _uiState.value = AnalysisUiState.AnalysisComplete
-                    _uiData.update { it.copy(analysisStatus = AnalysisStatus.Completed) }
+                    _uiData.update { it.copy(analysisStatus = AnalysisStatus.COMPLETED) }
                 }
-            // Add the .pcap file path to the session object
-            storePcapFilePathInTheSession()
         }
     }
 
-    private suspend fun storePcapFilePathInTheSession() {
+
+
+    // Add the .pcap file path to the session object of the network
+fun storePcapFilePathInTheSession() {
+    viewModelScope.launch(Dispatchers.IO) {
         try {
             sessionManager.getCurrentSessionId()?.let { sessionId ->
                 if (mainViewModel.copiedPcapFileUri.value != null) {
@@ -649,19 +649,24 @@ class AnalysisViewModel(
                     }
                 }
             } ?: run {
+                withContext(Dispatchers.Main) {
+                    showToast(
+                        context.getString(R.string.error_saving_pcap_to_session),
+                        ToastStyle.ERROR
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 showToast(
                     context.getString(R.string.error_saving_pcap_to_session),
                     ToastStyle.ERROR
                 )
             }
-        } catch (e: Exception) {
-            showToast(
-                context.getString(R.string.error_saving_pcap_to_session),
-                ToastStyle.ERROR
-            )
             Log.e(TAG, "Error saving pcap to session: ${e.message}")
         }
     }
+}
 
     /**
      * Take a screenshot of the web view and save it to the file system,

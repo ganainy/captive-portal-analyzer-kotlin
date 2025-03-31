@@ -33,8 +33,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.acsbendi.requestinspectorwebview.WebViewRequest
 import com.example.captive_portal_analyzer_kotlin.MainViewModel
+import com.example.captive_portal_analyzer_kotlin.PcapDroidPacketCaptureStatus
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.InProgressOverlay
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
@@ -61,37 +63,82 @@ internal fun PacketCaptureTab(
     copiedPcapFileUri: Uri?,
     modifier: Modifier = Modifier,
     targetPcapName: String?,
-    isPacketCaptureEnabled: Boolean,
+    pcapDroidPacketCaptureStatus: PcapDroidPacketCaptureStatus,
     analysisStatus: AnalysisStatus,
     updateSelectedTabIndex: (Int) -> Unit,
+    storePcapFileToSession : () -> Unit,
 ) {
     val context = LocalContext.current
 
     // if user enabled packet capture show the steps to store the .pcap file otherwise only show end analysis button
-    if (isPacketCaptureEnabled) {
-        PacketCaptureEnabledContent(
-            modifier,
-            captureState,
-            onStartCapture,
-            onStopCapture,
-            onStatusCheck,
-            statusMessage,
-            copiedPcapFileUri,
-            onOpenFile,
-            targetPcapName,
-            context,
-            webViewActions,
-            analysisCallbacks,
-            analysisStatus,
-            updateSelectedTabIndex
+    when (pcapDroidPacketCaptureStatus) {
+
+        PcapDroidPacketCaptureStatus.ENABLED -> {
+            PacketCaptureEnabledContent(
+                modifier,
+                captureState,
+                onStartCapture,
+                onStopCapture,
+                onStatusCheck,
+                statusMessage,
+                copiedPcapFileUri,
+                onOpenFile,
+                targetPcapName,
+                context,
+                webViewActions,
+                analysisCallbacks,
+                analysisStatus,
+                updateSelectedTabIndex,
+                storePcapFileToSession = storePcapFileToSession
+            )
+        }
+
+        PcapDroidPacketCaptureStatus.INITIAL -> PacketCaptureInitialContent()
+
+        PcapDroidPacketCaptureStatus.DISABLED -> PacketCaptureDisabledContent(webViewActions, context,
+            analysisCallbacks,analysisStatus, updateSelectedTabIndex)
+
+    }
+}
+
+@Composable
+fun PacketCaptureInitialContent() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .background(MaterialTheme.colorScheme.background),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Status Icon
+        Icon(
+            painter = painterResource(id = R.drawable.info),
+            contentDescription = "Initial status",
+            modifier = Modifier
+                .size(64.dp)
+                .padding(bottom = 16.dp),
+            tint = MaterialTheme.colorScheme.primary
         )
 
-    } else {
-        PacketCaptureDisabledContent(webViewActions, context,
-            analysisCallbacks,analysisStatus, updateSelectedTabIndex)
+        // Title
+        Text(
+            text = stringResource(R.string.select_capture_mode),
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Description
+        Text(
+            text = stringResource(R.string.select_capture_mode_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(bottom = 24.dp, start = 16.dp, end = 16.dp)
+        )
     }
-
-
 }
 
 @Composable
@@ -164,7 +211,8 @@ private fun PacketCaptureEnabledContent(
     webViewActions: WebViewActions,
     analysisCallbacks: AnalysisCallbacks,
     analysisStatus: AnalysisStatus,
-    updateSelectedTabIndex: (Int) -> Unit
+    updateSelectedTabIndex: (Int) -> Unit,
+    storePcapFileToSession : () -> Unit ,
 ) {
     Column(
         modifier = modifier
@@ -175,7 +223,7 @@ private fun PacketCaptureEnabledContent(
     ) {
 
         // Step 1: End Analysis
-        if (analysisStatus == AnalysisStatus.Completed) {
+        if (analysisStatus == AnalysisStatus.COMPLETED) {
             CompletedOverlay(
             ) {
                 StepOneContent(
@@ -239,6 +287,7 @@ private fun PacketCaptureEnabledContent(
                     onOpenFile = onOpenFile,
                     statusMessage = statusMessage,
                     copiedPcapFileUri = copiedPcapFileUri,
+                    storePcapFileToSession = storePcapFileToSession,
                     targetPcapName = targetPcapName
                 )
             }
@@ -259,7 +308,7 @@ private fun PacketCaptureEnabledContent(
 
         // Step 4 Content (Finish Button)
         val isFinishButtonEnabled = captureState == MainViewModel.CaptureState.FILE_READY &&
-                copiedPcapFileUri != null && analysisStatus == AnalysisStatus.Completed
+                copiedPcapFileUri != null && analysisStatus == AnalysisStatus.COMPLETED
 
         RoundCornerButton(
             modifier = modifier,
@@ -338,7 +387,7 @@ private fun StepTwoContent(
             onStartCapture = onStartCapture,
             onStopCapture = onStopCapture,
             onStatusCheck = onStatusCheck,
-            isWebViewAnalysisCompleted = analysisStatus == AnalysisStatus.Completed
+            isWebViewAnalysisCompleted = analysisStatus == AnalysisStatus.COMPLETED
         )
     }
 }
@@ -348,10 +397,19 @@ private fun StepTwoContent(
 private fun StepThreeContent(
     captureState: MainViewModel.CaptureState,
     onOpenFile: FileOpener,
+    storePcapFileToSession : () -> Unit = {},
     statusMessage: String,
     copiedPcapFileUri: Uri?,
     targetPcapName: String?
 ) {
+
+    //todo move this logic to viewmodel
+    // Check if the capture state is FILE_READY and store the pcap file to session
+    if (captureState == MainViewModel.CaptureState.FILE_READY) {
+        storePcapFileToSession()
+    }
+
+
     Column(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -504,7 +562,6 @@ private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, v
 
 //Previews
 
-
 @Composable
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
 @Preview(
@@ -513,125 +570,7 @@ private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, v
     name = "tablet",
     uiMode = Configuration.UI_MODE_NIGHT_YES
 )
-private fun PacketCaptureTabPreview_Idle() {
-
-    val captureActions = object : CaptureActions {
-        override fun requestStopCapture() {}
-        override fun requestStatusUpdate() {}
-    }
-
-    val analysisCallbacks = object : AnalysisCallbacks {
-        override val showToast = { _: String, _: ToastStyle -> }
-        override val navigateToSessionList = {}
-    }
-
-    val webViewActions = object : WebViewActions {
-        override suspend fun saveWebResourceRequest(request: WebResourceRequest?) {}
-        override suspend fun saveWebpageContent(
-            webView: WebView,
-            url: String,
-            showToast: (String, ToastStyle) -> Unit
-        ) {
-        }
-
-        override fun takeScreenshot(webView: WebView, url: String) {}
-        override suspend fun saveWebViewRequest(request: WebViewRequest) {}
-        override fun updateShowedHint(showed: Boolean) {}
-        override fun stopAnalysis() {}
-        override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
-        override fun forceStopAnalysis() {
-
-        }
-    }
-
-    AppTheme {
-        PacketCaptureTab(
-            captureState = MainViewModel.CaptureState.IDLE,
-            onStartCapture = {},
-            onStopCapture = {},
-            onStatusCheck = {},
-            statusMessage = "Waiting...",
-            onOpenFile = {},
-            captureActions = captureActions,
-            webViewActions = webViewActions,
-            analysisCallbacks = analysisCallbacks,
-            copiedPcapFileUri = null,
-            targetPcapName = "capture.pcap",
-            isPacketCaptureEnabled = true,
-            analysisStatus = AnalysisStatus.NotCompleted,
-            updateSelectedTabIndex = {},
-        )
-    }
-}
-
-@Composable
-@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
-@Preview(
-    showBackground = true,
-    device = "spec:width=1280dp,height=800dp,dpi=240",
-    name = "tablet",
-    uiMode = Configuration.UI_MODE_NIGHT_YES
-)
-private fun PacketCaptureTabPreview_Disabled() {
-
-    val captureActions = object : CaptureActions {
-        override fun requestStopCapture() {}
-        override fun requestStatusUpdate() {}
-    }
-
-    val analysisCallbacks = object : AnalysisCallbacks {
-        override val showToast = { _: String, _: ToastStyle -> }
-        override val navigateToSessionList = {}
-    }
-
-    val webViewActions = object : WebViewActions {
-        override suspend fun saveWebResourceRequest(request: WebResourceRequest?) {}
-        override suspend fun saveWebpageContent(
-            webView: WebView,
-            url: String,
-            showToast: (String, ToastStyle) -> Unit
-        ) {
-        }
-
-        override fun takeScreenshot(webView: WebView, url: String) {}
-        override suspend fun saveWebViewRequest(request: WebViewRequest) {}
-        override fun updateShowedHint(showed: Boolean) {}
-        override fun stopAnalysis() {}
-        override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
-        override fun forceStopAnalysis() {
-
-        }
-    }
-
-    AppTheme {
-        PacketCaptureTab(
-            captureState = MainViewModel.CaptureState.IDLE,
-            onStartCapture = {},
-            onStopCapture = {},
-            onStatusCheck = {},
-            statusMessage = "Waiting...",
-            onOpenFile = {},
-            captureActions = captureActions,
-            webViewActions = webViewActions,
-            analysisCallbacks = analysisCallbacks,
-            copiedPcapFileUri = null,
-            targetPcapName = "capture.pcap",
-            isPacketCaptureEnabled = false,
-            analysisStatus = AnalysisStatus.NotCompleted,
-            updateSelectedTabIndex = {},
-        )
-    }
-}
-
-@Composable
-@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
-@Preview(
-    showBackground = true,
-    device = "spec:width=1280dp,height=800dp,dpi=240",
-    name = "tablet",
-    uiMode = Configuration.UI_MODE_NIGHT_YES
-)
-private fun PacketCaptureTabPreview_Completed() {
+private fun PacketCaptureTabPreview_InitialState() {
 
     val captureActions = object : CaptureActions {
         override fun requestStopCapture() {}
@@ -675,9 +614,194 @@ private fun PacketCaptureTabPreview_Completed() {
             analysisCallbacks = analysisCallbacks,
             copiedPcapFileUri = null,
             targetPcapName = "capture.pcap",
-            isPacketCaptureEnabled = true,
-            analysisStatus = AnalysisStatus.Completed,
+            pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.INITIAL,
+            analysisStatus = AnalysisStatus.COMPLETED,
             updateSelectedTabIndex = {},
+            storePcapFileToSession ={},
+        )
+    }
+}
+
+@Composable
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
+@Preview(
+    showBackground = true,
+    device = "spec:width=1280dp,height=800dp,dpi=240",
+    name = "tablet",
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+private fun PacketCaptureTabPreview_CaptureEnabled() {
+
+    val captureActions = object : CaptureActions {
+        override fun requestStopCapture() {}
+        override fun requestStatusUpdate() {}
+    }
+
+    val analysisCallbacks = object : AnalysisCallbacks {
+        override val showToast = { _: String, _: ToastStyle -> }
+        override val navigateToSessionList = {}
+    }
+
+    val webViewActions = object : WebViewActions {
+        override suspend fun saveWebResourceRequest(request: WebResourceRequest?) {}
+        override suspend fun saveWebpageContent(
+            webView: WebView,
+            url: String,
+            showToast: (String, ToastStyle) -> Unit
+        ) {
+        }
+
+        override fun takeScreenshot(webView: WebView, url: String) {}
+        override suspend fun saveWebViewRequest(request: WebViewRequest) {}
+        override fun updateShowedHint(showed: Boolean) {}
+        override fun stopAnalysis() {}
+        override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
+        override fun forceStopAnalysis() {
+
+        }
+    }
+
+    AppTheme {
+        PacketCaptureTab(
+            captureState = MainViewModel.CaptureState.IDLE,
+            onStartCapture = {},
+            onStopCapture = {},
+            onStatusCheck = {},
+            statusMessage = "Waiting...",
+            onOpenFile = {},
+            captureActions = captureActions,
+            webViewActions = webViewActions,
+            analysisCallbacks = analysisCallbacks,
+            copiedPcapFileUri = null,
+            targetPcapName = "capture.pcap",
+            pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.ENABLED,
+            analysisStatus = AnalysisStatus.NOT_COMPLETED,
+            updateSelectedTabIndex = {},
+            storePcapFileToSession ={},
+        )
+    }
+}
+
+
+
+
+
+@Composable
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
+@Preview(
+    showBackground = true,
+    device = "spec:width=1280dp,height=800dp,dpi=240",
+    name = "tablet",
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+private fun PacketCaptureTabPreview_CaptureDisabled() {
+
+    val captureActions = object : CaptureActions {
+        override fun requestStopCapture() {}
+        override fun requestStatusUpdate() {}
+    }
+
+    val analysisCallbacks = object : AnalysisCallbacks {
+        override val showToast = { _: String, _: ToastStyle -> }
+        override val navigateToSessionList = {}
+    }
+
+    val webViewActions = object : WebViewActions {
+        override suspend fun saveWebResourceRequest(request: WebResourceRequest?) {}
+        override suspend fun saveWebpageContent(
+            webView: WebView,
+            url: String,
+            showToast: (String, ToastStyle) -> Unit
+        ) {
+        }
+
+        override fun takeScreenshot(webView: WebView, url: String) {}
+        override suspend fun saveWebViewRequest(request: WebViewRequest) {}
+        override fun updateShowedHint(showed: Boolean) {}
+        override fun stopAnalysis() {}
+        override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
+        override fun forceStopAnalysis() {
+
+        }
+    }
+
+    AppTheme {
+        PacketCaptureTab(
+            captureState = MainViewModel.CaptureState.IDLE,
+            onStartCapture = {},
+            onStopCapture = {},
+            onStatusCheck = {},
+            statusMessage = "Waiting...",
+            onOpenFile = {},
+            captureActions = captureActions,
+            webViewActions = webViewActions,
+            analysisCallbacks = analysisCallbacks,
+            copiedPcapFileUri = null,
+            targetPcapName = "capture.pcap",
+            pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.DISABLED,
+            analysisStatus = AnalysisStatus.NOT_COMPLETED,
+            updateSelectedTabIndex = {},
+            storePcapFileToSession ={},
+        )
+    }
+}
+
+@Composable
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
+@Preview(
+    showBackground = true,
+    device = "spec:width=1280dp,height=800dp,dpi=240",
+    name = "tablet",
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+private fun PacketCaptureTabPreview_CaptureCompleted() {
+
+    val captureActions = object : CaptureActions {
+        override fun requestStopCapture() {}
+        override fun requestStatusUpdate() {}
+    }
+
+    val analysisCallbacks = object : AnalysisCallbacks {
+        override val showToast = { _: String, _: ToastStyle -> }
+        override val navigateToSessionList = {}
+    }
+
+    val webViewActions = object : WebViewActions {
+        override suspend fun saveWebResourceRequest(request: WebResourceRequest?) {}
+        override suspend fun saveWebpageContent(
+            webView: WebView,
+            url: String,
+            showToast: (String, ToastStyle) -> Unit
+        ) {
+        }
+
+        override fun takeScreenshot(webView: WebView, url: String) {}
+        override suspend fun saveWebViewRequest(request: WebViewRequest) {}
+        override fun updateShowedHint(showed: Boolean) {}
+        override fun stopAnalysis() {}
+        override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
+        override fun forceStopAnalysis() {
+
+        }
+    }
+
+    AppTheme {
+        PacketCaptureTab(
+            captureState = MainViewModel.CaptureState.FILE_READY,
+            onStartCapture = {},
+            onStopCapture = {},
+            onStatusCheck = {},
+            statusMessage = "Capturing completed.",
+            onOpenFile = {},
+            captureActions = captureActions,
+            webViewActions = webViewActions,
+            analysisCallbacks = analysisCallbacks,
+            copiedPcapFileUri = "copied_capture.pcap".toUri(),
+            targetPcapName = "capture.pcap",
+            pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.ENABLED,
+            analysisStatus = AnalysisStatus.COMPLETED,
+            updateSelectedTabIndex = {},
+            storePcapFileToSession ={},
         )
     }
 }
