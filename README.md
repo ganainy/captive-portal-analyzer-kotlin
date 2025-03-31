@@ -67,11 +67,12 @@ For detailed information about the project files structure and architecture, see
 ---
 
 ### 🆕: Integration with [PCAPDroid](https://github.com/emanuele-f/PCAPdroid) (See branch `android-pcap-api`)
-| Feature                                                                                                                  | Screenshot                                     |
-|--------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
-| ** Instructions screen to help user do the one time setup of PCAPDroid **                                                | ![pcap-setup.gif](preview/gifs/pcap-setup.gif) |
-| ** User can choose to use the JS injection WebView only or JS injection WebView + PCAPDroid packet capture **            | ![10.jpg](preview/screenshots/10.jpg)          |
-| ** The resulting .pcap file from PCAPDroid is uploaded to the remote server with the previously collected network data** | ![11.jpg](preview/screenshots/11.jpg)          |
+| Feature                                                                                                                 | Screenshot                                     |
+|-------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
+| **Instructions screen to help user do the one time setup of PCAPDroid**                                                 | ![pcap-setup.gif](preview/gifs/pcap-setup.gif) |
+| **User can choose to use the JS injection WebView only or JS injection WebView + PCAPDroid packet capture**             | ![10.jpg](preview/screenshots/10.jpg)          |
+| **User is instructed to stop the capture & Select the captured .pcap file**                                             | ![11.jpg](preview/screenshots/11.jpg)          |
+| **The resulting .pcap file from PCAPDroid is uploaded to the remote server with the previously collected network data** | ![12.png](preview/screenshots/12.png)          |
 ---
 > **Note:** The starting and ending of packet capture is directly handled within the app.
 
