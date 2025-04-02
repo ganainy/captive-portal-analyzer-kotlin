@@ -301,4 +301,5 @@
     <string name="translations_are_automatically_generated">Übersetzungen werden automatisch generiert und sind möglicherweise nicht perfekt.</string> <!-- "werden automatisch generiert" (are automatically generated), "möglicherweise nicht perfekt" (may not be perfect) -->
 
    <string name="please_install_setup_pcapdroid_from_the_link_above_to_use_the_advanced_mode"><![CDATA[Bitte installieren & richten Sie PCAPDroid über den obigen Link ein, um den erweiterten Modus zu nutzen.]]></string>
+<string name="please_stop_running_pcap_droid_capture_before_continuing">Bitte stoppen Sie die laufende PCAPDroid-Erfassung, bevor Sie fortfahren, und drücken Sie dann auf das Aktualisierungssymbol</string>
 </resources>

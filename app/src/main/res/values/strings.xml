@@ -266,5 +266,6 @@
     <string name="translations_are_automatically_generated">Translations are automatically generated and may not be perfect.</string>
     <string name="without_requiring_root_access">without requiring root access</string>
     <string name="please_install_setup_pcapdroid_from_the_link_above_to_use_the_advanced_mode"><![CDATA[Please install & setup PCAPDroid from the link above to use the advanced mode.]]></string>
+    <string name="please_stop_running_pcap_droid_capture_before_continuing">Please stop the running PCAPDroid capture before continuing, then press the refresh icon</string>
 
 </resources>

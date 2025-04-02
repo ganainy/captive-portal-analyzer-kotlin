@@ -35,7 +35,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
@@ -80,6 +79,7 @@ import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.MockWebView
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
+import com.example.captive_portal_analyzer_kotlin.components.OnStartEffect
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
@@ -154,10 +154,11 @@ fun AnalysisScreen(
     intentLaunchConfig: IntentLaunchConfig
 ) {
 
-    // for testing purposes only, set packet capture to always be on
-    if (BuildConfig.IS_APP_IN_DEBUG_MODE) {
-        screenConfig.mainViewModel.updatePcapDroidPacketCaptureStatus(PcapDroidPacketCaptureStatus.ENABLED)
-    }
+
+  // Only call the status check once during initialization to get the current capture status of the PCAPDroid app
+  LaunchedEffect(Unit) {
+      intentLaunchConfig.onStatusIntent(screenConfig.mainViewModel.createGetStatusIntent())
+  }
 
     val captureState by screenConfig.mainViewModel.captureState.collectAsStateWithLifecycle()
     val statusMessage by screenConfig.mainViewModel.statusMessage.collectAsStateWithLifecycle()
@@ -310,11 +311,9 @@ private fun AnalysisScreenContent(
 
             when (selectedTabIndex) {
                 0 -> Box(modifier = Modifier.fillMaxSize()) {
-                    val effectiveUiState =
-                        if (BuildConfig.IS_APP_IN_DEBUG_MODE) AnalysisUiState.CaptiveUrlDetected else uiState
-                    when (effectiveUiState) {
+                    when (uiState) {
                         is AnalysisUiState.Loading -> LoadingIndicator(
-                            message = stringResource((uiState as AnalysisUiState.Loading).messageStringResource),
+                            message = stringResource(uiState.messageStringResource),
                             modifier = Modifier
                         )
 
@@ -348,6 +347,7 @@ private fun AnalysisScreenContent(
                         AnalysisUiState.PreferenceSetup -> PreferenceSetupContent(
                             captureState = captureState,
                             onStartCapture = onStartCapture,
+                            onStatusCheck = onStatusCheck,
                             getCaptivePortalAddress = getCaptivePortalAddress,
                             onNavigateToSetupPCAPDroid = onNavigateToSetupPCAPDroid,
                             updatePcapDroidPacketCaptureStatus = { pcapDroidPacketCaptureStatus ->
@@ -386,10 +386,18 @@ fun PreferenceSetupContent(
     captureState: MainViewModel.CaptureState,
     isPCAPDroidInstalled: () -> Boolean,
     onStartCapture: () -> Unit,
+    onStatusCheck: () -> Unit,
     getCaptivePortalAddress: () -> Unit,
     onNavigateToSetupPCAPDroid: () -> Unit,
     updatePcapDroidPacketCaptureStatus: (PcapDroidPacketCaptureStatus) -> Unit
 ) {
+
+    OnStartEffect {
+        // Code to run when the app starts, if user minimized the app and comes back recheck
+        // capture status just to be extra sure
+        onStatusCheck()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -457,11 +465,37 @@ fun PreferenceSetupContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
+
+            // show warning to user if a capture is already running
+            if (captureState == MainViewModel.CaptureState.RUNNING) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        HintTextWithIcon(
+                            hint = stringResource(R.string.please_stop_running_pcap_droid_capture_before_continuing),
+                            color = Color.Red,
+                            modifier = Modifier.weight(1f)
+                        )
+                        androidx.compose.material3.Icon(
+                            painter = painterResource(id = R.drawable.refresh_24px),
+                            contentDescription = "Refresh status",
+                            modifier = Modifier
+                                .padding(start = 8.dp)
+                                .size(24.dp)
+                                .clickable { onStatusCheck() },
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+            }
+
+            // Continue with Packet Capture Button
             RoundCornerButton(
                 onClick = {
                     if (captureState == MainViewModel.CaptureState.IDLE) {
                         onStartCapture()
                         updatePcapDroidPacketCaptureStatus(PcapDroidPacketCaptureStatus.ENABLED)
+                        getCaptivePortalAddress()
                     }
                 },
                 buttonText = stringResource(R.string.continue_with_packet_capture),
@@ -470,6 +504,7 @@ fun PreferenceSetupContent(
                 enabled = captureState != MainViewModel.CaptureState.RUNNING && isPCAPDroidInstalled()
             )
 
+            // Continue without Packet Capture Button
             GhostButton(
                 onClick = { getCaptivePortalAddress()
                     updatePcapDroidPacketCaptureStatus(PcapDroidPacketCaptureStatus.DISABLED)
@@ -482,31 +517,6 @@ fun PreferenceSetupContent(
             )
         }
 
-        // Capture State Indicator
-        if (captureState == MainViewModel.CaptureState.RUNNING) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp
-                )
-                Text(
-                    text = stringResource(R.string.capturing),
-                    modifier = Modifier.padding(start = 8.dp),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-
-        // Handle captive portal detection
-        LaunchedEffect(captureState) {
-            if (captureState == MainViewModel.CaptureState.RUNNING) {
-                getCaptivePortalAddress()
-            }
-        }
     }
 }
 
@@ -548,7 +558,7 @@ private fun WebViewInteractionContent(
     setSelectTabIndex: (Int) -> Unit
 ) {
     val effectiveWebViewType =
-        if (BuildConfig.IS_APP_IN_DEBUG_MODE) WebViewType.TestingWebView else config.webViewType
+        if (BuildConfig.DEBUG_USE_TESTING_WEBVIEW) WebViewType.TestingWebView else config.webViewType
 
     Column(modifier = Modifier.fillMaxSize()) {
         HintTextWithIcon(
@@ -687,16 +697,6 @@ fun TestingWebView() {
                 loadUrl("http://httpforever.com/")
             }
         })
-
-        if (BuildConfig.IS_APP_IN_DEBUG_MODE) {
-            Text(
-                text = "DEBUG MODE: Testing WebView Active",
-                color = Color.Red,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(8.dp)
-            )
-        }
     }
 }
 
@@ -1123,7 +1123,7 @@ private fun AnalysisScreenContentPreview_Error() {
     name = "tablet",
     uiMode = Configuration.UI_MODE_NIGHT_YES
 )
-private fun PreferenceSetupContentPreview() {
+private fun PreferenceSetupContentPreview_CaptureIdle() {
     AppTheme {
         PreferenceSetupContent(
             captureState = MainViewModel.CaptureState.IDLE,
@@ -1132,6 +1132,29 @@ private fun PreferenceSetupContentPreview() {
             onNavigateToSetupPCAPDroid = {},
             updatePcapDroidPacketCaptureStatus = {},
             isPCAPDroidInstalled ={true},
+            onStatusCheck = {},
+        )
+    }
+}
+
+@Composable
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", name = "phone")
+@Preview(
+    showBackground = true,
+    device = "spec:width=1280dp,height=800dp,dpi=240",
+    name = "tablet",
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+private fun PreferenceSetupContentPreview_CaptureRunning() {
+    AppTheme {
+        PreferenceSetupContent(
+            captureState = MainViewModel.CaptureState.RUNNING,
+            onStartCapture = {},
+            getCaptivePortalAddress = {},
+            onNavigateToSetupPCAPDroid = {},
+            updatePcapDroidPacketCaptureStatus = {},
+            isPCAPDroidInstalled ={true},
+            onStatusCheck = {},
         )
     }
 }

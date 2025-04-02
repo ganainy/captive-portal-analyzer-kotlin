@@ -72,7 +72,7 @@ fun ManualConnectScreen(
 
     LaunchedEffect(Unit) {
         //ignore this screen in debug mode
-        if (BuildConfig.IS_APP_IN_DEBUG_MODE){
+        if (BuildConfig.DEBUG_SKIP_CHECKLIST_SCREEN){
             navigateToAnalysis()
         }
     }

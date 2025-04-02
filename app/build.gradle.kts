@@ -39,6 +39,9 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", false)
+            buildConfigBooleanField("DEBUG_USE_TESTING_WEBVIEW", false)
+            buildConfigBooleanField("DEBUG_SKIP_CHECKLIST_SCREEN", false)
+            buildConfigBooleanField("DEBUG_SKIP_PCAP_SETUP_SCREEN", false)
         }
 
         getByName("release") {
@@ -48,6 +51,9 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", false)
+            buildConfigBooleanField("DEBUG_USE_TESTING_WEBVIEW", false)
+            buildConfigBooleanField("DEBUG_SKIP_CHECKLIST_SCREEN", false)
+            buildConfigBooleanField("DEBUG_SKIP_PCAP_SETUP_SCREEN", false)
 
             signingConfig = signingConfigs.getByName("debug")
         }
@@ -58,13 +64,10 @@ android {
             initWith(buildTypes.getByName("debug"))
 
             // Override or add specific flags
-            buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", true) // Still a debug mode variant
-
-            // Optional: Add a suffix to the application ID to install side-by-side
-            applicationIdSuffix = ".staging"
-
-            // Optional: Add a suffix to the version name for clarity
-            versionNameSuffix = "-staging"
+            buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", true)
+            buildConfigBooleanField("DEBUG_USE_TESTING_WEBVIEW", true)
+            buildConfigBooleanField("DEBUG_SKIP_CHECKLIST_SCREEN", true)
+            buildConfigBooleanField("DEBUG_SKIP_PCAP_SETUP_SCREEN", true)
 
         }
     }
@@ -163,5 +166,8 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // to enable preview function in stagingDebug build type
+    "stagingDebugImplementation"(libs.ui.tooling)
 }
 

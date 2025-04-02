@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.captive_portal_analyzer_kotlin.BuildConfig
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
@@ -38,12 +39,20 @@ fun WelcomeScreen(
     navigateToManualConnectScreen: () -> Unit,
     skipSetup: Boolean
 ) {
+
+    // for testing only: skip pcapdroid setup screen
+    var effectiveSkipSetup = skipSetup
+    if(BuildConfig.DEBUG_SKIP_PCAP_SETUP_SCREEN){
+        effectiveSkipSetup = true
+    }
+
+
     Scaffold() { paddingValues ->
         WelcomeContent(
             paddingValues = paddingValues,
             navigateToSetupPCAPDroidScreen = navigateToSetupPCAPDroidScreen,
             navigateToManualConnectScreen = navigateToManualConnectScreen,
-            skipSetup = skipSetup
+            skipSetup = effectiveSkipSetup
         )
     }
 }
