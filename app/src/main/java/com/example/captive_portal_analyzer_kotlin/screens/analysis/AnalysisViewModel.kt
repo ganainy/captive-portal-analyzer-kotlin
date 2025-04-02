@@ -5,6 +5,7 @@ import CaptivePortalResult
 import NetworkSessionRepository
 import android.app.Application
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.net.ConnectivityManager
@@ -634,7 +635,26 @@ class AnalysisViewModel(
         }
     }
 
-
+    fun isPcapDroidAppInstalled(): Boolean {
+        val packageName = "com.emanuelef.remote_capture" // The correct package name
+        val packageManager: PackageManager = context.packageManager
+        return try {
+            // Attempt to get package info. If this succeeds, the app is installed.
+            // The '0' flag means get basic info without any special flags.
+            // On Android 11+ (API 30+), you need the <queries> element in AndroidManifest.xml (see note below)
+            packageManager.getPackageInfo(packageName, 0)
+            Log.d("AppCheck", "$packageName is installed.")
+            true // Package info found, app is installed
+        } catch (e: PackageManager.NameNotFoundException) {
+            // The package was not found.
+            Log.d("AppCheck", "$packageName is not installed.")
+            false // App is not installed
+        } catch (e: Exception) {
+            // Catch other potential exceptions during package manager interaction
+            Log.e("AppCheck", "Error checking if $packageName is installed", e)
+            false // Treat other errors as "not installed" or unable to verify
+        }
+    }
 
     // Add the .pcap file path to the session object of the network
 fun storePcapFilePathInTheSession() {

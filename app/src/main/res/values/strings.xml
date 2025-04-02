@@ -265,5 +265,6 @@
     <string name="this_allows_the_app_to_provide_deep_packet_inspection_capabilities_on_standard_non_rooted_phones_find_more_details_about_pcapdroid_here">"This allows the app to provide deep packet inspection capabilities on standard, non-rooted phones. Find more details about PCAPdroid here: "</string>
     <string name="translations_are_automatically_generated">Translations are automatically generated and may not be perfect.</string>
     <string name="without_requiring_root_access">without requiring root access</string>
+    <string name="please_install_setup_pcapdroid_from_the_link_above_to_use_the_advanced_mode"><![CDATA[Please install & setup PCAPDroid from the link above to use the advanced mode.]]></string>
 
 </resources>

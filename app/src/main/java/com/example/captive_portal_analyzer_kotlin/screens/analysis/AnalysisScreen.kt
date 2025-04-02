@@ -251,14 +251,15 @@ fun AnalysisScreen(
         selectedTabIndex = selectedTabIndex,
         updateSelectedTabIndex = screenConfig.mainViewModel::setSelectedTabIndex,
         updatePcapDroidPacketCaptureStatus = { pcapDroidPacketCaptureStatus ->
-            screenConfig.mainViewModel.updatePcapDroidPacketCaptureStatus(pcapDroidPacketCaptureStatus)
+            screenConfig.mainViewModel.updatePcapDroidPacketCaptureStatus(
+                pcapDroidPacketCaptureStatus
+            )
         },
         pcapDroidPacketCaptureStatus = pcapDroidPacketCaptureStatus,
         analysisStatus = analysisStatus,
         storePcapFileToSession =
-            analysisViewModel::storePcapFilePathInTheSession
-
-
+            analysisViewModel::storePcapFilePathInTheSession,
+        isPCAPDroidInstalled = analysisViewModel::isPcapDroidAppInstalled,
     )
 }
 
@@ -286,6 +287,7 @@ private fun AnalysisScreenContent(
     updatePcapDroidPacketCaptureStatus: (PcapDroidPacketCaptureStatus) -> Unit,
     analysisStatus: AnalysisStatus,
     storePcapFileToSession:  () -> Unit,
+    isPCAPDroidInstalled : () -> Boolean
 ) {
 
     val tabTitles = listOf("WebView", "Packet Capture")
@@ -350,7 +352,8 @@ private fun AnalysisScreenContent(
                             onNavigateToSetupPCAPDroid = onNavigateToSetupPCAPDroid,
                             updatePcapDroidPacketCaptureStatus = { pcapDroidPacketCaptureStatus ->
                                 updatePcapDroidPacketCaptureStatus(pcapDroidPacketCaptureStatus)
-                            }
+                            },
+                            isPCAPDroidInstalled = isPCAPDroidInstalled
                         )
                     }
                 }
@@ -381,6 +384,7 @@ private fun AnalysisScreenContent(
 @Composable
 fun PreferenceSetupContent(
     captureState: MainViewModel.CaptureState,
+    isPCAPDroidInstalled: () -> Boolean,
     onStartCapture: () -> Unit,
     getCaptivePortalAddress: () -> Unit,
     onNavigateToSetupPCAPDroid: () -> Unit,
@@ -444,6 +448,10 @@ fun PreferenceSetupContent(
                 ) { onNavigateToSetupPCAPDroid() }
         )
 
+        if (!isPCAPDroidInstalled()){
+            HintTextWithIcon(hint = stringResource(R.string.please_install_setup_pcapdroid_from_the_link_above_to_use_the_advanced_mode))
+        }
+
         // Buttons Section
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -459,7 +467,7 @@ fun PreferenceSetupContent(
                 buttonText = stringResource(R.string.continue_with_packet_capture),
                 trailingIcon = painterResource(id = R.drawable.arrow_forward_ios_24px),
                 modifier = Modifier.fillMaxWidth(),
-                enabled = captureState != MainViewModel.CaptureState.RUNNING
+                enabled = captureState != MainViewModel.CaptureState.RUNNING && isPCAPDroidInstalled()
             )
 
             GhostButton(
@@ -1023,7 +1031,8 @@ private fun AnalysisScreenContentPreview_Success() {
             onNavigateToSetupPCAPDroid = {},
             updatePcapDroidPacketCaptureStatus = {},
             analysisStatus = AnalysisStatus.NOT_COMPLETED,
-            storePcapFileToSession =  {},
+            storePcapFileToSession = {},
+            isPCAPDroidInstalled = {true},
         )
     }
 }
@@ -1101,6 +1110,7 @@ private fun AnalysisScreenContentPreview_Error() {
             updatePcapDroidPacketCaptureStatus = {},
             analysisStatus = AnalysisStatus.NOT_COMPLETED,
             storePcapFileToSession = {},
+            isPCAPDroidInstalled = {true},
         )
     }
 }
@@ -1121,6 +1131,7 @@ private fun PreferenceSetupContentPreview() {
             getCaptivePortalAddress = {},
             onNavigateToSetupPCAPDroid = {},
             updatePcapDroidPacketCaptureStatus = {},
+            isPCAPDroidInstalled ={true},
         )
     }
 }
