@@ -50,7 +50,6 @@ fun RoundCornerButton(
     trailingIcon: Painter? = null // Optional icon to show after text
 ) {
     var buttonModifier = modifier
-        .padding(horizontal = 16.dp)
         .height(56.dp)
 
     if (fillWidth) {

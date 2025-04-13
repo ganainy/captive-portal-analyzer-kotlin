@@ -101,7 +101,7 @@ fun ErrorComponent(
         onRetryClick?.let {
             GhostButton(
                 onClick = it,
-                text = stringResource(R.string.retry)
+                buttonText = stringResource(R.string.retry)
             )
         }
     }

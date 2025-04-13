@@ -580,10 +580,10 @@ private fun SessionActionButtons(
 
         GhostButton(
             onClick = onAnalysisClick,
-            text = stringResource(R.string.automatic_analysis_button),
+            buttonText = stringResource(R.string.automatic_analysis_button),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding( vertical = 8.dp),
         )
     }
 }
@@ -845,7 +845,7 @@ fun FilterBottomSheet(
         // Remove filters button
         GhostButton(
             onClick = onResetFilters,
-            text = stringResource(R.string.remove_filters),
+            buttonText = stringResource(R.string.remove_filters),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)

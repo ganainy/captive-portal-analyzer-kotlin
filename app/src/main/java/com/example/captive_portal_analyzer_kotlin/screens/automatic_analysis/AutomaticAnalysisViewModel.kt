@@ -45,12 +45,13 @@ data class AutomaticAnalysisUiState(
     val totalRequestsCount: Int = 0,
     val totalScreenshotsCount: Int = 0, // Count of *potentially* includable screenshots
     val totalWebpageContentCount: Int = 0,
+    val selectedModelName : String? = null //  store the selected gemini model name e.g. "gemini-2.0-flash"
 )
 
 
 interface IAutomaticAnalysisViewModel {
     val automaticAnalysisUiState: StateFlow<AutomaticAnalysisUiState>
-    fun analyzeWithAi()
+    fun analyzeWithAi(modelName: String? = null)
     fun updatePromptEditText(text: String)
     fun loadSessionData()
     fun toggleRequestSelection(requestId: Int)
@@ -71,7 +72,6 @@ interface IAutomaticAnalysisViewModel {
  * @param clickedSessionId the id of the session that was clicked
  */
 open class AutomaticAnalysisViewModel(
-    private val generativeModel: GenerativeModel,
     application: Application,
     private val repository: NetworkSessionRepository,
     clickedSessionId: String?,
@@ -157,47 +157,62 @@ open class AutomaticAnalysisViewModel(
 
     /**
      * Analyzes the selected session data using AI.
+     * @param modelName The name of the Gemini model to use (e.g., "gemini-2.0-flash").
      */
-    override fun analyzeWithAi() {
+    override fun analyzeWithAi(modelName: String?) {
+
+        var effectiveModelName = modelName
+        if (modelName.isNullOrEmpty()) {
+            // Fallback to the last used model name if none is provided e.g. when user press retry button
+            // on the AutomaticAnalysisOutputScreen
+            effectiveModelName = _automaticAnalysisUiState.value.selectedModelName
+        }
+
         val currentState = _automaticAnalysisUiState.value
         val sessionData = currentState.sessionData
 
         if (sessionData == null) {
             _automaticAnalysisUiState.value = currentState.copy(
                 isLoading = false,
-                error = context.getString(R.string.error_session_data_not_loaded) // Add this string resource
+                error = context.getString(R.string.error_session_data_not_loaded)
             )
             return
         }
 
 
-        _automaticAnalysisUiState.value = currentState.copy(isLoading = true, error = null, outputText = null)
+        _automaticAnalysisUiState.value = currentState.copy(isLoading = true, error = null, outputText = null,selectedModelName = modelName)
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                // --- Instantiate the model dynamically ---
+                val config = generationConfig { temperature = 0.7f }
+                val currentGenerativeModel = GenerativeModel(
+                    modelName = effectiveModelName!!, // Use the provided model name
+                    apiKey = BuildConfig.API_KEY_RELEASE,
+                    generationConfig = config
+                )
+                // ----------------------------------------
+
                 // --- Filter data based on selection ---
                 val selectedRequests = sessionData.requests?.filter {
-                    currentState.selectedRequestIds.contains(it.customWebViewRequestId) // Use the correct ID field
+                    currentState.selectedRequestIds.contains(it.customWebViewRequestId)
                 } ?: emptyList()
 
                 val selectedScreenshots = sessionData.screenshots?.filter {
-                    // Filter for privacy *AND* user selection
                     it.isPrivacyOrTosRelated && currentState.selectedScreenshotIds.contains(it.screenshotId)
-                    // OR: If you allow selecting non-privacy related ones too:
-                    // currentState.selectedScreenshotIds.contains(it.screenshotId)
                 } ?: emptyList()
 
                 val selectedWebpageContent = sessionData.webpageContent?.filter {
-                    currentState.selectedWebpageContentIds.contains(it.contentId) // Use the correct ID field
+                    currentState.selectedWebpageContentIds.contains(it.contentId)
                 } ?: emptyList()
                 // ------------------------------------
 
                 // --- Build Prompt Dynamically ---
                 val basePrompt = currentState.inputText
-                var dynamicPromptPart = "\nAnalyzing the selected information:"
+                var dynamicPromptPart = "\nAnalyzing the selected information using model '$modelName':" // Indicate model used
 
                 if (selectedRequests.isNotEmpty()) {
-                    val requestsDTOString = buildRequestsString(selectedRequests) // Pass filtered list
+                    val requestsDTOString = buildRequestsString(selectedRequests)
                     dynamicPromptPart += "\n\n- Network Requests (${selectedRequests.size} selected):\n$requestsDTOString"
                 } else {
                     dynamicPromptPart += "\n\n- Network Requests: None selected."
@@ -210,7 +225,6 @@ open class AutomaticAnalysisViewModel(
                 }
 
                 if (selectedWebpageContent.isNotEmpty()) {
-                    // Still likely best to just mention count unless content is very small
                     dynamicPromptPart += "\n\n- Webpage Content (${selectedWebpageContent.size} selected): Included."
                 } else {
                     dynamicPromptPart += "\n\n- Webpage Content: None selected."
@@ -228,17 +242,19 @@ open class AutomaticAnalysisViewModel(
                                 image(bitmap)
                             } catch (e: Exception) {
                                 Log.e("AnalyzeAI", "Failed to load or add image: ${screenshot.path}", e)
+                                // Optionally add text indicating image load failure to the prompt
+                                text("\n[System Note: Failed to load image at ${screenshot.path}]")
                             }
                         }
                     }
                     // Add selected webpage content text here if desired and feasible within limits
-                    // For now, we only mention it in the text prompt.
 
                     text(finalPrompt)
                 }
                 // --- Generate Content ---
                 var outputContent = ""
-                generativeModel.generateContentStream(inputContent)
+                // Use the dynamically created model instance
+                currentGenerativeModel.generateContentStream(inputContent)
                     .collect { response ->
                         outputContent += response.text
                         _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
@@ -252,9 +268,9 @@ open class AutomaticAnalysisViewModel(
             } catch (e: Exception) {
                 _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
                     isLoading = false,
-                    error = (e.localizedMessage ?: "An unknown error occurred")
+                    error = (e.localizedMessage ?: context.getString(R.string.unknown_error)) // Use string resource
                 )
-                Log.e("AnalyzeAI", "Error during AI analysis", e)
+                Log.e("AnalyzeAI", "Error during AI analysis with model $modelName", e)
             }
         }
     }
@@ -380,18 +396,9 @@ class AutomaticAnalysisViewModelFactory(
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AutomaticAnalysisViewModel::class.java)) {
-            // set up the generative model with the current API key
-            val config = generationConfig {
-                temperature = 0.7f
-            }
-            val generativeModel = GenerativeModel(
-                modelName = "gemini-2.0-flash", // Specifies the name of the generative model to be used for analysis
-                apiKey = BuildConfig.API_KEY_RELEASE,//apiKey to authenticate requests
-                generationConfig = config // Applies the configuration settings for generation
-            )
+            // Removed GenerativeModel creation from here
             @Suppress("UNCHECKED_CAST")
             return AutomaticAnalysisViewModel(
-                generativeModel,
                 application,
                 repository,
                 clickedSessionId

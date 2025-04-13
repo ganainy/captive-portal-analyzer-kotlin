@@ -302,4 +302,55 @@
 
    <string name="please_install_setup_pcapdroid_from_the_link_above_to_use_the_advanced_mode"><![CDATA[Bitte installieren & richten Sie PCAPDroid über den obigen Link ein, um den erweiterten Modus zu nutzen.]]></string>
 <string name="please_stop_running_pcap_droid_capture_before_continuing">Bitte stoppen Sie die laufende PCAPDroid-Erfassung, bevor Sie fortfahren, und drücken Sie dann auf das Aktualisierungssymbol</string>
+
+    <string name="something_went_wrong_loading_data">Beim Laden der Daten ist ein Fehler aufgetreten</string>
+    <string name="network_requests_count">Netzwerk-Anfragen (%1$d)</string>
+    <string name="screenshots_count">Relevante Screenshots (%1$d)</string>
+    <string name="webpage_content_count">Webseiten-Inhalt (%1$d)</string>
+    <string name="collapse_input_section">Eingabebereich ausblenden</string>
+    <string name="expand_input_section">Eingabebereich einblenden</string>
+    <string name="no_result_yet_or_select_data">Daten auswählen und auf Analysieren klicken, oder die Anfrage bearbeiten.</string>
+    <string name="analyzing_data">Daten werden analysiert</string>
+
+    <string name="include_data_in_analysis">Daten in Analyse einbeziehen:</string>
+    <string name="network_requests_selected">Netzwerk-Anfragen (%1$d / %2$d ausgewählt)</string>
+    <string name="screenshots_selected">Relevante Screenshots (%1$d / %2$d ausgewählt)</string>
+    <string name="webpage_content_selected">Webseiten-Inhalt (%1$d / %2$d ausgewählt)</string>
+
+    <string name="collapse_section">Ausblenden</string>
+    <string name="expand_section">Einblenden</string>
+    <string name="select_all">Alle auswählen</string>
+    <string name="deselect_all">Alle abwählen</string>
+    <string name="loading_items">Elemente werden geladen…</string>
+    <string name="no_items_available">Keine Elemente verfügbar.</string>
+
+    <string name="hint_select_data_and_analyze">Daten auswählen und auf Analysieren klicken.</string>
+
+    <string name="error_session_data_not_loaded">Fehler: Sitzungsdaten nicht verfügbar.</string>
+    <string name="error_unknown_analysis">Ein unbekannter Fehler ist während der Analyse aufgetreten.</string>
+    <string name="error_session_id_missing">Fehler: Session-ID nicht gefunden.</string>
+    <string name="error_loading_session_data">Fehler beim Laden der Sitzungsdaten.</string>
+    <string name="automatic_analysis_input_screen_title">KI-Anfrage erstellen</string>
+
+    <string name="automatic_analysis_setup">Automatische Analyse-Einrichtung</string>
+    <string name="automatic_analysis_result">Analyse-Ergebnis</string>
+    <string name="loading_session_data">Sitzungsdaten werden geladen…</string>
+    <string name="expand_data_selection">Datenauswahl einblenden</string>
+    <string name="collapse_data_selection">Datenauswahl ausblenden</string>
+    <string name="back">Zurück</string>
+    <string name="analysis_based_on">Analyse basiert auf:</string>
+    <string name="prompt_used">Anfrage: %1$s</string>
+    <string name="selected_data_summary">Ausgewählte Daten:</string>
+    <string name="no_data_selected_for_analysis">Keine spezifischen Daten für die Analyse ausgewählt (Standardwerte können gelten)</string>
+    <string name="analysis_pending">Analyse ausstehend…</string>
+    <string name="receiving_results">Ergebnisse werden empfangen…</string>
+    <string name="unknown_error">Unbekannter Fehler</string>
+    <string name="analysis_hints_title">Analyse-Hinweise</string>
+    <string name="expand_hints">Hinweise einblenden</string>
+    <string name="collapse_hints">Hinweise ausblenden</string>
+    <string name="dismiss_hints">Hinweise verwerfen</string>
+    <string name="expand_analysis_details">Analyse-Details einblenden</string>
+    <string name="collapse_analysis_details">Analyse-Details ausblenden</string>
+    <string name="analyze_pro">Tiefenanalyse mit Gemini Pro (Empfohlen)</string>
+    <string name="analyze_fast">Schnelle Analyse mit Gemini Flash</string>
 </resources>

@@ -101,7 +101,7 @@ fun EndAnalysisStepComponent(
                     onForceStopAnalysis()
                     //onNavigateToSessionList()
                 },
-                text = stringResource(R.string.end_analysis_anyway),
+                buttonText = stringResource(R.string.end_analysis_anyway),
             )
         }
         }

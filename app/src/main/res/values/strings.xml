@@ -178,7 +178,6 @@
     <string name="js_path">JS Path: %1$s</string>
     <string name="short_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</string>
     <string name="custom_prompt">Enter prompt (max 300 characters)</string>
-    <string name="analyze_captive_portal_with_ai">Analyze captive portal with AI</string>
     <string name="clear_prompt">clear prompt</string>
     <string name="no_result_yet">Please enter a prompt and press the \"Analyze\" button to start.</string>
     <string name="request_details">Request details</string>
@@ -309,5 +308,12 @@
     <string name="analysis_pending">Analysis pending…</string>
     <string name="receiving_results">Receiving results…</string>
     <string name="unknown_error">Unknown error</string>
-
+    <string name="analysis_hints_title">Analysis Hints</string>
+    <string name="expand_hints">Expand hints</string>
+    <string name="collapse_hints">Collapse hints</string>
+    <string name="dismiss_hints">Dismiss hints</string>
+    <string name="expand_analysis_details">Expand analysis details</string>
+    <string name="collapse_analysis_details">Collapse analysis details</string>
+    <string name="analyze_pro"> Deep Analysis with Gemini Pro (Recommended)</string>
+    <string name="analyze_fast">Fast Analysis with Gemini Flash</string>
 </resources>

@@ -15,7 +15,7 @@ class PreviewAutomaticAnalysisViewModel(
     override val automaticAnalysisUiState: StateFlow<AutomaticAnalysisUiState> = _mockUiState.asStateFlow()
 
     // Implement functions as No-Ops (they don't do anything in static previews)
-    override fun analyzeWithAi() { /* No-op */ }
+    override fun analyzeWithAi(model: String?) { /* No-op */ }
     override fun updatePromptEditText(text: String) { /* No-op */ }
     override fun loadSessionData() { /* No-op */ }
     override fun toggleRequestSelection(requestId: Int) { /* No-op */ }

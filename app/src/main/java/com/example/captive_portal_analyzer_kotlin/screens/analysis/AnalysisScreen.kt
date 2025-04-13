@@ -510,7 +510,7 @@ fun PreferenceSetupContent(
                     updatePcapDroidPacketCaptureStatus(PcapDroidPacketCaptureStatus.DISABLED)
 
                           },
-                text = stringResource(R.string.continue_without_packet_capture),
+                buttonText = stringResource(R.string.continue_without_packet_capture),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
@@ -661,7 +661,7 @@ private fun WebViewInteractionContent(
             GhostButton(
                 modifier = Modifier.weight(1f),
                 onClick = { webViewActions.switchWebViewType(analysisCallbacks.showToast) },
-                text = stringResource(R.string.switch_browser_type)
+                buttonText = stringResource(R.string.switch_browser_type)
             )
 
             RoundCornerButton(
@@ -775,7 +775,7 @@ private fun AnalysisError(
                         .weight(1f)
                         .padding(end = 8.dp),
                     onClick = { onRetry() },
-                    text = stringResource(R.string.retry)
+                    buttonText = stringResource(R.string.retry)
                 )
             }
         }

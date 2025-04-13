@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -44,6 +45,7 @@ import com.example.captive_portal_analyzer_kotlin.IMainViewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
+import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
@@ -73,6 +75,12 @@ fun AutomaticAnalysisInputScreen(
     // Observe initial loading state (for session data)
     val initialLoading = uiState.isLoading && uiState.sessionData == null && uiState.outputText == null
     val initialError = uiState.error != null && uiState.sessionData == null // Error during initial load
+    val isAnalyzing = uiState.isLoading && uiState.outputText != null // Loading *during* analysis stream
+
+    // Determine if any data is selectable (used for enabling buttons)
+    val isAnyDataSelectable = uiState.totalRequestsCount > 0 || uiState.totalScreenshotsCount > 0 || uiState.totalWebpageContentCount > 0
+    // Determine if any data is actually *selected* (could be used for stricter button enabling)
+    val isAnyDataSelected = uiState.selectedRequestIds.isNotEmpty() || uiState.selectedScreenshotIds.isNotEmpty() || uiState.selectedWebpageContentIds.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -84,7 +92,7 @@ fun AutomaticAnalysisInputScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()) // Ensure scrolling works
             ) {
                 Spacer(Modifier.height(16.dp))
 
@@ -96,7 +104,7 @@ fun AutomaticAnalysisInputScreen(
                     label = { Text(stringResource(R.string.custom_prompt)) },
                     singleLine = false,
                     maxLines = 5,
-                    enabled = !initialLoading // Disable if initially loading
+                    enabled = !initialLoading && !isAnalyzing // Disable if initially loading or currently analyzing
                 )
 
                 Spacer(Modifier.height(16.dp))
@@ -105,7 +113,7 @@ fun AutomaticAnalysisInputScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = !initialLoading) { isDataSelectionExpanded = !isDataSelectionExpanded }
+                        .clickable(enabled = !initialLoading && !isAnalyzing) { isDataSelectionExpanded = !isDataSelectionExpanded }
                         .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -138,21 +146,21 @@ fun AutomaticAnalysisInputScreen(
                             selectedIds = uiState.selectedRequestIds,
                             idProvider = { request: CustomWebViewRequestEntity -> request.customWebViewRequestId },
                             contentDescProvider = { request: CustomWebViewRequestEntity ->
-                                request.url?.length?.let { "${request.method} ${request.url.take(60)}${if (it > 60) "..." else ""}" }
-                                    .toString()
+                                val urlPart = request.url?.take(60)?.let { if (request.url.length > 60) "$it..." else it } ?: "N/A"
+                                "${request.method ?: "UNK"} $urlPart"
                             },
                             onToggle = { viewModel.toggleRequestSelection(it) },
                             onSetAllSelected = { viewModel.setAllRequestsSelected(it) },
-                            enabled = !initialLoading && uiState.totalRequestsCount > 0
+                            enabled = !initialLoading && !isAnalyzing && uiState.totalRequestsCount > 0 // Disable during analysis too
                         )
                         // Screenshots Category
                         DataSelectionCategory(
                             title = stringResource(
                                 R.string.screenshots_selected,
                                 uiState.selectedScreenshotIds.size,
-                                uiState.totalScreenshotsCount
+                                uiState.totalScreenshotsCount // Total is only privacy/tos related ones
                             ),
-                            items = uiState.sessionData?.screenshots?.filter { it.isPrivacyOrTosRelated } ?: emptyList(),
+                            items = uiState.sessionData?.screenshots?.filter { it.isPrivacyOrTosRelated } ?: emptyList(), // Show only relevant ones
                             selectedIds = uiState.selectedScreenshotIds,
                             idProvider = { screenshot: ScreenshotEntity -> screenshot.screenshotId },
                             contentDescProvider = { screenshot: ScreenshotEntity ->
@@ -160,7 +168,7 @@ fun AutomaticAnalysisInputScreen(
                             },
                             onToggle = { viewModel.toggleScreenshotSelection(it) },
                             onSetAllSelected = { viewModel.setAllScreenshotsSelected(it) },
-                            enabled = !initialLoading && uiState.totalScreenshotsCount > 0
+                            enabled = !initialLoading && !isAnalyzing && uiState.totalScreenshotsCount > 0 // Disable during analysis too
                         )
                         // Webpage Content Category
                         DataSelectionCategory(
@@ -178,50 +186,65 @@ fun AutomaticAnalysisInputScreen(
                             },
                             onToggle = { viewModel.toggleWebpageContentSelection(it) },
                             onSetAllSelected = { viewModel.setAllWebpageContentSelected(it) },
-                            enabled = !initialLoading && uiState.totalWebpageContentCount > 0
+                            enabled = !initialLoading && !isAnalyzing && uiState.totalWebpageContentCount > 0 // Disable during analysis too
                         )
                     }
                 } // End AnimatedVisibility for Data Selection
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(24.dp)) // Increased spacing before buttons
 
-                // --- Action Button ---
-                // Show initial loading or error if applicable
+                // --- Action Buttons ---
                 when {
                     initialLoading -> {
                         Box(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), contentAlignment = Alignment.Center){
-                            LoadingIndicator(message = stringResource(R.string.loading_session_data)) // New string
+                            LoadingIndicator(message = stringResource(R.string.loading_session_data))
                         }
                     }
                     initialError -> {
                         ErrorComponent(
-                            error = uiState.error ?: stringResource(id = R.string.unknown_error), // Provide default
+                            error = uiState.error ?: stringResource(id = R.string.unknown_error),
                             onRetryClick = { viewModel.loadSessionData() } // Retry loading data
                         )
                     }
                     else -> {
-                        // Show Analyze button only when data is loaded successfully
-                        Row(
+                        // Show Analyze buttons only when data is loaded successfully
+                        Column (
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
                         ){
+                            val buttonEnabled = !isAnalyzing && isAnyDataSelectable // Enable if not analyzing AND there's something to potentially select
+
+                            // Button for Gemini Pro
                             RoundCornerButton(
                                 onClick = {
-                                    viewModel.analyzeWithAi() // Start analysis
+                                    viewModel.analyzeWithAi("gemini-2.5-pro-preview-03-25") // Use specific model name for pro
                                     navController.navigate(AutomaticAnalysisOutputRoute) // Navigate to output screen
                                 },
-                                buttonText = stringResource(R.string.analyze_captive_portal_with_ai),
-                                // Enable button only if not loading/analyzing and some data is potentially selectable
-                                enabled = !uiState.isLoading && (uiState.totalRequestsCount > 0 || uiState.totalScreenshotsCount > 0 || uiState.totalWebpageContentCount > 0),
+                                buttonText = stringResource(R.string.analyze_pro),
+                                enabled = buttonEnabled,
                                 isLoading = false, // Loading state is handled on the output screen for analysis
-                                fillWidth = false,
+                                fillWidth = true,
                             )
+
+                            Spacer(Modifier.width(8.dp).height(16.dp)) // Space between buttons
+
+                            // Button for Gemini Flash
+                            GhostButton(
+                                onClick = {
+                                    viewModel.analyzeWithAi("gemini-2.0-flash") // Use specific model name for flash
+                                    navController.navigate(AutomaticAnalysisOutputRoute) // Navigate to output screen
+                                },
+                                buttonText = stringResource(R.string.analyze_fast),
+                                enabled = buttonEnabled,
+                                isLoading = false, // Loading state is handled on the output screen for analysis
+                                fillWidth = true,
+                            )
+
+
                         }
                     }
                 }
 
-
-                Spacer(Modifier.height(16.dp)) // Bottom padding
+                Spacer(Modifier.height(32.dp)) // More bottom padding
             } // End Main Column
 
             // --- Internet Banner ---
