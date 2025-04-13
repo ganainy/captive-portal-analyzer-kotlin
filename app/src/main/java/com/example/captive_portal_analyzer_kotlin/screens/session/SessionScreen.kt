@@ -877,7 +877,7 @@ fun SessionScreenContentPreview_Requests() {
             body = null,
             headers = null
         ),
-        CustomWebViewRequestEntity(
+/*        CustomWebViewRequestEntity(
             customWebViewRequestId = 1,
             sessionId = null,
             type = "Form Submission",
@@ -894,7 +894,7 @@ fun SessionScreenContentPreview_Requests() {
             method = RequestMethod.PUT,
             body = "{\"key\": \"value\"}",
             headers = "Content-Type: application/json"
-        ),
+        ),*/
         CustomWebViewRequestEntity(
             customWebViewRequestId = 3,
             sessionId = null,

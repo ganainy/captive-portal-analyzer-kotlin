@@ -49,9 +49,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var sessionManager: NetworkSessionManager
     private lateinit var mainViewModel: MainViewModel
 
-
-
-
     // Launchers for PCAPdroid control
     private lateinit var startCaptureLauncher: ActivityResultLauncher<Intent>
     private lateinit var stopCaptureLauncher: ActivityResultLauncher<Intent>
@@ -382,14 +379,6 @@ class MainActivity : ComponentActivity() {
                 // viewModel.fileProcessingDone() // Or similar signal
             }
         }
-    }
-
-    //todo maybe find alibrary to show the parsed .pcap file in app like in the pcapdroid app
-    // Optional: function to process the file now that it's in app storage
-    private fun processCopiedFileInternally(localFile: File) {
-        Log.d(TAG, "Processing the copied file: ${localFile.absolutePath}")
-        // Add your PCAP parsing logic here, reading directly from 'localFile'
-        // This can now use standard File APIs
     }
 
 

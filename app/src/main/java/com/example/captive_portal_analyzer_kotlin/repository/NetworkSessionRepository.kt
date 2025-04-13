@@ -27,7 +27,7 @@ import java.io.File
  * This class is used to abstract away the underlying database operations from the UI.
  * It provides a single point of entry for all operations related to Session management.
  */
-class NetworkSessionRepository(
+open class NetworkSessionRepository(
     /**
      * The DAO for handling NetworkSession database operations.
      */

@@ -1,16 +1,20 @@
 package com.example.captive_portal_analyzer_kotlin.navigation
 
-
+// Import NEW Screens and ViewModel Factory
 import NetworkSessionRepository
+import android.app.Application
 import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navigation
 import com.example.captive_portal_analyzer_kotlin.MainViewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.ThemeMode
@@ -22,7 +26,10 @@ import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScree
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisScreenConfig
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.IntentLaunchConfig
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.NavigationConfig
-import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisScreen
+import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisInputScreen
+import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisOutputScreen
+import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisViewModel
+import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisViewModelFactory
 import com.example.captive_portal_analyzer_kotlin.screens.manual_connect.ManualConnectScreen
 import com.example.captive_portal_analyzer_kotlin.screens.request_details_screen.RequestDetailsScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session.SessionScreen
@@ -34,53 +41,24 @@ import com.example.captive_portal_analyzer_kotlin.screens.welcome.WelcomeScreen
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import java.util.Locale
 
-/**
- * A sealed class representing the possible screens in the app. This class is used as a navigation
- * graph, and the [route] property is used as the route for the NavHost.
- *
- * @property route The route for the NavHost.
- * @property titleStringResource The string resource id for the title of the screen.
- */
 sealed class Screen(val route: String, @StringRes val titleStringResource: Int) {
-
     object Welcome : Screen("welcome", R.string.welcome_screen_title)
-
     object ManualConnect : Screen("manual_connect", R.string.manual_connect_screen_title)
-
     object Analysis : Screen("analysis", R.string.analysis_screen_title)
-
     object SessionList : Screen("session_list", R.string.session_list_screen_title)
-
     object Session : Screen("session", R.string.session_screen_title)
-
     object About : Screen("about", R.string.about_screen_title)
-
-    object AutomaticAnalysis : Screen("automatic_analysis", R.string.automatic_analysis)
-
     object Settings : Screen("settings", R.string.settings)
-
     object WebPageContent : Screen("webpage_content", R.string.webpage_content)
-
     object RequestDetails : Screen("request_details", R.string.request_details)
-
     object PCAPDroidSetup : Screen("pcapdroid_setup", R.string.pcap_setup_screen_title)
 }
 
-/**
- * A composable function that sets up the navigation graph for the app. This function is responsible for
- * setting up the navigation graph, and for handling the navigation between the different screens in
- * the app.
- *
- * @param navController The navController to use for navigating between screens.
- * @param sessionManager The sessionManager to use for managing the network sessions.
- * @param mainViewModel The sharedViewModel to use for shared state between screens.
- * @param dialogState The dialogState to use for showing and hiding dialogs.
- * @param repository The repository to use for storing and retrieving data both locally and remotely.
- * @param themeMode The theme mode to use for the app.
- * @param currentLanguage The current language to use for the app.
- * @param onThemeChanged A function to call when the theme is changed.
- * @param onLocalChanged A function to call when the locale is changed.
- */
+// Routes related to Automatic Analysis
+val AutomaticAnalysisInputRoute = "automatic_analysis_input"
+val AutomaticAnalysisGraphRoute = "automatic_analysis_graph"
+val AutomaticAnalysisOutputRoute = "automatic_analysis_output"
+
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
@@ -98,43 +76,34 @@ fun AppNavGraph(
     onOpenFileRequested: (String) -> Unit,
     skipSetup: Boolean,
 ) {
-    // Remember navigation actions for the navController
     val actions = remember(navController) { NavigationActions(navController) }
-
-    // Collect the current toast state from the shared ViewModel
     val toastState by mainViewModel.toastState.collectAsState()
 
-    // Passed to screens to give the ability to display a toast notification
     AppToast(
         toastState = toastState,
         onDismissRequest = { mainViewModel.hideToast() }
     )
 
-    // Passed to screens to give the ability to display an alert dialog
     ActionAlertDialog(
         dialogState = dialogState,
         onDismissRequest = { mainViewModel.hideDialog() }
     )
 
-    //Setup the navigation graph,parameters needed for each screen and which screen to use when the app starts
     NavHost(navController = navController, startDestination = Screen.Welcome.route) {
         composable(route = Screen.Welcome.route) {
-            // No need to pass showTopBar, as the default is true and we want it here
             WelcomeScreen(
                 navigateToSetupPCAPDroidScreen = actions.navigateToSetupPCAPDroidScreen,
                 navigateToManualConnectScreen = actions.navigateToManualConnectScreen,
                 skipSetup = skipSetup,
+                repository = repository
             )
         }
         composable(route = Screen.ManualConnect.route) {
-            // No need to pass showTopBar, as the default is true and we want it here
             ManualConnectScreen(
                 navigateToAnalysis = actions.navigateToAnalysisScreen,
             )
         }
-
         composable(route = Screen.Analysis.route) {
-            //Pass showTopBar = false to hide the top bar on this screen
             AnalysisScreen(
                 screenConfig = AnalysisScreenConfig(
                     repository = repository,
@@ -154,50 +123,27 @@ fun AppNavGraph(
                 )
             )
         }
-        composable(
-            route = Screen.SessionList.route,
-        ) {
-            // No need to pass showTopBar, as the default is true and we want it here
+        composable(route = Screen.SessionList.route) {
             SessionListScreen(
                 repository = repository,
                 navigateToWelcome = actions.navigateToWelcomeScreen,
-                updateClickedSessionId = mainViewModel::updateClickedSessionId,
+                updateClickedSessionId = mainViewModel::updateClickedSessionId, // Pass the function reference
                 navigateToSessionScreen = actions.navigateToSessionScreen
             )
         }
-        composable(
-            route = Screen.Session.route,
-        ) {
-            // No need to pass showTopBar, as the default is true and we want it here
+        composable(route = Screen.Session.route) {
             SessionScreen(
                 repository = repository,
                 mainViewModel = mainViewModel,
-                navigateToAutomaticAnalysis = actions.navigateToAutomaticAnalysisScreen,
+                navigateToAutomaticAnalysis = actions.navigateToAutomaticAnalysisGraph, // Navigate to the GRAPH
                 navigateToWebpageContentScreen = actions.navigateToWebpageContentScreen,
                 navigateToRequestDetailsScreen = actions.navigateToRequestDetailsScreen
             )
         }
-        composable(
-            route = Screen.About.route,
-        ) {
-            // No need to pass showTopBar, as the default is true and we want it here
+        composable(route = Screen.About.route) {
             AboutScreen()
         }
-
-        composable(
-            route = Screen.AutomaticAnalysis.route,
-        ) {
-            // No need to pass showTopBar, as the default is true and we want it here
-            AutomaticAnalysisScreen(
-                mainViewModel = mainViewModel,
-                repository = repository,
-            )
-        }
-
-        composable(
-            route = Screen.Settings.route,
-        ) {
-            // No need to pass showTopBar, as the default is true and we want it here
+        composable(route = Screen.Settings.route) {
             SettingsScreen(
                 themeMode = themeMode,
                 currentLanguage = currentLanguage,
@@ -205,82 +151,111 @@ fun AppNavGraph(
                 onLocalChanged = onLocalChanged,
             )
         }
-        composable(
-            route = Screen.WebPageContent.route,
-        ) {
-            // No need to pass showTopBar, as the default is true and we want it here
+        composable(route = Screen.WebPageContent.route) {
             WebpageContentScreen(
                 mainViewModel = mainViewModel,
             )
         }
-        composable(
-            route = Screen.RequestDetails.route,
-        ) {
-            // No need to pass showTopBar, as the default is true and we want it here
+        composable(route = Screen.RequestDetails.route) {
             RequestDetailsScreen(
                 mainViewModel = mainViewModel,
             )
         }
-
-        composable(
-            route = Screen.PCAPDroidSetup.route,
-        ) {
+        composable(route = Screen.PCAPDroidSetup.route) {
             SetupPCAPDroidScreen(
                 navigateToManualConnectScreen = actions.navigateToManualConnectScreen,
                 updateSkipSetup = mainViewModel::updateSkipSetupPreference,
             )
         }
 
+        // --- Nested Navigation Graph for Automatic Analysis ---
+        navigation(
+            startDestination = AutomaticAnalysisInputRoute,
+            route = AutomaticAnalysisGraphRoute
+        ) {
+            // Input Screen Composable
+            composable(route = AutomaticAnalysisInputRoute) { backStackEntry ->
+                // ---> Get the graph's NavBackStackEntry <---
+                val graphEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(AutomaticAnalysisGraphRoute)
+                }
+                val clickedSessionId by mainViewModel.clickedSessionId.collectAsState()
+                val application = LocalContext.current.applicationContext as Application
+
+                // ---> Create/Get ViewModel scoped to the graph <---
+                val automaticAnalysisViewModel: AutomaticAnalysisViewModel = viewModel(
+                    viewModelStoreOwner = graphEntry,
+                    factory = AutomaticAnalysisViewModelFactory(
+                        application = application,
+                        repository = repository,
+                        clickedSessionId = clickedSessionId
+                    )
+                )
+
+                AutomaticAnalysisInputScreen(
+                    navController = navController,
+                    viewModel = automaticAnalysisViewModel, // Pass the shared ViewModel
+                    mainViewModel = mainViewModel
+                )
+            }
+
+            // Output Screen Composable
+            composable(route = AutomaticAnalysisOutputRoute) { backStackEntry -> // Get NavBackStackEntry here
+                // ---> Get the graph's NavBackStackEntry <---
+                val graphEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(AutomaticAnalysisGraphRoute)
+                }
+
+                // ---> Get the SAME ViewModel instance scoped to the graph <---
+                val automaticAnalysisViewModel: AutomaticAnalysisViewModel = viewModel(
+                    viewModelStoreOwner = graphEntry
+                )
+
+                AutomaticAnalysisOutputScreen(
+                    navController = navController,
+                    viewModel = automaticAnalysisViewModel, // Pass the shared ViewModel
+                    mainViewModel = mainViewModel
+                )
+            }
+        }
 
     }
 }
 
-/**
- * Class to hold navigation actions for the app. This class is used to create actions which can be used to
- * navigate between different screens in the app.
- *
- * @param navController The navController to use for navigating between screens.
- */
 class NavigationActions(private val navController: NavHostController) {
 
     val navigateToManualConnectScreen: () -> Unit = {
         navController.navigate(Screen.ManualConnect.route)
     }
-
     val navigateToAnalysisScreen: () -> Unit = {
         navController.navigate(Screen.Analysis.route)
     }
-
     val navigateToWelcomeScreen: () -> Unit = {
         navController.navigate(Screen.Welcome.route)
     }
-
     val navigateToSessionListScreen: () -> Unit = {
         navController.navigate(Screen.SessionList.route)
     }
-
     val navigateToSessionScreen: () -> Unit = {
         navController.navigate(Screen.Session.route)
     }
 
-    val navigateToAutomaticAnalysisScreen: () -> Unit = {
-        navController.navigate(Screen.AutomaticAnalysis.route)
+    // Updated action: Navigate to the START of the nested graph
+    val navigateToAutomaticAnalysisGraph: () -> Unit = {
+        // Make sure clickedSessionId is set in MainViewModel BEFORE calling this
+        navController.navigate(AutomaticAnalysisGraphRoute) // Use the graph's route constant
     }
 
     val navigateToWebpageContentScreen: () -> Unit = {
         navController.navigate(Screen.WebPageContent.route)
     }
-
-    val navigateToRequestDetailsScreen: () -> Unit =
-        { navController.navigate(Screen.RequestDetails.route) }
-
+    val navigateToRequestDetailsScreen: () -> Unit = {
+        navController.navigate(Screen.RequestDetails.route)
+    }
     val navigateToSetupPCAPDroidScreen: () -> Unit = {
         navController.navigate(Screen.PCAPDroidSetup.route)
     }
-
     val navigateBack: () -> Unit = {
         navController.popBackStack()
     }
-
-
 }

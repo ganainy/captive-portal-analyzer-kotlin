@@ -40,17 +40,40 @@ enum class PcapDroidPacketCaptureStatus {
     DISABLED
 }
 
-open class MainViewModel(
+interface IMainViewModel {
+    val clickedSessionId: StateFlow<String?>
+    val isConnected: StateFlow<Boolean>
+
+    fun updateClickedSessionId(clickedSessionId: String?)
+    fun updateLocale(locale: Locale)
+    fun updateThemeMode(mode: ThemeMode)
+    fun showDialog(
+        title: String,
+        message: String,
+        confirmText: String = "OK",
+        dismissText: String = "Cancel",
+        onConfirm: () -> Unit,
+        onDismiss: () -> Unit
+    )
+    fun hideDialog()
+    fun showToast(message: String, style: ToastStyle)
+    fun hideToast()
+    fun updateClickedContent(webpageContentEntity: WebpageContentEntity)
+    fun updateClickedRequest(webViewRequestEntity: CustomWebViewRequestEntity)
+}
+
+
+ class MainViewModel(
     private val connectivityObserver: NetworkConnectivityObserver,
-    private val dataStore: DataStore<Preferences>,
-) : ViewModel() {
+    private val dataStore:  DataStore<Preferences>,
+) : ViewModel() , IMainViewModel{
 
     /*show action alert dialogs from anywhere in the app*/
     private val _dialogState = MutableStateFlow<DialogState>(DialogState.Hidden)
     val dialogState = _dialogState.asStateFlow()
 
     private val _clickedSessionId = MutableStateFlow<String?>(null)
-    val clickedSessionId: StateFlow<String?> = _clickedSessionId
+    override val clickedSessionId: StateFlow<String?> = _clickedSessionId
 
     private val _clickedWebViewRequestEntity = MutableStateFlow<CustomWebViewRequestEntity?>(null)
     val clickedWebViewRequestEntity: StateFlow<CustomWebViewRequestEntity?> =
@@ -64,30 +87,30 @@ open class MainViewModel(
     private val _skipSetup = MutableStateFlow(false)
     val skipSetup: StateFlow<Boolean> get() = _skipSetup
 
-    fun updateClickedSessionId(clickedSessionId: String?) {
+    override fun updateClickedSessionId(clickedSessionId: String?) {
         _clickedSessionId.value = clickedSessionId
     }
 
     //is device connected to the internet
     private val _isConnected = MutableStateFlow(true)
-    val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+    override val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     //settings related to app language
 
     private val languageKey = stringPreferencesKey("app_language") // Keys for DataStore
     private val _currentLocale = MutableStateFlow<Locale>(Locale("en"))
-    val currentLocale: StateFlow<Locale> get() = _currentLocale
+     val currentLocale: StateFlow<Locale> get() = _currentLocale
 
 
     //settings related to dark/light mode
 
     private val themeModeKey = stringPreferencesKey("theme_mode")  // Keys for DataStore
     private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
-    val themeMode = _themeMode.asStateFlow()
+     val themeMode = _themeMode.asStateFlow()
 
     //the clicked webpage content to show in the WebpageContent screen
     private val _clickedWebpageContent = MutableStateFlow<WebpageContentEntity?>(null)
-    val clickedWebpageContent: StateFlow<WebpageContentEntity?> =
+     val clickedWebpageContent: StateFlow<WebpageContentEntity?> =
         _clickedWebpageContent.asStateFlow()
 
 
@@ -133,7 +156,7 @@ open class MainViewModel(
     }
 
 
-    fun updateLocale(locale: Locale) {
+     override fun updateLocale(locale: Locale) {
         viewModelScope.launch(Dispatchers.IO) {
             dataStore.edit { preferences ->
                 preferences[languageKey] = locale.toLanguageTag()
@@ -159,7 +182,7 @@ open class MainViewModel(
         }
     }
 
-    fun updateThemeMode(mode: ThemeMode) {
+     override fun updateThemeMode(mode: ThemeMode) {
         viewModelScope.launch(Dispatchers.IO) {
             dataStore.edit { preferences ->
                 preferences[themeModeKey] = mode.name
@@ -169,13 +192,13 @@ open class MainViewModel(
     }
 
 
-    fun showDialog(
-        title: String,
-        message: String,
-        confirmText: String = "OK",
-        dismissText: String = "Cancel",
-        onConfirm: () -> Unit,
-        onDismiss: () -> Unit
+     override fun showDialog(
+         title: String,
+         message: String,
+         confirmText: String,
+         dismissText: String,
+         onConfirm: () -> Unit,
+         onDismiss: () -> Unit
     ) {
         _dialogState.value = DialogState.Shown(
             title = title,
@@ -187,12 +210,12 @@ open class MainViewModel(
         )
     }
 
-    fun hideDialog() {
+     override fun hideDialog() {
         _dialogState.value = DialogState.Hidden
     }
 
 
-    fun showToast(
+     override fun showToast(
         message: String,
         style: ToastStyle,
     ) {
@@ -200,7 +223,7 @@ open class MainViewModel(
     }
 
 
-    fun hideToast() {
+     override fun hideToast() {
         _toastState.value = ToastState.Hidden
     }
 
@@ -209,11 +232,11 @@ open class MainViewModel(
      * Updates the clicked content to show in the WebpageContent screen.
      * @param webpageContentEntity the webpage content entity to be updated.
      */
-    fun updateClickedContent(webpageContentEntity: WebpageContentEntity) {
+     override fun updateClickedContent(webpageContentEntity: WebpageContentEntity) {
         _clickedWebpageContent.value = webpageContentEntity
     }
 
-    fun updateClickedRequest(webViewRequestEntity: CustomWebViewRequestEntity) {
+     override fun updateClickedRequest(webViewRequestEntity: CustomWebViewRequestEntity) {
         _clickedWebViewRequestEntity.value = webViewRequestEntity
     }
 

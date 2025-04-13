@@ -113,8 +113,18 @@ fun AppScaffold(
     ) {
         Scaffold(
             topBar = {
-                // analysis screen will handle its own top bar
-                if (currentRoute != Screen.Analysis.route ) {
+
+                // Define the set of routes where the main top bar should be hidden
+                val routesWithoutMainAppBar = remember {
+                    setOf(
+                        Screen.Analysis.route,
+                        AutomaticAnalysisInputRoute,
+                        AutomaticAnalysisOutputRoute
+                    )
+                }
+
+                // analysis & automatic analysis screens will handle their own top bar
+                if (currentRoute !in routesWithoutMainAppBar)  {
                     TopAppBar(
                         title = {
                             Text(

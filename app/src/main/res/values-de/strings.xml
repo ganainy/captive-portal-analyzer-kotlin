@@ -121,7 +121,7 @@
         <string name="select_privacy_images"><![CDATA[Wählen Sie Datenschutz- & AGB-Bilder aus]]></string>
         <string name="hint_select_privacy_images">Bitte tippen Sie auf Bilder mit Datenschutzrichtlinien oder Allgemeinen Geschäftsbedingungen, um diese zu markieren.</string>
         <string name="review_session_data">- Überprüfen Sie gerne die gesammelten Daten \n- Markieren Sie bitte Screenshots, die Datenschutzrichtlinien oder AGB enthalten, mit der Schaltfläche unten \n- Der letzte Schritt ist das Hochladen der gesammelten Daten, damit wir diese weiter analysieren können.</string>
-        <string name="automatic_analysis">Analyse-Ergebnis</string>
+        <string name="automatic_analysis_result_screen_title">Analyse-Ergebnis</string>
         <string name="automatic_analysis_button">Mit KI analysieren</string>
         <string name="long_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</string>
         <string name="short_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</string>

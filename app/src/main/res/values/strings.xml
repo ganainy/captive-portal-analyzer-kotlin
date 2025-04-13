@@ -121,7 +121,7 @@
     <string name="select_privacy_images"><![CDATA[Select Privacy & ToS images]]></string>
     <string name="hint_select_privacy_images">Please tap images with privacy policy or terms of service to mark them.</string>
     <string name="review_session_data">-Feel free to review collected data \n-Please mark screenshots containing privacy policy or terms of service related data through the button below \n-Last step is to upload the collected data so we can further analyze it.</string>
-    <string name="automatic_analysis">Analysis Result</string>
+    <string name="automatic_analysis_result_screen_title">Analysis Result</string>
     <string name="automatic_analysis_button">Analyze with AI</string>
     <string name="long_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</string>
     <string name="uploading_information_to_be_analyzed">Uploading information to be reviewed</string>
@@ -267,5 +267,47 @@
     <string name="without_requiring_root_access">without requiring root access</string>
     <string name="please_install_setup_pcapdroid_from_the_link_above_to_use_the_advanced_mode"><![CDATA[Please install & setup PCAPDroid from the link above to use the advanced mode.]]></string>
     <string name="please_stop_running_pcap_droid_capture_before_continuing">Please stop the running PCAPDroid capture before continuing, then press the refresh icon</string>
+    <string name="something_went_wrong_loading_data">Something went wrong while loading data</string>
+    <string name="network_requests_count">Network Requests (%1$d)</string>
+    <string name="screenshots_count">Relevant Screenshots (%1$d)</string>
+    <string name="webpage_content_count">Webpage Content (%1$d)</string>
+    <string name="collapse_input_section">Collapse Input Section</string>
+    <string name="expand_input_section">Expand Input Section</string>
+    <string name="no_result_yet_or_select_data">Select data and press analyze, or edit the prompt.</string>
+    <string name="analyzing_data">Analyzing data</string>
+
+    <string name="include_data_in_analysis">Include Data in Analysis:</string>
+    <string name="network_requests_selected">Network Requests (%1$d / %2$d selected)</string>
+    <string name="screenshots_selected">Relevant Screenshots (%1$d / %2$d selected)</string>
+    <string name="webpage_content_selected">Webpage Content (%1$d / %2$d selected)</string>
+
+    <string name="collapse_section">Collapse</string>
+    <string name="expand_section">Expand</string>
+    <string name="select_all">Select All</string>
+    <string name="deselect_all">Deselect All</string>
+    <string name="loading_items">Loading items…</string>
+    <string name="no_items_available">No items available.</string>
+
+    <string name="hint_select_data_and_analyze">Select data items above and press Analyze.</string>
+
+    <string name="error_session_data_not_loaded">Error: Session data not available.</string>
+    <string name="error_unknown_analysis">An unknown error occurred during analysis.</string>
+    <string name="error_session_id_missing">Error: Session ID not found.</string>
+    <string name="error_loading_session_data">Error loading session data.</string>
+    <string name="automatic_analysis_input_screen_title">Create the AI prompt</string>
+
+    <string name="automatic_analysis_setup">Automatic Analysis Setup</string>
+    <string name="automatic_analysis_result">Analysis Result</string>
+    <string name="loading_session_data">Loading session data…</string>
+    <string name="expand_data_selection">Expand data selection</string>
+    <string name="collapse_data_selection">Collapse data selection</string>
+    <string name="back">Back</string>
+    <string name="analysis_based_on">Analysis Based On:</string>
+    <string name="prompt_used">Prompt: %1$s</string>
+    <string name="selected_data_summary">Selected Data:</string>
+    <string name="no_data_selected_for_analysis">No specific data selected for analysis (defaults may apply)</string>
+    <string name="analysis_pending">Analysis pending…</string>
+    <string name="receiving_results">Receiving results…</string>
+    <string name="unknown_error">Unknown error</string>
 
 </resources>
