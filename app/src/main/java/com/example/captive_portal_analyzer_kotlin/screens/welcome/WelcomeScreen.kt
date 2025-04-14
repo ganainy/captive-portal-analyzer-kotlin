@@ -264,6 +264,7 @@ private fun WelcomeContent(
 
         // Start app button
         RoundCornerButton(
+            modifier = Modifier.padding(horizontal = 16.dp),
             onClick = if (skipSetup) navigateToManualConnectScreen else navigateToSetupPCAPDroidScreen,
             buttonText = stringResource(R.string.start),
         )

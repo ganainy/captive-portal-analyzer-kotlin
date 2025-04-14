@@ -1,6 +1,5 @@
 package com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis
 
-import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -15,14 +14,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -51,15 +55,14 @@ import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
+import com.example.captive_portal_analyzer_kotlin.navigation.AutomaticAnalysisOutputRoute
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.components.DataSelectionCategory
+import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.components.PcapSelectionItem
+import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.models.PcapProcessingState
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.PreviewAutomaticAnalysisViewModel
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.PreviewMainViewModel
-import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.mockUiStateInputError
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.mockUiStateInputLoaded
-import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.mockUiStateInputLoadedEmpty
-import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.mockUiStateInputLoading
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
-
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -70,17 +73,23 @@ fun AutomaticAnalysisInputScreen(
 ) {
     val uiState by viewModel.automaticAnalysisUiState.collectAsState()
     val isConnected by mainViewModel.isConnected.collectAsState()
-    var isDataSelectionExpanded by remember { mutableStateOf(true) } // State for collapsing data section
+    var isDataSelectionExpanded by remember { mutableStateOf(true) }
 
-    // Observe initial loading state (for session data)
-    val initialLoading = uiState.isLoading && uiState.sessionData == null && uiState.outputText == null
-    val initialError = uiState.error != null && uiState.sessionData == null // Error during initial load
-    val isAnalyzing = uiState.isLoading && uiState.outputText != null // Loading *during* analysis stream
+    // Determine initial loading state (only for fetching session data)
+    val initialLoading = uiState.isLoading && uiState.sessionData == null && uiState.outputText == null && !uiState.isPcapConverting
+    // Determine initial error state (error during session data fetch)
+    val initialError = uiState.error != null && uiState.sessionData == null && !uiState.isLoading && !uiState.isPcapConverting
 
-    // Determine if any data is selectable (used for enabling buttons)
-    val isAnyDataSelectable = uiState.totalRequestsCount > 0 || uiState.totalScreenshotsCount > 0 || uiState.totalWebpageContentCount > 0
-    // Determine if any data is actually *selected* (could be used for stricter button enabling)
-    val isAnyDataSelected = uiState.selectedRequestIds.isNotEmpty() || uiState.selectedScreenshotIds.isNotEmpty() || uiState.selectedWebpageContentIds.isNotEmpty()
+    // Determine if any data is *selectable* (used for enabling sections and buttons)
+    val isAnyDataSelectable = uiState.totalRequestsCount > 0 ||
+            uiState.totalScreenshotsCount > 0 ||
+            uiState.totalWebpageContentCount > 0 ||
+            uiState.isPcapIncludable // PCAP is selectable if includable
+
+    // Determine if Analyze button should be enabled
+    val isAnalyzeButtonEnabled = uiState.canStartAnalysis && isAnyDataSelectable
+// Determine if the prompt clear button should be enabled
+    val isPromptClearEnabled = !uiState.inputText.isEmpty() && !initialLoading && uiState.canStartAnalysis
 
     Scaffold(
         topBar = {
@@ -103,8 +112,24 @@ fun AutomaticAnalysisInputScreen(
                     onValueChange = { viewModel.updatePromptEditText(it) },
                     label = { Text(stringResource(R.string.custom_prompt)) },
                     singleLine = false,
-                    maxLines = 5,
-                    enabled = !initialLoading && !isAnalyzing // Disable if initially loading or currently analyzing
+                    maxLines = 4,
+                    // Disable if initially loading OR if PCAP is converting OR if AI analysis is running
+                    enabled = !initialLoading && uiState.canStartAnalysis,
+                    // --- Add trailing icon ---
+                    trailingIcon = {
+                        // Show icon only if text is not empty and field is enabled
+                        if (isPromptClearEnabled) {
+                            IconButton(
+                                onClick = { viewModel.updatePromptEditText("") }, // Clear text on click
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Close,
+                                    contentDescription = stringResource(R.string.clear_prompt)
+                                )
+                            }
+                        }
+                    }
+                    // --- End trailing icon ---
                 )
 
                 Spacer(Modifier.height(16.dp))
@@ -113,7 +138,8 @@ fun AutomaticAnalysisInputScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = !initialLoading && !isAnalyzing) { isDataSelectionExpanded = !isDataSelectionExpanded }
+                        // Allow toggling even if converting, unless it's initial load/error
+                        .clickable(enabled = !initialLoading && !initialError) { isDataSelectionExpanded = !isDataSelectionExpanded }
                         .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -130,7 +156,7 @@ fun AutomaticAnalysisInputScreen(
 
                 // --- Collapsible Data Selection Section ---
                 AnimatedVisibility(
-                    visible = isDataSelectionExpanded && !initialLoading && !initialError, // Hide if loading/error
+                    visible = isDataSelectionExpanded && !initialLoading && !initialError, // Hide if initial loading/error
                     enter = expandVertically(),
                     exit = shrinkVertically()
                 ) {
@@ -147,11 +173,12 @@ fun AutomaticAnalysisInputScreen(
                             idProvider = { request: CustomWebViewRequestEntity -> request.customWebViewRequestId },
                             contentDescProvider = { request: CustomWebViewRequestEntity ->
                                 val urlPart = request.url?.take(60)?.let { if (request.url.length > 60) "$it..." else it } ?: "N/A"
-                                "${request.method ?: "UNK"} $urlPart"
+                                "${request.method} $urlPart"
                             },
                             onToggle = { viewModel.toggleRequestSelection(it) },
                             onSetAllSelected = { viewModel.setAllRequestsSelected(it) },
-                            enabled = !initialLoading && !isAnalyzing && uiState.totalRequestsCount > 0 // Disable during analysis too
+                            // Disable selection controls if PCAP/AI is running
+                            enabled = uiState.canStartAnalysis && uiState.totalRequestsCount > 0
                         )
                         // Screenshots Category
                         DataSelectionCategory(
@@ -160,7 +187,7 @@ fun AutomaticAnalysisInputScreen(
                                 uiState.selectedScreenshotIds.size,
                                 uiState.totalScreenshotsCount // Total is only privacy/tos related ones
                             ),
-                            items = uiState.sessionData?.screenshots?.filter { it.isPrivacyOrTosRelated } ?: emptyList(), // Show only relevant ones
+                            items = uiState.sessionData?.screenshots?.filter { it.isPrivacyOrTosRelated } ?: emptyList(), // Show only PrivacyOrTos relevant ones
                             selectedIds = uiState.selectedScreenshotIds,
                             idProvider = { screenshot: ScreenshotEntity -> screenshot.screenshotId },
                             contentDescProvider = { screenshot: ScreenshotEntity ->
@@ -168,7 +195,8 @@ fun AutomaticAnalysisInputScreen(
                             },
                             onToggle = { viewModel.toggleScreenshotSelection(it) },
                             onSetAllSelected = { viewModel.setAllScreenshotsSelected(it) },
-                            enabled = !initialLoading && !isAnalyzing && uiState.totalScreenshotsCount > 0 // Disable during analysis too
+                            // Disable selection controls if PCAP/AI is running
+                            enabled = uiState.canStartAnalysis && uiState.totalScreenshotsCount > 0
                         )
                         // Webpage Content Category
                         DataSelectionCategory(
@@ -181,17 +209,30 @@ fun AutomaticAnalysisInputScreen(
                             selectedIds = uiState.selectedWebpageContentIds,
                             idProvider = { content: WebpageContentEntity -> content.contentId },
                             contentDescProvider = { content: WebpageContentEntity ->
-                                val path = content.htmlContentPath ?: content.jsContentPath ?: "Unknown content"
+                                val path = content.htmlContentPath
                                 "Content: ${path.substringAfterLast('/')}"
                             },
                             onToggle = { viewModel.toggleWebpageContentSelection(it) },
                             onSetAllSelected = { viewModel.setAllWebpageContentSelected(it) },
-                            enabled = !initialLoading && !isAnalyzing && uiState.totalWebpageContentCount > 0 // Disable during analysis too
+                            // Disable selection controls if PCAP/AI is running
+                            enabled = uiState.canStartAnalysis && uiState.totalWebpageContentCount > 0
                         )
+
+                        // --- NEW: PCAP File Selection ---
+                        if (uiState.isPcapIncludable) {
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            PcapSelectionItem(
+                                uiState = uiState, // Pass the whole state
+                                onToggle = { viewModel.togglePcapSelection(it) },
+                                onRetry = { viewModel.retryPcapConversion() }
+                            )
+                        }
+                        // --- End PCAP File Selection ---
+
                     }
                 } // End AnimatedVisibility for Data Selection
 
-                Spacer(Modifier.height(24.dp)) // Increased spacing before buttons
+                Spacer(Modifier.height(24.dp))
 
                 // --- Action Buttons ---
                 when {
@@ -210,36 +251,58 @@ fun AutomaticAnalysisInputScreen(
                         // Show Analyze buttons only when data is loaded successfully
                         Column (
                             modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally // Center loading indicator
                         ){
-                            val buttonEnabled = !isAnalyzing && isAnyDataSelectable // Enable if not analyzing AND there's something to potentially select
+                            // Loading overlay specifically for ongoing AI analysis or PCAP conversion
+                            // Show this *above* the buttons when active
+                            AnimatedVisibility(visible = uiState.isLoading || uiState.isPcapConverting) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = when {
+                                            uiState.isPcapConverting -> "Converting PCAP..."
+                                            uiState.isLoading -> "Analyzing with AI..."
+                                            else -> "Loading..." // Generic fallback (shouldn't be reached here)
+                                        },
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
 
                             // Button for Gemini Pro
                             RoundCornerButton(
                                 onClick = {
-                                    viewModel.analyzeWithAi("gemini-2.5-pro-preview-03-25") // Use specific model name for pro
+                                    // Specify the exact model name you want to use
+                                    viewModel.analyzeWithAi("gemini-2.5-pro-preview-03-25")
                                     navController.navigate(AutomaticAnalysisOutputRoute) // Navigate to output screen
                                 },
                                 buttonText = stringResource(R.string.analyze_pro),
-                                enabled = buttonEnabled,
-                                isLoading = false, // Loading state is handled on the output screen for analysis
+                                enabled = isAnalyzeButtonEnabled,
+                                isLoading = false,
                                 fillWidth = true,
                             )
 
-                            Spacer(Modifier.width(8.dp).height(16.dp)) // Space between buttons
+                            Spacer(Modifier.height(16.dp)) // Space between buttons
 
                             // Button for Gemini Flash
                             GhostButton(
                                 onClick = {
-                                    viewModel.analyzeWithAi("gemini-2.0-flash") // Use specific model name for flash
+                                    // Specify the exact model name you want to use
+                                    viewModel.analyzeWithAi("gemini-2.0-flash")
                                     navController.navigate(AutomaticAnalysisOutputRoute) // Navigate to output screen
                                 },
                                 buttonText = stringResource(R.string.analyze_fast),
-                                enabled = buttonEnabled,
-                                isLoading = false, // Loading state is handled on the output screen for analysis
+                                enabled = isAnalyzeButtonEnabled,
+                                isLoading = false,
                                 fillWidth = true,
                             )
-
-
                         }
                     }
                 }
@@ -254,20 +317,41 @@ fun AutomaticAnalysisInputScreen(
 }
 
 
+//Previews - Remember to update these with PCAP states
 
-//Previews
-
-
-@Preview(name = "Input - Loading State", showBackground = true)
-// No uiMode specified, defaults to light
-
+@Preview(name = "Input - Loaded State", showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
-fun AutomaticAnalysisInputScreenPreview_Loading_Light() { // Renamed for clarity
+fun AutomaticAnalysisInputScreenPreview_Loaded_Light() {
     val mockNavController = rememberNavController()
     val mockMainViewModel = PreviewMainViewModel()
-    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoading)
+    // Add a mock state that includes PCAP being available but idle
+    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoaded.copy(
+        isPcapIncludable = true,
+        pcapFilePath = "/fake/path.pcap",
+        pcapProcessingState = PcapProcessingState.Idle
+    ))
 
-    // Use AppTheme, explicitly set darkTheme = false for light mode preview
+    AppTheme(darkTheme = false) { // Wrap with AppTheme (Light)
+        AutomaticAnalysisInputScreen(
+            navController = mockNavController,
+            viewModel = mockViewModel,
+            mainViewModel = mockMainViewModel
+        )
+    }
+}
+
+@Preview(name = "Input - PCAP Converting", showBackground = true, device = "spec:width=411dp,height=891dp")
+@Composable
+fun AutomaticAnalysisInputScreenPreview_PcapConverting_Light() {
+    val mockNavController = rememberNavController()
+    val mockMainViewModel = PreviewMainViewModel()
+    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoaded.copy(
+        isPcapIncludable = true,
+        isPcapSelected = true, // Must be selected to be converting
+        pcapFilePath = "/fake/path.pcap",
+        pcapProcessingState = PcapProcessingState.Processing("job123") // Example converting state
+    ))
+
     AppTheme(darkTheme = false) {
         AutomaticAnalysisInputScreen(
             navController = mockNavController,
@@ -277,15 +361,19 @@ fun AutomaticAnalysisInputScreenPreview_Loading_Light() { // Renamed for clarity
     }
 }
 
-@Preview(name = "Input - Loading State (Dark)", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Input - PCAP Error", showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
-fun AutomaticAnalysisInputScreenPreview_Loading_Dark() { // Renamed for clarity
+fun AutomaticAnalysisInputScreenPreview_PcapError_Light() {
     val mockNavController = rememberNavController()
     val mockMainViewModel = PreviewMainViewModel()
-    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoading)
+    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoaded.copy(
+        isPcapIncludable = true,
+        isPcapSelected = true, // Can be selected even if error occurred
+        pcapFilePath = "/fake/path.pcap",
+        pcapProcessingState = PcapProcessingState.Error("Upload failed: 400 Bad Request") // Example error state
+    ))
 
-    // Use AppTheme, explicitly set darkTheme = true for dark mode preview
-    AppTheme(darkTheme = true) {
+    AppTheme(darkTheme = false) {
         AutomaticAnalysisInputScreen(
             navController = mockNavController,
             viewModel = mockViewModel,
@@ -294,121 +382,3 @@ fun AutomaticAnalysisInputScreenPreview_Loading_Dark() { // Renamed for clarity
     }
 }
 
-// --- Apply the same pattern to other previews ---
-
-@Preview(name = "Input - Error State", showBackground = true)
-@Composable
-fun AutomaticAnalysisInputScreenPreview_Error_Light() {
-    val mockNavController = rememberNavController()
-    val mockMainViewModel = PreviewMainViewModel()
-    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputError)
-
-    AppTheme(darkTheme = false) { // Wrap with AppTheme (Light)
-        AutomaticAnalysisInputScreen(
-            navController = mockNavController,
-            viewModel = mockViewModel,
-            mainViewModel = mockMainViewModel
-        )
-    }
-}
-
-@Preview(name = "Input - Error State (Dark)", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun AutomaticAnalysisInputScreenPreview_Error_Dark() {
-    val mockNavController = rememberNavController()
-    val mockMainViewModel = PreviewMainViewModel()
-    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputError)
-
-    AppTheme(darkTheme = true) { // Wrap with AppTheme (Dark)
-        AutomaticAnalysisInputScreen(
-            navController = mockNavController,
-            viewModel = mockViewModel,
-            mainViewModel = mockMainViewModel
-        )
-    }
-}
-
-
-@Preview(name = "Input - Loaded State", showBackground = true, device = "spec:width=411dp,height=891dp")
-@Composable
-fun AutomaticAnalysisInputScreenPreview_Loaded_Light() {
-    val mockNavController = rememberNavController()
-    val mockMainViewModel = PreviewMainViewModel()
-    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoaded)
-
-    AppTheme(darkTheme = false) { // Wrap with AppTheme (Light)
-        AutomaticAnalysisInputScreen(
-            navController = mockNavController,
-            viewModel = mockViewModel,
-            mainViewModel = mockMainViewModel
-        )
-    }
-}
-
-@Preview(name = "Input - Loaded State (Dark)", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, device = "spec:width=411dp,height=891dp")
-@Composable
-fun AutomaticAnalysisInputScreenPreview_Loaded_Dark() {
-    val mockNavController = rememberNavController()
-    val mockMainViewModel = PreviewMainViewModel()
-    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoaded)
-
-    AppTheme(darkTheme = true) { // Wrap with AppTheme (Dark)
-        AutomaticAnalysisInputScreen(
-            navController = mockNavController,
-            viewModel = mockViewModel,
-            mainViewModel = mockMainViewModel
-        )
-    }
-}
-
-// Example for Tablet Preview (assuming light mode default)
-@Preview(name = "Input - Loaded State (Tablet)", showBackground = true, device = "spec:width=1280dp,height=800dp,dpi=240")
-@Composable
-fun AutomaticAnalysisInputScreenPreview_Loaded_Tablet() {
-    val mockNavController = rememberNavController()
-    val mockMainViewModel = PreviewMainViewModel()
-    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoaded)
-
-    AppTheme(darkTheme = false) { // Wrap with AppTheme (Light)
-        AutomaticAnalysisInputScreen(
-            navController = mockNavController,
-            viewModel = mockViewModel,
-            mainViewModel = mockMainViewModel
-        )
-    }
-    // If you want a dark tablet preview, add another @Preview with uiMode and darkTheme=true
-}
-
-
-@Preview(name = "Input - Loaded Empty State", showBackground = true)
-@Composable
-fun AutomaticAnalysisInputScreenPreview_LoadedEmpty_Light() {
-    val mockNavController = rememberNavController()
-    val mockMainViewModel = PreviewMainViewModel()
-    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoadedEmpty)
-
-    AppTheme(darkTheme = false) { // Wrap with AppTheme (Light)
-        AutomaticAnalysisInputScreen(
-            navController = mockNavController,
-            viewModel = mockViewModel,
-            mainViewModel = mockMainViewModel
-        )
-    }
-}
-
-// Add a dark version if needed
-@Preview(name = "Input - Loaded Empty State (Dark)", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun AutomaticAnalysisInputScreenPreview_LoadedEmpty_Dark() {
-    val mockNavController = rememberNavController()
-    val mockMainViewModel = PreviewMainViewModel()
-    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoadedEmpty)
-
-    AppTheme(darkTheme = true) { // Wrap with AppTheme (Dark)
-        AutomaticAnalysisInputScreen(
-            navController = mockNavController,
-            viewModel = mockViewModel,
-            mainViewModel = mockMainViewModel
-        )
-    }
-}

@@ -16,6 +16,7 @@ plugins {
     id("com.google.devtools.ksp") version "2.1.0-1.0.29"
     id("com.google.gms.google-services")
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -137,7 +138,8 @@ dependencies {
     //coil for image loading
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
-    implementation("io.coil-kt:coil-video:2.6.0")
+    //coil for video loading
+    implementation(libs.coil.video)
 
     //Firebase
     implementation(platform(libs.firebase.bom))
@@ -153,6 +155,13 @@ dependencies {
 
     //time ago
     implementation(libs.timeago)
+
+    // OkHttp (for HTTP requests)
+    implementation(libs.squareup.okhttp)
+    // Kotlinx Serialization (for parsing JSON responses)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okio)
+    implementation(libs.logging.interceptor)
 
     //core library
     implementation(libs.androidx.core.ktx)

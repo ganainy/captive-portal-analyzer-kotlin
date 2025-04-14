@@ -176,8 +176,7 @@
     <string name="timestamp">Zeitstempel: %1$s</string>
     <string name="html_path">HTML-Pfad: %1$s</string>
     <string name="js_path">JS-Pfad: %1$s</string>
-    <string name="custom_prompt">Geben Sie ein Prompt ein (max. 300 Zeichen)</string>
-    <string name="analyze_captive_portal_with_ai">Captive Portal mit KI analysieren</string>
+    <string name="custom_prompt">Geben Sie ein Prompt ein</string>
     <string name="clear_prompt">Prompt löschen</string>
     <string name="no_result_yet">Bitte geben Sie ein Prompt ein und drücken Sie die Schaltfläche "Analysieren", um zu starten.</string>
     <string name="request_details">Anfrage-Details</string>
@@ -353,4 +352,8 @@
     <string name="collapse_analysis_details">Analyse-Details ausblenden</string>
     <string name="analyze_pro">Tiefenanalyse mit Gemini Pro (Empfohlen)</string>
     <string name="analyze_fast">Schnelle Analyse mit Gemini Flash</string>
+
+<string name="pcap_file_label">PCAP-Datei in die KI-Anfrage einbeziehen</string>
+<string name="retry_pcap_conversion">PCAP-Konvertierung erneut versuchen</string>
+<string name="app_will_convert_the_pcap_file_to_json_format_and_include_it_in_the_ai_prompt">Die App wird die PCAP-Datei in das JSON-Format konvertieren und in die KI-Anfrage einbeziehen</string>
 </resources>

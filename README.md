@@ -29,10 +29,12 @@ For detailed information about the project files structure and architecture, see
 - **Architecture:** MVVM (Model-View-ViewModel)
 - **Libraries:**
     - Room for local database
-    - Coil for image loading
-    - Gemini AI SDK for AI integration
-    - Compose Markdown for rendering markdown content
-    - Android Request Inspector WebView for network analysis
+    - Coil for image & video loading
+    - [Gemini AI SDK](https://github.com/google-gemini/generative-ai-android) for AI integration
+    - [Compose Markdown](https://github.com/jeziellago/compose-markdown) for rendering markdown content
+    - [Android Request Inspector WebView](https://github.com/acsbendi/Android-Request-Inspector-WebView) for network analysis
+    - Integration with [PCAPDroid](https://github.com/emanuele-f/PCAPdroid) for packet capture
+    - OkHttp for network requests
 - **Backend:**
     - Firebase Firestore for data storage
     - Firebase Storage for image storage
@@ -76,6 +78,14 @@ For detailed information about the project files structure and architecture, see
 ---
 > **Note:** The starting and ending of packet capture is directly handled within the app.
 
+### 🆕: Different Gemini AI models available and Fine grained control over the files selected for the AI analysis
+| Feature                                                                               | Screenshot                            |
+|---------------------------------------------------------------------------------------|---------------------------------------|
+| **Different Gemini models available**                                                 | ![13.png](preview/screenshots/13.png) |
+| **User can select which Requests / Screenshots / HTML / JavaScript files to analyze** | ![14.png](preview/screenshots/14.png) |
+| **User can convert the .pcap capture file to JSON and include it in the analysis**    | ![15.png](preview/screenshots/15.png) |
+---
+
 ## How to Run the App
 
 1. Clone the repository:
@@ -99,6 +109,11 @@ For detailed information about the project files structure and architecture, see
     - Create a new project or select an existing one
     - Download the `google-services.json` file
     - Place `google-services.json` in the `app` directory
+
+   c. **Server Setup for PCAP to JSON conversion:**
+    - In `AutomaticAnalysisViewModel.kt`, update the `SERVER_UPLOAD_URL` and `SERVER_STATUS_URL_BASE` constants.
+    - Ensure the server can accept the `.pcap` file and convert it to JSON format. For guidance, refer to:
+      [AWS Server for PCAP to JSON Conversion](https://github.com/ganainy/aws-server-for-pcap-to-json-conversion)
 
 3. Build and run the project on a physical device.
 

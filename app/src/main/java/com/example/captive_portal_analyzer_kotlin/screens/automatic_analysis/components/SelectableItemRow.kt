@@ -39,7 +39,7 @@ fun SelectableItemRow(
         Text(
             text = description,
             style = MaterialTheme.typography.bodyMedium,
-            maxLines = 2, // Allow slightly more space for URLs/Paths
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             color = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(alpha =  0.38f)
         )

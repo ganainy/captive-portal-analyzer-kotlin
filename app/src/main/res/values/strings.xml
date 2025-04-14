@@ -177,7 +177,7 @@
     <string name="html_path">HTML Path: %1$s</string>
     <string name="js_path">JS Path: %1$s</string>
     <string name="short_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</string>
-    <string name="custom_prompt">Enter prompt (max 300 characters)</string>
+    <string name="custom_prompt">Enter prompt</string>
     <string name="clear_prompt">clear prompt</string>
     <string name="no_result_yet">Please enter a prompt and press the \"Analyze\" button to start.</string>
     <string name="request_details">Request details</string>
@@ -316,4 +316,11 @@
     <string name="collapse_analysis_details">Collapse analysis details</string>
     <string name="analyze_pro"> Deep Analysis with Gemini Pro (Recommended)</string>
     <string name="analyze_fast">Fast Analysis with Gemini Flash</string>
+
+    <string name="pcap_file_label">Include PCAP file in the AI prompt</string>
+    <string name="retry_pcap_conversion">Retry PCAP conversion</string>
+    <string name="app_will_convert_the_pcap_file_to_json_format_and_include_it_in_the_ai_prompt">App will convert the PCAP file to JSON format and include it in the AI prompt</string>
+    <string name="ai_analysis">AI Analysis</string>
+    <string name="prompt_label">Prompt:</string>
+
 </resources>

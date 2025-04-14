@@ -1,8 +1,12 @@
 package com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related
 
+import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.RequestMethod
+import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
+import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
+import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisUiState
-
-import com.example.captive_portal_analyzer_kotlin.dataclasses.*
 
 // --- Mock Data ---
 
@@ -16,7 +20,7 @@ val mockSession = NetworkSessionEntity(
     gatewayAddress = "192.168.1.1",
     isCaptiveLocal = false,
     isUploadedToRemoteServer = false,
-    pcapFilePath = null,
+    pcapFilePath = "/path/to/preview.pcap",
     pcapFileUrl = null
 )
 

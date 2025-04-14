@@ -12,19 +12,46 @@ class PreviewAutomaticAnalysisViewModel(
 
     // Use MutableStateFlow for the preview state
     private val _mockUiState = MutableStateFlow(initialState)
-    override val automaticAnalysisUiState: StateFlow<AutomaticAnalysisUiState> = _mockUiState.asStateFlow()
+    override val automaticAnalysisUiState: StateFlow<AutomaticAnalysisUiState> =
+        _mockUiState.asStateFlow()
 
     // Implement functions as No-Ops (they don't do anything in static previews)
-    override fun analyzeWithAi(model: String?) { /* No-op */ }
-    override fun updatePromptEditText(text: String) { /* No-op */ }
-    override fun loadSessionData() { /* No-op */ }
-    override fun toggleRequestSelection(requestId: Int) { /* No-op */ }
-    override fun toggleScreenshotSelection(screenshotId: Int) { /* No-op */ }
-    override fun toggleWebpageContentSelection(contentId: Int) { /* No-op */ }
-    override fun setAllRequestsSelected(select: Boolean) { /* No-op */ }
-    override fun setAllScreenshotsSelected(select: Boolean) { /* No-op */ }
-    override fun setAllWebpageContentSelected(select: Boolean) { /* No-op */ }
+    override fun analyzeWithAi(model: String?) { /* No-op */
+    }
+
+    override fun updatePromptEditText(text: String) { /* No-op */
+    }
+
+    override fun loadSessionData() { /* No-op */
+    }
+
+    override fun toggleRequestSelection(requestId: Int) { /* No-op */
+    }
+
+    override fun toggleScreenshotSelection(screenshotId: Int) { /* No-op */
+    }
+
+    override fun toggleWebpageContentSelection(contentId: Int) { /* No-op */
+    }
+
+    override fun setAllRequestsSelected(select: Boolean) { /* No-op */
+    }
+
+    override fun setAllScreenshotsSelected(select: Boolean) { /* No-op */
+    }
+
+    override fun setAllWebpageContentSelected(select: Boolean) { /* No-op */
+    }
+
     override fun setClickedSessionId(clickedSessionId: String?) {
+        /* No-op */
+    }
+
+    override fun togglePcapSelection(isSelected: Boolean) {
+        /* No-op */
+    }
+
+    override fun retryPcapConversion() {
         /* No-op */
     }
 }

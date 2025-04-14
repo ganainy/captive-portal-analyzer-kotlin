@@ -50,14 +50,16 @@ fun NoInternetBanner(
  * @param isConnected Whether the device is connected to the internet.
  */
 @Composable
-fun AnimatedNoInternetBanner(isConnected: Boolean){
+fun AnimatedNoInternetBanner(
+    isConnected: Boolean, modifier: Modifier = Modifier
+        .fillMaxWidth()
+        .wrapContentHeight(Alignment.Top)
+) {
     AnimatedVisibility(
         visible = !isConnected,
         enter = slideInVertically(initialOffsetY = { -it }),
         exit = slideOutVertically(targetOffsetY = { -it }),
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight(Alignment.Top)
+        modifier = modifier
     ) {
         NoInternetBanner()
     }
