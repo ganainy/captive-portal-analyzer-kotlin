@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.screens.analysis
+package com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.screen_tabs.packet_capture_tab.composables
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisInternetStatus
 
 /**
  * A warning card to let user know analysis might not be complete.
@@ -30,16 +31,16 @@ import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun EndAnalysisStepComponent(
+fun EndAnalysis_PacketCaptureEnabled(
     modifier: Modifier = Modifier,
     onStopAnalysis: () -> Unit, //checks if analysis is actually completed
     onForceStopAnalysis: () -> Unit, //force end the analysis even if not completed
-    analysisStatus: AnalysisStatus,
-    updateSelectedTabIndex: (Int) -> Unit
+    analysisInternetStatus: AnalysisInternetStatus,
+    onUpdateSelectedTabIndex: (Int) -> Unit,
 ) {
 
     Column {
-        if (analysisStatus == AnalysisStatus.NOT_COMPLETED) {
+        if (analysisInternetStatus == AnalysisInternetStatus.NO_INTERNET_ACCESS) {
             Row(
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -65,13 +66,13 @@ fun EndAnalysisStepComponent(
                 .padding(top = 16.dp),
             horizontalArrangement = Arrangement.End
         ) {
-            if (analysisStatus == AnalysisStatus.NOT_COMPLETED) {
+            if (analysisInternetStatus == AnalysisInternetStatus.NO_INTERNET_ACCESS) {
                 // Continue analysis Button
                 RoundCornerButton(
                     modifier = Modifier
-                        .padding(end = 8.dp),
+                        .padding(horizontal = 8.dp),
                     onClick = {
-                        updateSelectedTabIndex(0) // Navigate to the first tab (WebView)
+                        onUpdateSelectedTabIndex(0) // Navigate to the first tab (WebView)
                     },
                     buttonText = stringResource(R.string.continue_analysis),
                 )
@@ -80,7 +81,7 @@ fun EndAnalysisStepComponent(
             Spacer(modifier = Modifier.size(8.dp))
 
             // End analysis Button, shown initially before checking if analysis is completed
-            if (analysisStatus == AnalysisStatus.INITIAL) {
+            if (analysisInternetStatus == AnalysisInternetStatus.INITIAL || analysisInternetStatus == AnalysisInternetStatus.LOADING) {
                 RoundCornerButton(
                     modifier = Modifier
                         .padding(end = 8.dp),
@@ -88,15 +89,17 @@ fun EndAnalysisStepComponent(
                         onStopAnalysis()
                     },
                     buttonText = stringResource(R.string.end_analysis),
+                    enabled = analysisInternetStatus != AnalysisInternetStatus.LOADING,
+                    isLoading = analysisInternetStatus == AnalysisInternetStatus.LOADING
                 )
             }
 
             Spacer(modifier = Modifier.size(8.dp))
             // End analysis Anyway Button (shows when analysis is not completed)
-            if (analysisStatus == AnalysisStatus.NOT_COMPLETED) {
+            if (analysisInternetStatus == AnalysisInternetStatus.NO_INTERNET_ACCESS) {
             GhostButton(
                 modifier = Modifier
-                    .padding(horizontal =  16.dp, vertical = 8.dp).fillMaxWidth(),
+                    .padding( vertical = 8.dp, horizontal = 8.dp).fillMaxWidth(),
                 onClick = {
                     onForceStopAnalysis()
                     //onNavigateToSessionList()
@@ -108,35 +111,47 @@ fun EndAnalysisStepComponent(
     }
 }
 
+
 @Preview(showBackground = true)
 @Composable
 fun PreviewEndAnalysisStep_BeforeCheck() {
-    EndAnalysisStepComponent(
+    EndAnalysis_PacketCaptureEnabled(
         onStopAnalysis = {},
-        analysisStatus = AnalysisStatus.INITIAL,
-        updateSelectedTabIndex = {},
         onForceStopAnalysis = {},
+        analysisInternetStatus = AnalysisInternetStatus.INITIAL,
+        onUpdateSelectedTabIndex = {},
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewEndAnalysisStep_DuringCheck() {
+    EndAnalysis_PacketCaptureEnabled(
+        onStopAnalysis = {},
+        onForceStopAnalysis = {},
+        analysisInternetStatus = AnalysisInternetStatus.LOADING,
+        onUpdateSelectedTabIndex = {},
     )
 }
 
 @Preview(showBackground = true)
 @Composable
 fun PreviewEndAnalysisStep_AnalysisComplete() {
-    EndAnalysisStepComponent(
+    EndAnalysis_PacketCaptureEnabled(
         onStopAnalysis = {},
-        analysisStatus = AnalysisStatus.COMPLETED,
-        updateSelectedTabIndex = {},
         onForceStopAnalysis = {},
+        analysisInternetStatus = AnalysisInternetStatus.FULL_INTERNET_ACCESS,
+        onUpdateSelectedTabIndex = {},
     )
 }
 
 @Preview(showBackground = true)
 @Composable
 fun PreviewEndAnalysisStep_AnalysisNotComplete() {
-    EndAnalysisStepComponent(
+    EndAnalysis_PacketCaptureEnabled(
         onStopAnalysis = {},
-        analysisStatus = AnalysisStatus.NOT_COMPLETED,
-        updateSelectedTabIndex = {},
         onForceStopAnalysis = {},
+        analysisInternetStatus = AnalysisInternetStatus.NO_INTERNET_ACCESS,
+        onUpdateSelectedTabIndex = {},
     )
 }

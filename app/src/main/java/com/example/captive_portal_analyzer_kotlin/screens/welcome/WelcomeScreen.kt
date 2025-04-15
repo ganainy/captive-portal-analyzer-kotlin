@@ -19,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,6 +26,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.BuildConfig
 import com.example.captive_portal_analyzer_kotlin.R
+import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
+import com.example.captive_portal_analyzer_kotlin.components.LongPressHintPopup
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
@@ -38,6 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
+//todo use LongPressHintPopup on confusing buttons to show hints
 /**
  * The first screen the user will see when opening the app.
  * This screen contains an introduction to the app, its goals and how it works.
@@ -260,14 +262,24 @@ private fun WelcomeContent(
             modifier = Modifier.padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
         )
 
+        //Hint text
+        HintTextWithIcon(hint = stringResource(R.string.long_press_hint))
+
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Start app button
-        RoundCornerButton(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            onClick = if (skipSetup) navigateToManualConnectScreen else navigateToSetupPCAPDroidScreen,
-            buttonText = stringResource(R.string.start),
+        // hint on long press of the button
+        LongPressHintPopup(
+            popupHint = { Text(stringResource(R.string.yes_just_like_that)) },
+            anchor = {
+                // Start app button
+                RoundCornerButton(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    onClick = if (skipSetup) navigateToManualConnectScreen else navigateToSetupPCAPDroidScreen,
+                    buttonText = stringResource(R.string.start),
+                )
+            }
         )
+
 
 
     }
@@ -287,7 +299,6 @@ private fun WelcomeContent(
     uiMode = Configuration.UI_MODE_NIGHT_YES,
 )
 private fun WelcomeContentPreview() {
-    val context = LocalContext.current
     AppTheme {
         WelcomeContent(
             paddingValues = PaddingValues(0.dp),

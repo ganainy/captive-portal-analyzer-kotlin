@@ -1,5 +1,4 @@
 
-import android.content.Context
 import android.content.res.Configuration
 import android.net.Uri
 import android.webkit.WebResourceRequest
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -41,64 +41,72 @@ import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.InProgressOverlay
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisCallbacks
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisStatus
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.CaptureActions
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.EndAnalysisStepComponent
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.FileOpener
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.WebViewActions
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisInternetStatus
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisUiState
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.AnalysisCallbacks
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.CaptureActions
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.FileOpener
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.WebViewActions
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.screen_tabs.packet_capture_tab.composables.EndAnalysis_PacketCaptureDisabled
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.screen_tabs.packet_capture_tab.composables.EndAnalysis_PacketCaptureEnabled
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 
 @Composable
-internal fun PacketCaptureTab(
+internal fun PacketCaptureTabComposable(
     captureState: MainViewModel.CaptureState,
     onStartCapture: () -> Unit,
     onStopCapture: () -> Unit,
     onStatusCheck: () -> Unit,
     statusMessage: String,
     onOpenFile: FileOpener,
-    captureActions: CaptureActions,
     webViewActions: WebViewActions,
     analysisCallbacks: AnalysisCallbacks,
     copiedPcapFileUri: Uri?,
     modifier: Modifier = Modifier,
     targetPcapName: String?,
     pcapDroidPacketCaptureStatus: PcapDroidPacketCaptureStatus,
-    analysisStatus: AnalysisStatus,
+    analysisInternetStatus: AnalysisInternetStatus,
     updateSelectedTabIndex: (Int) -> Unit,
-    storePcapFileToSession : () -> Unit,
+    storePcapFileToSession: () -> Unit,
+    resetViewModelState: () -> Unit,
+    uiState: AnalysisUiState,
+    markAnalysisAsComplete: () -> Unit
 ) {
     val context = LocalContext.current
-
     // if user enabled packet capture show the steps to store the .pcap file otherwise only show end analysis button
     when (pcapDroidPacketCaptureStatus) {
 
         PcapDroidPacketCaptureStatus.ENABLED -> {
             PacketCaptureEnabledContent(
-                modifier,
-                captureState,
-                onStartCapture,
-                onStopCapture,
-                onStatusCheck,
-                statusMessage,
-                copiedPcapFileUri,
-                onOpenFile,
-                targetPcapName,
-                context,
-                webViewActions,
-                analysisCallbacks,
-                analysisStatus,
-                updateSelectedTabIndex,
-                storePcapFileToSession = storePcapFileToSession
+                modifier = modifier,
+                captureState = captureState,
+                onStartCapture = onStartCapture,
+                onStopCapture = onStopCapture,
+                onStatusCheck = onStatusCheck,
+                statusMessage = statusMessage,
+                copiedPcapFileUri = copiedPcapFileUri,
+                onOpenFile = onOpenFile,
+                targetPcapName = targetPcapName,
+                webViewActions = webViewActions,
+                analysisInternetStatus = analysisInternetStatus,
+                updateSelectedTabIndex = updateSelectedTabIndex,
+                storePcapFileToSession = storePcapFileToSession,
+                markAnalysisAsComplete = markAnalysisAsComplete,
             )
         }
 
         PcapDroidPacketCaptureStatus.INITIAL -> PacketCaptureInitialContent()
 
-        PcapDroidPacketCaptureStatus.DISABLED -> PacketCaptureDisabledContent(webViewActions, context,
-            analysisCallbacks,analysisStatus, updateSelectedTabIndex)
+        PcapDroidPacketCaptureStatus.DISABLED -> PacketCaptureDisabledContent(
+            webViewActions = webViewActions,
+            analysisInternetStatus = analysisInternetStatus,
+            updateSelectedTabIndex = updateSelectedTabIndex,
+            markAnalysisAsComplete = markAnalysisAsComplete,
+        )
 
     }
+
+
 }
 
 @Composable
@@ -144,10 +152,9 @@ fun PacketCaptureInitialContent() {
 @Composable
 private fun PacketCaptureDisabledContent(
     webViewActions: WebViewActions,
-    context: Context,
-    analysisCallbacks: AnalysisCallbacks,
-    analysisStatus: AnalysisStatus,
-    updateSelectedTabIndex: (Int) -> Unit
+    analysisInternetStatus: AnalysisInternetStatus,
+    updateSelectedTabIndex: (Int) -> Unit,
+    markAnalysisAsComplete: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -185,13 +192,12 @@ private fun PacketCaptureDisabledContent(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-            EndAnalysisStepComponent(
-                modifier = Modifier.padding(16.dp),
-                onStopAnalysis = webViewActions::stopAnalysis,
-                analysisStatus = analysisStatus,
-                updateSelectedTabIndex = updateSelectedTabIndex,
-                onForceStopAnalysis = webViewActions::forceStopAnalysis
-            )
+        EndAnalysis_PacketCaptureDisabled(
+            onStopAnalysis = webViewActions::stopAnalysis,
+            analysisInternetStatus = analysisInternetStatus,
+            updateSelectedTabIndex = updateSelectedTabIndex,
+            markAnalysisAsComplete = markAnalysisAsComplete,
+        )
     }
 }
 
@@ -207,44 +213,37 @@ private fun PacketCaptureEnabledContent(
     copiedPcapFileUri: Uri?,
     onOpenFile: FileOpener,
     targetPcapName: String?,
-    context: Context,
     webViewActions: WebViewActions,
-    analysisCallbacks: AnalysisCallbacks,
-    analysisStatus: AnalysisStatus,
+    analysisInternetStatus: AnalysisInternetStatus,
     updateSelectedTabIndex: (Int) -> Unit,
-    storePcapFileToSession : () -> Unit ,
+    storePcapFileToSession: () -> Unit,
+    markAnalysisAsComplete: () -> Unit
 ) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .padding(16.dp)
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()), // Enable scrolling if content overflows
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
 
         // Step 1: End Analysis
-        if (analysisStatus == AnalysisStatus.COMPLETED) {
+        if (analysisInternetStatus == AnalysisInternetStatus.FULL_INTERNET_ACCESS) {
             CompletedOverlay(
             ) {
                 StepOneContent(
-                    context = context,
                     webViewActions = webViewActions,
-                    analysisCallbacks = analysisCallbacks,
-                    captureState = captureState,
-                    analysisStatus = analysisStatus,
-                    updateSelectedTabIndex = updateSelectedTabIndex
+                    analysisInternetStatus = analysisInternetStatus,
+                    onUpdateSelectedTabIndex = updateSelectedTabIndex,
                 )
             }
         } else {
             InProgressOverlay(
             ) {
                 StepOneContent(
-                    context = context,
                     webViewActions = webViewActions,
-                    analysisCallbacks = analysisCallbacks,
-                    captureState = captureState,
-                    analysisStatus = analysisStatus,
-                    updateSelectedTabIndex = updateSelectedTabIndex
+                    analysisInternetStatus = analysisInternetStatus,
+                    onUpdateSelectedTabIndex = updateSelectedTabIndex,
                 )
             }
         }
@@ -252,7 +251,7 @@ private fun PacketCaptureEnabledContent(
         // Step 2: Stop Capture
         if (captureState == MainViewModel.CaptureState.FILE_READY
             || captureState == MainViewModel.CaptureState.WRONG_FILE_PICKED //this is a step3 error but should affect step2 being completed
-            ) {
+        ) {
             CompletedOverlay(
             ) {
                 StepTwoContent(
@@ -261,7 +260,7 @@ private fun PacketCaptureEnabledContent(
                     onStopCapture = onStopCapture,
                     onStatusCheck = onStatusCheck,
                     statusMessage = statusMessage,
-                    analysisStatus = analysisStatus,
+                    analysisInternetStatus = analysisInternetStatus,
                 )
             }
         } else {
@@ -273,13 +272,13 @@ private fun PacketCaptureEnabledContent(
                     onStopCapture = onStopCapture,
                     onStatusCheck = onStatusCheck,
                     statusMessage = statusMessage,
-                    analysisStatus = analysisStatus
+                    analysisInternetStatus = analysisInternetStatus
                 )
             }
         }
 
         // Step 3: Select and Copy PCAP File
-        if (copiedPcapFileUri != null ) {
+        if (copiedPcapFileUri != null) {
             CompletedOverlay(
             ) {
                 StepThreeContent(
@@ -308,16 +307,21 @@ private fun PacketCaptureEnabledContent(
 
         // Step 4 Content (Finish Button)
         val isFinishButtonEnabled = captureState == MainViewModel.CaptureState.FILE_READY &&
-                copiedPcapFileUri != null && analysisStatus == AnalysisStatus.COMPLETED
+                copiedPcapFileUri != null && analysisInternetStatus == AnalysisInternetStatus.FULL_INTERNET_ACCESS
 
         RoundCornerButton(
             modifier = modifier,
-            onClick = { analysisCallbacks.navigateToSessionList() },
+            onClick = markAnalysisAsComplete,
             buttonText = stringResource(R.string.finish),
-            trailingIcon =  painterResource(id = R.drawable.sports_score_24px) ,
-            enabled =isFinishButtonEnabled,
-            isLoading = captureState in listOf(MainViewModel.CaptureState.STARTING, MainViewModel.CaptureState.STOPPING)
+            trailingIcon = painterResource(id = R.drawable.sports_score_24px),
+            enabled = isFinishButtonEnabled,
+            isLoading = captureState in listOf(
+                MainViewModel.CaptureState.STARTING,
+                MainViewModel.CaptureState.STOPPING
+            )
         )
+
+        Spacer(modifier = Modifier.height(32.dp)) // Optional bottom padding
 
     }
 }
@@ -330,7 +334,7 @@ private fun StepTwoContent(
     onStopCapture: () -> Unit,
     onStatusCheck: () -> Unit,
     statusMessage: String,
-    analysisStatus: AnalysisStatus
+    analysisInternetStatus: AnalysisInternetStatus
 ) {
     Column(
         modifier = Modifier.padding(16.dp),
@@ -387,7 +391,7 @@ private fun StepTwoContent(
             onStartCapture = onStartCapture,
             onStopCapture = onStopCapture,
             onStatusCheck = onStatusCheck,
-            isWebViewAnalysisCompleted = analysisStatus == AnalysisStatus.COMPLETED
+            isWebViewAnalysisCompleted = analysisInternetStatus == AnalysisInternetStatus.FULL_INTERNET_ACCESS
         )
     }
 }
@@ -397,7 +401,7 @@ private fun StepTwoContent(
 private fun StepThreeContent(
     captureState: MainViewModel.CaptureState,
     onOpenFile: FileOpener,
-    storePcapFileToSession : () -> Unit = {},
+    storePcapFileToSession: () -> Unit = {},
     statusMessage: String,
     copiedPcapFileUri: Uri?,
     targetPcapName: String?
@@ -464,12 +468,9 @@ private fun StepThreeContent(
 // Step 1 Content
 @Composable
 private fun StepOneContent(
-    context: Context,
     webViewActions: WebViewActions,
-    analysisCallbacks: AnalysisCallbacks,
-    captureState: MainViewModel.CaptureState,
-    analysisStatus: AnalysisStatus,
-    updateSelectedTabIndex: (Int) -> Unit
+    analysisInternetStatus: AnalysisInternetStatus,
+    onUpdateSelectedTabIndex: (Int) -> Unit,
 ) {
     Column(
         modifier = Modifier.padding(16.dp),
@@ -483,27 +484,28 @@ private fun StepOneContent(
             fontWeight = FontWeight.Medium
         )
 
-        EndAnalysisStepComponent(
-            modifier = Modifier.padding(16.dp),
+        EndAnalysis_PacketCaptureEnabled(
             onStopAnalysis = webViewActions::stopAnalysis,
-            analysisStatus = analysisStatus,
-            updateSelectedTabIndex = updateSelectedTabIndex,
             onForceStopAnalysis = webViewActions::forceStopAnalysis,
+            analysisInternetStatus = analysisInternetStatus,
+            onUpdateSelectedTabIndex = onUpdateSelectedTabIndex,
         )
 
     }
 }
 
 
-
-
-
-
 @Composable
 private fun StatusBadge(captureState: MainViewModel.CaptureState) {
     val (textColor, backgroundColor) = when (captureState) {
-        MainViewModel.CaptureState.IDLE, MainViewModel.CaptureState.STOPPED -> Color.Gray to Color.Gray.copy(alpha = 0.1f)
-        MainViewModel.CaptureState.STARTING, MainViewModel.CaptureState.STOPPING -> Color.Blue to Color.Blue.copy(alpha = 0.1f)
+        MainViewModel.CaptureState.IDLE, MainViewModel.CaptureState.STOPPED -> Color.Gray to Color.Gray.copy(
+            alpha = 0.1f
+        )
+
+        MainViewModel.CaptureState.STARTING, MainViewModel.CaptureState.STOPPING -> Color.Blue to Color.Blue.copy(
+            alpha = 0.1f
+        )
+
         MainViewModel.CaptureState.RUNNING -> Color.Green to Color.Green.copy(alpha = 0.1f)
         MainViewModel.CaptureState.FILE_READY -> Color.Green to Color.Green.copy(alpha = 0.1f)
         MainViewModel.CaptureState.WRONG_FILE_PICKED -> Color.Red to Color.Red.copy(alpha = 0.1f)
@@ -550,14 +552,15 @@ private fun ControlButton(
         buttonText = label,
         trailingIcon = icon?.let { painterResource(id = it) },
         enabled = isEnabled && isWebViewAnalysisCompleted,
-        isLoading = captureState in listOf(MainViewModel.CaptureState.STARTING, MainViewModel.CaptureState.STOPPING)
+        isLoading = captureState in listOf(
+            MainViewModel.CaptureState.STARTING,
+            MainViewModel.CaptureState.STOPPING
+        )
     )
 }
 
 // Helper data class for button configuration
 private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
-
-
 
 
 //Previews
@@ -602,22 +605,24 @@ private fun PacketCaptureTabPreview_InitialState() {
     }
 
     AppTheme {
-        PacketCaptureTab(
+        PacketCaptureTabComposable(
             captureState = MainViewModel.CaptureState.FILE_READY,
             onStartCapture = {},
             onStopCapture = {},
             onStatusCheck = {},
             statusMessage = "Capturing completed.",
             onOpenFile = {},
-            captureActions = captureActions,
             webViewActions = webViewActions,
             analysisCallbacks = analysisCallbacks,
             copiedPcapFileUri = null,
             targetPcapName = "capture.pcap",
             pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.INITIAL,
-            analysisStatus = AnalysisStatus.COMPLETED,
+            analysisInternetStatus = AnalysisInternetStatus.FULL_INTERNET_ACCESS,
             updateSelectedTabIndex = {},
-            storePcapFileToSession ={},
+            storePcapFileToSession = {},
+            resetViewModelState = {},
+            uiState = AnalysisUiState.CaptiveUrlDetected,
+            markAnalysisAsComplete = {},
         )
     }
 }
@@ -662,28 +667,27 @@ private fun PacketCaptureTabPreview_CaptureEnabled() {
     }
 
     AppTheme {
-        PacketCaptureTab(
+        PacketCaptureTabComposable(
             captureState = MainViewModel.CaptureState.IDLE,
             onStartCapture = {},
             onStopCapture = {},
             onStatusCheck = {},
             statusMessage = "Waiting...",
             onOpenFile = {},
-            captureActions = captureActions,
             webViewActions = webViewActions,
             analysisCallbacks = analysisCallbacks,
             copiedPcapFileUri = null,
             targetPcapName = "capture.pcap",
             pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.ENABLED,
-            analysisStatus = AnalysisStatus.NOT_COMPLETED,
+            analysisInternetStatus = AnalysisInternetStatus.NO_INTERNET_ACCESS,
             updateSelectedTabIndex = {},
-            storePcapFileToSession ={},
+            storePcapFileToSession = {},
+            resetViewModelState = {},
+            uiState = AnalysisUiState.CaptiveUrlDetected,
+            markAnalysisAsComplete = {},
         )
     }
 }
-
-
-
 
 
 @Composable
@@ -726,22 +730,24 @@ private fun PacketCaptureTabPreview_CaptureDisabled() {
     }
 
     AppTheme {
-        PacketCaptureTab(
+        PacketCaptureTabComposable(
             captureState = MainViewModel.CaptureState.IDLE,
             onStartCapture = {},
             onStopCapture = {},
             onStatusCheck = {},
             statusMessage = "Waiting...",
             onOpenFile = {},
-            captureActions = captureActions,
             webViewActions = webViewActions,
             analysisCallbacks = analysisCallbacks,
             copiedPcapFileUri = null,
             targetPcapName = "capture.pcap",
             pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.DISABLED,
-            analysisStatus = AnalysisStatus.NOT_COMPLETED,
+            analysisInternetStatus = AnalysisInternetStatus.NO_INTERNET_ACCESS,
             updateSelectedTabIndex = {},
-            storePcapFileToSession ={},
+            storePcapFileToSession = {},
+            resetViewModelState = {},
+            uiState = AnalysisUiState.CaptiveUrlDetected,
+            markAnalysisAsComplete = {},
         )
     }
 }
@@ -786,22 +792,24 @@ private fun PacketCaptureTabPreview_CaptureCompleted() {
     }
 
     AppTheme {
-        PacketCaptureTab(
+        PacketCaptureTabComposable(
             captureState = MainViewModel.CaptureState.FILE_READY,
             onStartCapture = {},
             onStopCapture = {},
             onStatusCheck = {},
             statusMessage = "Capturing completed.",
             onOpenFile = {},
-            captureActions = captureActions,
             webViewActions = webViewActions,
             analysisCallbacks = analysisCallbacks,
             copiedPcapFileUri = "copied_capture.pcap".toUri(),
             targetPcapName = "capture.pcap",
             pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.ENABLED,
-            analysisStatus = AnalysisStatus.COMPLETED,
+            analysisInternetStatus = AnalysisInternetStatus.FULL_INTERNET_ACCESS,
             updateSelectedTabIndex = {},
-            storePcapFileToSession ={},
+            storePcapFileToSession = {},
+            resetViewModelState = {},
+            uiState = AnalysisUiState.CaptiveUrlDetected,
+            markAnalysisAsComplete = {},
         )
     }
 }

@@ -75,7 +75,6 @@ fun RoundCornerButton(
             Row(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = buttonText,

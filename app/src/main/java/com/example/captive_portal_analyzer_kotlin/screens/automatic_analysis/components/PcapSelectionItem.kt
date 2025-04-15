@@ -56,7 +56,7 @@ fun PcapSelectionItem(
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) { // Column takes remaining space
             Text(
-                text = stringResource(R.string.pcap_file_label),
+                text = stringResource(R.string.include_pcap_in_prompt),
                 style = MaterialTheme.typography.bodyLarge
             )
             // --- Status Display ---

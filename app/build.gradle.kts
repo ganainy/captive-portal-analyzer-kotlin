@@ -44,6 +44,7 @@ android {
             buildConfigBooleanField("DEBUG_SKIP_CHECKLIST_SCREEN", false)
             buildConfigBooleanField("DEBUG_SKIP_PCAP_SETUP_SCREEN", false)
             buildConfigBooleanField("DEBUG_ADD_MOCK_SESSION", false)
+            buildConfigBooleanField("DEBUG_SET_ANALYSIS_STATE_AS_CAPTIVE_PORTAL_DETECTED", false)
         }
 
         getByName("release") {
@@ -57,6 +58,7 @@ android {
             buildConfigBooleanField("DEBUG_SKIP_CHECKLIST_SCREEN", false)
             buildConfigBooleanField("DEBUG_SKIP_PCAP_SETUP_SCREEN", false)
             buildConfigBooleanField("DEBUG_ADD_MOCK_SESSION", false)
+            buildConfigBooleanField("DEBUG_SET_ANALYSIS_STATE_AS_CAPTIVE_PORTAL_DETECTED", false)
 
             signingConfig = signingConfigs.getByName("debug")
         }
@@ -72,6 +74,7 @@ android {
             buildConfigBooleanField("DEBUG_SKIP_CHECKLIST_SCREEN", true)
             buildConfigBooleanField("DEBUG_SKIP_PCAP_SETUP_SCREEN", true)
             buildConfigBooleanField("DEBUG_ADD_MOCK_SESSION", true)
+            buildConfigBooleanField("DEBUG_SET_ANALYSIS_STATE_AS_CAPTIVE_PORTAL_DETECTED", true)
 
         }
     }

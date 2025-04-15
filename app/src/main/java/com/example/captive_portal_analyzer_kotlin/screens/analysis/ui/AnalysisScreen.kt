@@ -1,23 +1,17 @@
-package com.example.captive_portal_analyzer_kotlin.screens.analysis
+package com.example.captive_portal_analyzer_kotlin.screens.analysis.ui
 
 
 import NetworkSessionRepository
-import PacketCaptureTab
+import PacketCaptureTabComposable
 import android.annotation.SuppressLint
 import android.app.Application
-import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
-import android.util.Log
 import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebView.setWebContentsDebuggingEnabled
-import android.webkit.WebViewClient
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -32,29 +26,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -67,25 +56,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.acsbendi.requestinspectorwebview.RequestInspectorWebViewClient
 import com.acsbendi.requestinspectorwebview.WebViewRequest
-import com.example.captive_portal_analyzer_kotlin.BuildConfig
 import com.example.captive_portal_analyzer_kotlin.MainViewModel
 import com.example.captive_portal_analyzer_kotlin.PcapDroidPacketCaptureStatus
 import com.example.captive_portal_analyzer_kotlin.R
-import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
-import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
-import com.example.captive_portal_analyzer_kotlin.components.MockWebView
-import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.OnStartEffect
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisInternetStatus
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisUiData
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisUiState
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisViewModel
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisViewModelFactory
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.TestingWebViewClient
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.WebViewType
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.screen_tabs.webview_tab.WebViewTabComposable
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 // Configuration data classes remain unchanged
 data class AnalysisScreenConfig(
@@ -179,7 +168,7 @@ fun AnalysisScreen(
     )
 
     val uiData by analysisViewModel.uiData.collectAsState()
-    val analysisStatus: AnalysisStatus =  uiData.analysisStatus
+    val analysisInternetStatus: AnalysisInternetStatus =  uiData.analysisInternetStatus
 
 
     val uiState by analysisViewModel.uiState.collectAsState()
@@ -219,10 +208,6 @@ fun AnalysisScreen(
             analysisViewModel.switchWebViewType(showToast)
     }
 
-    val captureActions = object : CaptureActions {
-        override fun requestStopCapture() = screenConfig.mainViewModel.requestStopCapture()
-        override fun requestStatusUpdate() = screenConfig.mainViewModel.requestGetStatus()
-    }
 
     AnalysisScreenContent(
         captureState = captureState,
@@ -232,7 +217,6 @@ fun AnalysisScreen(
         uiData = uiData,
         analysisCallbacks = analysisCallbacks,
         webViewActions = webViewActions,
-        captureActions = captureActions,
         onOpenFile = intentLaunchConfig.onOpenFile,
         copiedPcapFileUri = copiedPcapFileUri,
         onNavigateToManualConnect = navigationConfig.onNavigateToManualConnect,
@@ -257,11 +241,23 @@ fun AnalysisScreen(
             )
         },
         pcapDroidPacketCaptureStatus = pcapDroidPacketCaptureStatus,
-        analysisStatus = analysisStatus,
+        analysisInternetStatus = analysisInternetStatus,
         storePcapFileToSession =
             analysisViewModel::storePcapFilePathInTheSession,
         isPCAPDroidInstalled = analysisViewModel::isPcapDroidAppInstalled,
+        resetViewModelState = analysisViewModel::resetViewModelState,
+        markAnalysisAsComplete = analysisViewModel::markAnalysisAsComplete
     )
+
+    // Handle navigation to the next screen when analysis is complete
+    LaunchedEffect(uiState) {
+        if (uiState == AnalysisUiState.AnalysisCompleteNavigateToNextScreen) {
+            analysisViewModel.resetViewModelState()
+            screenConfig.mainViewModel.resetPacketCaptureState()
+            analysisCallbacks.navigateToSessionList()
+        }
+    }
+
 }
 
 @Composable
@@ -273,7 +269,6 @@ private fun AnalysisScreenContent(
     uiData: AnalysisUiData,
     analysisCallbacks: AnalysisCallbacks,
     webViewActions: WebViewActions,
-    captureActions: CaptureActions,
     onOpenFile: FileOpener,
     copiedPcapFileUri: Uri?,
     selectedTabIndex: Int,
@@ -286,9 +281,11 @@ private fun AnalysisScreenContent(
     updateSelectedTabIndex: (Int) -> Unit,
     onNavigateToSetupPCAPDroid: () -> Unit,
     updatePcapDroidPacketCaptureStatus: (PcapDroidPacketCaptureStatus) -> Unit,
-    analysisStatus: AnalysisStatus,
+    analysisInternetStatus: AnalysisInternetStatus,
     storePcapFileToSession:  () -> Unit,
-    isPCAPDroidInstalled : () -> Boolean
+    isPCAPDroidInstalled : () -> Boolean,
+    resetViewModelState: () -> Unit,
+    markAnalysisAsComplete : () -> Unit
 ) {
 
     val tabTitles = listOf("WebView", "Packet Capture")
@@ -310,75 +307,49 @@ private fun AnalysisScreenContent(
             }
 
             when (selectedTabIndex) {
-                0 -> Box(modifier = Modifier.fillMaxSize()) {
-                    when (uiState) {
-                        is AnalysisUiState.Loading -> LoadingIndicator(
-                            message = stringResource(uiState.messageStringResource),
-                            modifier = Modifier
-                        )
+                0 -> WebViewTabComposable(
+                    uiState = uiState,
+                    uiData = uiData,
+                    captureState = captureState,
+                    statusMessage = statusMessage,
+                    targetPcapName = targetPcapName,
+                    analysisCallbacks = analysisCallbacks,
+                    webViewActions = webViewActions,
+                    updateSelectedTabIndex = updateSelectedTabIndex,
+                    getCaptivePortalAddress = getCaptivePortalAddress,
+                    onNavigateToManualConnect = onNavigateToManualConnect,
+                    onStartCapture = onStartCapture,
+                    onStatusCheck = onStatusCheck,
+                    onNavigateToSetupPCAPDroid = onNavigateToSetupPCAPDroid,
+                    updatePcapDroidPacketCaptureStatus = updatePcapDroidPacketCaptureStatus,
+                    isPCAPDroidInstalled = isPCAPDroidInstalled
+                )
 
-                        is AnalysisUiState.CaptiveUrlDetected -> CaptivePortalWebsiteContent(
-                            config = WebViewContentConfig(
-                                webViewType = uiData.webViewType,
-                                portalUrl = uiData.portalUrl,
-                                showedHint = uiData.showedHint,
-                                contentPadding = PaddingValues(0.dp),
-                                captureState = captureState,
-                                statusMessage = statusMessage,
-                                targetPcapName = targetPcapName
-                            ),
-                            analysisCallbacks = analysisCallbacks,
-                            webViewActions = webViewActions,
-                            captureActions = captureActions,
-                            selectedTabIndex = selectedTabIndex,
-                            setSelectTabIndex = updateSelectedTabIndex
-
-                        )
-
-                        is AnalysisUiState.Error -> AnalysisError(
-                            contentPadding = PaddingValues(0.dp),
-                            uiState = uiState,
-                            onRetry = getCaptivePortalAddress,
-                            analysisCallbacks = analysisCallbacks,
-                            onNavigateToManualConnect = onNavigateToManualConnect
-                        )
-
-                        AnalysisUiState.AnalysisComplete -> analysisCallbacks.navigateToSessionList()
-                        AnalysisUiState.PreferenceSetup -> PreferenceSetupContent(
-                            captureState = captureState,
-                            onStartCapture = onStartCapture,
-                            onStatusCheck = onStatusCheck,
-                            getCaptivePortalAddress = getCaptivePortalAddress,
-                            onNavigateToSetupPCAPDroid = onNavigateToSetupPCAPDroid,
-                            updatePcapDroidPacketCaptureStatus = { pcapDroidPacketCaptureStatus ->
-                                updatePcapDroidPacketCaptureStatus(pcapDroidPacketCaptureStatus)
-                            },
-                            isPCAPDroidInstalled = isPCAPDroidInstalled
-                        )
-                    }
-                }
-
-                1 -> PacketCaptureTab(
+                1 -> PacketCaptureTabComposable(
                     captureState = captureState,
                     onStartCapture = onStartCapture,
                     onStopCapture = onStopCapture,
                     onStatusCheck = onStatusCheck,
                     statusMessage = statusMessage,
                     onOpenFile = onOpenFile,
-                    captureActions = captureActions,
                     webViewActions = webViewActions,
                     analysisCallbacks = analysisCallbacks,
                     copiedPcapFileUri = copiedPcapFileUri,
                     targetPcapName = targetPcapName,
                     pcapDroidPacketCaptureStatus = pcapDroidPacketCaptureStatus,
-                    analysisStatus = analysisStatus,
+                    analysisInternetStatus = analysisInternetStatus,
                     updateSelectedTabIndex = updateSelectedTabIndex,
-                    storePcapFileToSession = storePcapFileToSession
+                    storePcapFileToSession = storePcapFileToSession,
+                    resetViewModelState = resetViewModelState,
+                    uiState = uiState,
+                    markAnalysisAsComplete = markAnalysisAsComplete,
                 )
             }
         }
     }
 }
+
+
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -477,7 +448,7 @@ fun PreferenceSetupContent(
                             color = Color.Red,
                             modifier = Modifier.weight(1f)
                         )
-                        androidx.compose.material3.Icon(
+                        Icon(
                             painter = painterResource(id = R.drawable.refresh_24px),
                             contentDescription = "Refresh status",
                             modifier = Modifier
@@ -492,11 +463,9 @@ fun PreferenceSetupContent(
             // Continue with Packet Capture Button
             RoundCornerButton(
                 onClick = {
-                    if (captureState == MainViewModel.CaptureState.IDLE) {
                         onStartCapture()
                         updatePcapDroidPacketCaptureStatus(PcapDroidPacketCaptureStatus.ENABLED)
                         getCaptivePortalAddress()
-                    }
                 },
                 buttonText = stringResource(R.string.continue_with_packet_capture),
                 trailingIcon = painterResource(id = R.drawable.arrow_forward_ios_24px),
@@ -513,7 +482,7 @@ fun PreferenceSetupContent(
                 buttonText = stringResource(R.string.continue_without_packet_capture),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    ,
             )
         }
 
@@ -521,160 +490,9 @@ fun PreferenceSetupContent(
 }
 
 
-@Composable
-private fun CaptivePortalWebsiteContent(
-    config: WebViewContentConfig,
-    analysisCallbacks: AnalysisCallbacks,
-    webViewActions: WebViewActions,
-    captureActions: CaptureActions,
-    selectedTabIndex: Int,
-    setSelectTabIndex: (Int) -> Unit
-) {
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val webView = remember { WebView(context) }
 
-    DisposableEffect(webView) { onDispose { webView.destroy() } }
 
-    WebViewInteractionContent(
-        config = config,
-        webView = webView,
-        coroutineScope = coroutineScope,
-        analysisCallbacks = analysisCallbacks,
-        webViewActions = webViewActions,
-        selectedTabIndex = selectedTabIndex,
-        setSelectTabIndex = setSelectTabIndex
-    )
-}
 
-@Composable
-private fun WebViewInteractionContent(
-    config: WebViewContentConfig,
-    webView: WebView,
-    coroutineScope: CoroutineScope,
-    analysisCallbacks: AnalysisCallbacks,
-    webViewActions: WebViewActions,
-    selectedTabIndex: Int,
-    setSelectTabIndex: (Int) -> Unit
-) {
-    val effectiveWebViewType =
-        if (BuildConfig.DEBUG_USE_TESTING_WEBVIEW) WebViewType.TestingWebView else config.webViewType
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        HintTextWithIcon(
-            hint = if (effectiveWebViewType == WebViewType.CustomWebView)
-                stringResource(R.string.hint_backup_webview)
-            else stringResource(R.string.hint_custom_webview)
-        )
-
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(8.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .border(
-                    2.dp,
-                    MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                    RoundedCornerShape(16.dp)
-                )
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-                .padding(1.dp)
-        ) {
-            Text(
-                text = if (effectiveWebViewType == WebViewType.CustomWebView) stringResource(R.string.custom_webview)
-                else stringResource(R.string.normal_webview),
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            if (LocalInspectionMode.current) {
-                MockWebView()
-            } else {
-                when (effectiveWebViewType) {
-                    WebViewType.NormalWebView -> NormalWebView(
-                        portalUrl = config.portalUrl,
-                        webView = webView,
-                        saveWebRequest = { request ->
-                            coroutineScope.launch {
-                                webViewActions.saveWebResourceRequest(
-                                    request
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(config.contentPadding),
-                        captureAndSaveContent = { wv, content ->
-                            coroutineScope.launch {
-                                webViewActions.saveWebpageContent(
-                                    wv,
-                                    content,
-                                    analysisCallbacks.showToast
-                                )
-                            }
-                        },
-                        takeScreenshot = webViewActions::takeScreenshot
-                    )
-
-                    WebViewType.CustomWebView -> CustomWebView(
-                        portalUrl = config.portalUrl,
-                        webView = webView,
-                        saveWebRequest = { request ->
-                            coroutineScope.launch {
-                                webViewActions.saveWebViewRequest(
-                                    request
-                                )
-                            }
-                        },
-                        takeScreenshot = webViewActions::takeScreenshot,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(config.contentPadding),
-                        captureAndSaveContent = { wv, content ->
-                            coroutineScope.launch {
-                                webViewActions.saveWebpageContent(
-                                    wv,
-                                    content,
-                                    analysisCallbacks.showToast
-                                )
-                            }
-                        },
-                        showedHint = config.showedHint,
-                        updateShowedHint = webViewActions::updateShowedHint
-                    )
-
-                    WebViewType.TestingWebView -> TestingWebView()
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            GhostButton(
-                modifier = Modifier.weight(1f),
-                onClick = { webViewActions.switchWebViewType(analysisCallbacks.showToast) },
-                buttonText = stringResource(R.string.switch_browser_type)
-            )
-
-            RoundCornerButton(
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    setSelectTabIndex(1)  // Switch to Packet Capture tab
-                },
-                buttonText = stringResource(R.string.continuee),
-                trailingIcon =painterResource(id = R.drawable.arrow_forward_ios_24px)
-            )
-        }
-    }
-}
 
 /**
  * Testing WebView for debug mode.
@@ -705,7 +523,7 @@ fun TestingWebView() {
  * Error state UI.
  */
 @Composable
-private fun AnalysisError(
+internal fun AnalysisError(
     contentPadding: PaddingValues,
     uiState: AnalysisUiState,
     onRetry: () -> Unit,
@@ -770,6 +588,7 @@ private fun AnalysisError(
                     onClick = { onNavigateToManualConnect() },
                     buttonText = stringResource(R.string.connect_to_another_network)
                 )
+                Spacer(modifier = Modifier.width(16.dp))
                 GhostButton(
                     modifier = Modifier
                         .weight(1f)
@@ -782,180 +601,11 @@ private fun AnalysisError(
     }
 }
 
-/**
- * Normal WebView without request body interception.
- */
-@Composable
-private fun NormalWebView(
-    portalUrl: String?,
-    webView: WebView,
-    saveWebRequest: (WebResourceRequest?) -> Unit,
-    captureAndSaveContent: (WebView, String) -> Unit,
-    takeScreenshot: (WebView, String) -> Unit,
-    modifier: Modifier
-) {
-    Box(modifier = modifier) {
-        AndroidView(
-            factory = {
-                webView.apply {
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldInterceptRequest(
-                            view: WebView?,
-                            request: WebResourceRequest?
-                        ): WebResourceResponse? {
-                            saveWebRequest(request)
-                            return super.shouldInterceptRequest(view, request)
-                        }
 
-                        override fun onPageFinished(view: WebView, url: String) {
-                            super.onPageFinished(view, url)
-                            takeScreenshot(view, url)
-                            captureAndSaveContent(view, url)
-                        }
-                    }
 
-                    settings.apply {
-                        javaScriptEnabled = true
-                        loadWithOverviewMode = true
-                        domStorageEnabled = true
-                        loadsImagesAutomatically = true
-                    }
-                    setWebContentsDebuggingEnabled(true)
-                    webView
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-            update = { view ->
-                if (portalUrl != null) {
-                    view.loadUrl(portalUrl)
-                }
-            }
-        )
-    }
-}
 
-/**
- * Custom WebView with request body interception.
- */
-@Composable
-private fun CustomWebView(
-    portalUrl: String?,
-    webView: WebView,
-    saveWebRequest: (WebViewRequest) -> Unit,
-    captureAndSaveContent: (WebView, String) -> Unit,
-    takeScreenshot: (WebView, String) -> Unit,
-    updateShowedHint: (Boolean) -> Unit,
-    showedHint: Boolean,
-    modifier: Modifier
-) {
-    Box(modifier = modifier) {
-        WebViewWithCustomClient(
-            portalUrl = portalUrl,
-            webView = webView,
-            saveWebRequest = saveWebRequest,
-            modifier = Modifier.fillMaxSize(),
-            captureAndSaveContent = captureAndSaveContent,
-            takeScreenshot = takeScreenshot
-        )
 
-        HintInfoBox(
-            context = LocalContext.current,
-            modifier = Modifier.align(Alignment.Center),
-            showedHint = showedHint,
-            updateShowedHint = updateShowedHint
-        )
-    }
-}
 
-/**
- * Hint info box for user guidance.
- */
-@Composable
-private fun HintInfoBox(
-    context: Context,
-    modifier: Modifier,
-    updateShowedHint: (Boolean) -> Unit = {},
-    showedHint: Boolean
-) {
-    var showInfoBox1 by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        AlertDialogState.getNeverSeeAgainState(context, "info_box_1")
-            .collect { neverSeeAgain ->
-                showInfoBox1 = !neverSeeAgain
-            }
-    }
-
-    if (showInfoBox1 && !showedHint) {
-        NeverSeeAgainAlertDialog(
-            title = stringResource(R.string.hint),
-            message = stringResource(R.string.login_to_captive_then_click_end_analysis),
-            preferenceKey = "info_box_1",
-            onDismiss = {
-                showInfoBox1 = false
-                updateShowedHint(true)
-            },
-            modifier = modifier
-        )
-    }
-}
-
-/**
- * WebView with custom client for request interception.
- */
-@SuppressLint("SetJavaScriptEnabled")
-@Composable
-private fun WebViewWithCustomClient(
-    portalUrl: String?,
-    webView: WebView,
-    saveWebRequest: (WebViewRequest) -> Unit,
-    captureAndSaveContent: (WebView, String) -> Unit,
-    takeScreenshot: (WebView, String) -> Unit,
-    modifier: Modifier
-) {
-    Box(modifier = modifier) {
-        AndroidView(
-            factory = {
-                webView.apply {
-                    webViewClient = object : RequestInspectorWebViewClient(webView) {
-                        override fun onPageFinished(view: WebView, url: String) {
-                            super.onPageFinished(view, url)
-                            takeScreenshot(view, url)
-                            captureAndSaveContent(view, url)
-                        }
-
-                        override fun shouldInterceptRequest(
-                            view: WebView,
-                            webViewRequest: WebViewRequest
-                        ): WebResourceResponse? {
-                            Log.i(
-                                "RequestInspectorWebView",
-                                "Sending request from WebView: $webViewRequest"
-                            )
-                            saveWebRequest(webViewRequest)
-                            return null
-                        }
-                    }
-
-                    settings.apply {
-                        javaScriptEnabled = true
-                        loadWithOverviewMode = true
-                        domStorageEnabled = true
-                        loadsImagesAutomatically = true
-                    }
-                    setWebContentsDebuggingEnabled(true)
-                    webView
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-            update = { view ->
-                if (portalUrl != null) {
-                    view.loadUrl(portalUrl)
-                }
-            }
-        )
-    }
-}
 
 // Previews
 
@@ -1017,7 +667,6 @@ private fun AnalysisScreenContentPreview_Success() {
             uiData = uiData,
             analysisCallbacks = analysisCallbacks,
             webViewActions = webViewActions,
-            captureActions = captureActions,
             onOpenFile = {},
             copiedPcapFileUri = null,
             selectedTabIndex = 0,
@@ -1030,9 +679,11 @@ private fun AnalysisScreenContentPreview_Success() {
             updateSelectedTabIndex = {},
             onNavigateToSetupPCAPDroid = {},
             updatePcapDroidPacketCaptureStatus = {},
-            analysisStatus = AnalysisStatus.NOT_COMPLETED,
+            analysisInternetStatus = AnalysisInternetStatus.NO_INTERNET_ACCESS,
             storePcapFileToSession = {},
-            isPCAPDroidInstalled = {true},
+            isPCAPDroidInstalled = { true },
+            resetViewModelState = {},
+            markAnalysisAsComplete =  {},
         )
     }
 }
@@ -1095,7 +746,6 @@ private fun AnalysisScreenContentPreview_Error() {
             uiData = uiData,
             analysisCallbacks = analysisCallbacks,
             webViewActions = webViewActions,
-            captureActions = captureActions,
             onOpenFile = {},
             copiedPcapFileUri = null,
             selectedTabIndex = 0,
@@ -1108,9 +758,11 @@ private fun AnalysisScreenContentPreview_Error() {
             updateSelectedTabIndex = {},
             onNavigateToSetupPCAPDroid = {},
             updatePcapDroidPacketCaptureStatus = {},
-            analysisStatus = AnalysisStatus.NOT_COMPLETED,
+            analysisInternetStatus = AnalysisInternetStatus.NO_INTERNET_ACCESS,
             storePcapFileToSession = {},
             isPCAPDroidInstalled = {true},
+            resetViewModelState = {},
+            markAnalysisAsComplete =  {},
         )
     }
 }

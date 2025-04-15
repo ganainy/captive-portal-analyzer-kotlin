@@ -253,7 +253,8 @@ interface IMainViewModel {
     private val _captureState = MutableStateFlow(CaptureState.IDLE)
     val captureState: StateFlow<CaptureState> = _captureState.asStateFlow()
 
-    private val _statusMessage = MutableStateFlow("Ready to capture to file.")
+     private val defaultStatusMessage = "Ready to capture to file."
+    private val _statusMessage = MutableStateFlow(defaultStatusMessage)
     val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
 
     // Store the filename we asked PCAPdroid to use
@@ -442,6 +443,20 @@ interface IMainViewModel {
     fun updatePcapDroidPacketCaptureStatus(pcapDroidPacketCaptureStatus: PcapDroidPacketCaptureStatus) {
         _pcapDroidPacketCaptureStatus.value = pcapDroidPacketCaptureStatus
     }
+
+     /**
+      * Resets the state variables related to PCAPdroid packet capture
+      * back to their initial default values.
+      */
+     fun resetPacketCaptureState() {
+         _captureState.value = CaptureState.IDLE
+         _statusMessage.value = defaultStatusMessage
+         _targetPcapName.value = null
+         _copiedPcapFileUri.value = null
+         _pcapDroidPacketCaptureStatus.value = PcapDroidPacketCaptureStatus.INITIAL
+          _selectedTabIndex.value = 0 // Reset if applicable
+         Log.d(TAG, "Packet capture related states reset to default.")
+     }
 
     private fun extractStatsFromResult(data: Intent?): String {
         // If capturing to file, bytes_dumped might be relevant

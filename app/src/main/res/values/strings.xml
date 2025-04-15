@@ -166,8 +166,6 @@
     <string name="thanks_for_uploading_network_data_for_further_analysis">Thanks for uploading network data for further analysis.</string>
     <string name="please_review_and_upload_collected_data_to_help_us_research_this_network">Please review and upload collected data to help us research this network.</string>
     <string name="this_is_new_session">This session was created in the last %1$s minutes.</string>
-    <string name="hint_backup_webview">Please try backup Webview if website fails to load by clicking \"Switch browser\"</string>
-    <string name="hint_custom_webview">Please use this Webview only if website fails to load in original Web, otherwise please \"Switch browser\" again</string>
     <string name="custom_webview">Custom Webview (Recommended)</string>
     <string name="normal_webview">Normal Webview (Backup)</string>
     <string name="session_id_not_found">Session ID not found</string>
@@ -317,10 +315,43 @@
     <string name="analyze_pro"> Deep Analysis with Gemini Pro (Recommended)</string>
     <string name="analyze_fast">Fast Analysis with Gemini Flash</string>
 
-    <string name="pcap_file_label">Include PCAP file in the AI prompt</string>
+    <string name="include_pcap_in_prompt">Include PCAP file in the AI prompt</string>
     <string name="retry_pcap_conversion">Retry PCAP conversion</string>
     <string name="app_will_convert_the_pcap_file_to_json_format_and_include_it_in_the_ai_prompt">App will convert the PCAP file to JSON format and include it in the AI prompt</string>
+
     <string name="ai_analysis">AI Analysis</string>
     <string name="prompt_label">Prompt:</string>
+    <string name="the_app_has_two_types_of_webview_supported_if_the_custom_webview_recommended_doesnt_load_the_captive_website_properly_use_it_to_switch_to_the_backup_webview">The app has two types of WebView supported, if the custom WebView (Recommended) doesn\'t load the captive website properly, use it to switch to the backup WebView.</string>
+
+    <!-- Used in SessionGeneralDetails for labels -->
+    <string name="ssid_label">SSID:</string>
+    <string name="bssid_label">BSSID:</string>
+    <string name="ip_label">IP Address:</string>
+    <string name="gateway_label">Gateway:</string>
+    <string name="portal_url_label">Portal URL:</string>
+    <string name="new_pcap_file_available">New PCAP file available icon</string> <!-- Content description -->
+    <string name="pcap_file_label">PCAP file</string>
+
+    <!-- Used in FiltersHeader -->
+    <string name="show_filters">Show filters</string> <!-- Content description for filter icon -->
+
+    <!-- Used in RequestListItem for labels -->
+    <string name="url_label">URL:</string>
+    <string name="type_label">Type:</string>
+    <string name="timestamp_label">Timestamp:</string> <!-- Replaces timestamp_no_param -->
+
+    <!-- Used in ContentItem for labels -->
+    <!-- url_label is reused from RequestListItem -->
+    <string name="html_path_label">HTML Path:</string>
+    <string name="js_path_label">JS Path:</string>
+    <!-- timestamp_label is reused from RequestListItem -->
+
+    <!-- Used in ImageItem -->
+    <string name="screenshot_image">Screenshot image</string> <!-- Content description -->
+    <string name="tos_privacy_related_label">ToS/Privacy Related</string>
+   <string name="long_press_hint">
+       Tip: Long press some buttons to show explanation of their functionality
+   </string>
+    <string name="yes_just_like_that">Yes just like that :)</string>
 
 </resources>

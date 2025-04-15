@@ -53,7 +53,7 @@ sealed class AnalysisUiState {
 
     data class Loading(val messageStringResource: Int) : AnalysisUiState()
     object CaptiveUrlDetected : AnalysisUiState()
-    object AnalysisComplete : AnalysisUiState()
+    object AnalysisCompleteNavigateToNextScreen : AnalysisUiState()
 
     /**
      * Enum class for error types during analysis.
@@ -72,23 +72,26 @@ sealed class AnalysisUiState {
 }
 
 
-
 data class AnalysisUiData
     (
     val portalUrl: String? = null,
     val webViewType: WebViewType = WebViewType.CustomWebView,
     val showedHint: Boolean = false,
-    val analysisStatus: AnalysisStatus = AnalysisStatus.INITIAL, // initially is at Initial then
+    val analysisInternetStatus: AnalysisInternetStatus = AnalysisInternetStatus.INITIAL, // initially is at Initial then
     // when user click end analysis the function stopAnalysis
     // checks for internet connection if true this means the registration to the captive
     // portal is Completed is analysis is most likely done otherwise this is set to NotCompleted
     // to warn user analysis might not be completed
 )
 
-enum class AnalysisStatus {
-    INITIAL,
-    COMPLETED,
-    NOT_COMPLETED
+//when user chooses to end the analysis, we check if the device has full internet connection which
+// indicates completion of viewing the captive portal different pages and logging in,
+// otherwise we show a hint to user to continue the analysis
+enum class AnalysisInternetStatus {
+    INITIAL, //we didnt check yet
+    LOADING, // checking
+    FULL_INTERNET_ACCESS, //checked and found full internet access
+    NO_INTERNET_ACCESS //checked and found no internet access
 }
 
 /**
@@ -102,6 +105,7 @@ enum class WebViewType {
     TestingWebView // for testing purposes only
 }
 
+//todo: migrate to this for gemini api : https://firebase.google.com/docs/vertex-ai/get-started?platform=android
 /**
  * The ViewModel for the analysis screen.
  *
@@ -277,6 +281,16 @@ class AnalysisViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * Marks the analysis as complete
+     *
+     * This will trigger a block in the AnalysisScreen to handle resetting the viewmodel and navigating
+     * to next screen
+     */
+    fun markAnalysisAsComplete() {
+        _uiState.value = AnalysisUiState.AnalysisCompleteNavigateToNextScreen
     }
 
     /**
@@ -606,33 +620,44 @@ class AnalysisViewModel(
      * connected to the internet.
      */
     fun stopAnalysis() {
+        _uiData.update { it.copy(analysisInternetStatus = AnalysisInternetStatus.LOADING) }
         _uiState.value = AnalysisUiState.Loading(R.string.processing_request)
         viewModelScope.launch(Dispatchers.IO) {
             if (hasFullInternetAccess(context)) {
                 withContext(Dispatchers.Main) {
-                    _uiState.value = AnalysisUiState.AnalysisComplete
-                    _uiData.update { it.copy(analysisStatus = AnalysisStatus.COMPLETED) }
+                    _uiData.update { it.copy(analysisInternetStatus = AnalysisInternetStatus.FULL_INTERNET_ACCESS) }
                 }
             } else {
                 withContext(Dispatchers.Main) {
                     _uiState.value = AnalysisUiState.CaptiveUrlDetected
-                    _uiData.update { it.copy(analysisStatus = AnalysisStatus.NOT_COMPLETED) }
+                    _uiData.update { it.copy(analysisInternetStatus = AnalysisInternetStatus.NO_INTERNET_ACCESS) }
                 }
             }
-
         }
-
     }
 
     //end analysis even if not completed
     fun forceStopAnalysis() {
         _uiState.value = AnalysisUiState.Loading(R.string.processing_request)
         viewModelScope.launch(Dispatchers.IO) {
-                withContext(Dispatchers.Main) {
-                    _uiState.value = AnalysisUiState.AnalysisComplete
-                    _uiData.update { it.copy(analysisStatus = AnalysisStatus.COMPLETED) }
-                }
+            withContext(Dispatchers.Main) {
+                _uiData.update { it.copy(analysisInternetStatus = AnalysisInternetStatus.FULL_INTERNET_ACCESS) }
+            }
         }
+    }
+
+    /**
+     * Resets the ViewModel's state (_uiState and _uiData) to their initial default values.
+     * This function simulates the state of the ViewModel as if it were just created.
+     */
+    fun resetViewModelState() {
+        // Reset the main UI state flow to its initial value
+        _uiState.value = AnalysisUiState.PreferenceSetup
+        Log.d(TAG, "ViewModel UI State reset to default values.")
+
+        // Reset the data state flow by creating a new default instance
+        _uiData.value = AnalysisUiData()
+        Log.d(TAG, "ViewModel UI Data reset to default values.")
     }
 
     fun isPcapDroidAppInstalled(): Boolean {
@@ -657,36 +682,40 @@ class AnalysisViewModel(
     }
 
     // Add the .pcap file path to the session object of the network
-fun storePcapFilePathInTheSession() {
-    viewModelScope.launch(Dispatchers.IO) {
-        try {
-            sessionManager.getCurrentSessionId()?.let { sessionId ->
-                if (mainViewModel.copiedPcapFileUri.value != null) {
-                    val session = repository.getSessionBySessionId(sessionId)
-                    if (session != null) {
-                        repository.updateSession(session.copy(pcapFilePath =
-                            mainViewModel.copiedPcapFileUri.value.toString()))
+    fun storePcapFilePathInTheSession() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                sessionManager.getCurrentSessionId()?.let { sessionId ->
+                    if (mainViewModel.copiedPcapFileUri.value != null) {
+                        val session = repository.getSessionBySessionId(sessionId)
+                        if (session != null) {
+                            repository.updateSession(
+                                session.copy(
+                                    pcapFilePath =
+                                        mainViewModel.copiedPcapFileUri.value.toString()
+                                )
+                            )
+                        }
+                    }
+                } ?: run {
+                    withContext(Dispatchers.Main) {
+                        showToast(
+                            context.getString(R.string.error_saving_pcap_to_session),
+                            ToastStyle.ERROR
+                        )
                     }
                 }
-            } ?: run {
+            } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     showToast(
                         context.getString(R.string.error_saving_pcap_to_session),
                         ToastStyle.ERROR
                     )
                 }
+                Log.e(TAG, "Error saving pcap to session: ${e.message}")
             }
-        } catch (e: Exception) {
-            withContext(Dispatchers.Main) {
-                showToast(
-                    context.getString(R.string.error_saving_pcap_to_session),
-                    ToastStyle.ERROR
-                )
-            }
-            Log.e(TAG, "Error saving pcap to session: ${e.message}")
         }
     }
-}
 
     /**
      * Take a screenshot of the web view and save it to the file system,

@@ -166,8 +166,6 @@
     <string name="thanks_for_uploading_network_data_for_further_analysis">Danke für das Hochladen von Netzwerkdaten für weitere Analysen.</string>
     <string name="please_review_and_upload_collected_data_to_help_us_research_this_network">Bitte überprüfen und hochladen Sie die gesammelten Daten, um uns bei der Forschung zu diesem Netzwerk zu helfen.</string>
     <string name="this_is_new_session">Diese Sitzung wurde vor %1$s Minuten erstellt.</string>
-    <string name="hint_backup_webview">Bitte versuchen Sie die Backup-Webansicht, wenn die Website nicht geladen wird, indem Sie auf "Browser wechseln" klicken</string>
-    <string name="hint_custom_webview">Bitte verwenden Sie diese Webansicht nur, wenn die Website in der Original-Webansicht nicht geladen wird, ansonsten bitte erneut auf \"Browser wechseln\" klicken</string>
     <string name="custom_webview">Custom Webview (Empfohlen)</string>
     <string name="normal_webview">Normale Webview (Backup)</string>
     <string name="session_id_not_found">Session ID not found</string>
@@ -353,7 +351,44 @@
     <string name="analyze_pro">Tiefenanalyse mit Gemini Pro (Empfohlen)</string>
     <string name="analyze_fast">Schnelle Analyse mit Gemini Flash</string>
 
-<string name="pcap_file_label">PCAP-Datei in die KI-Anfrage einbeziehen</string>
+<string name="include_pcap_in_prompt">PCAP-Datei in die KI-Anfrage einbeziehen</string>
 <string name="retry_pcap_conversion">PCAP-Konvertierung erneut versuchen</string>
 <string name="app_will_convert_the_pcap_file_to_json_format_and_include_it_in_the_ai_prompt">Die App wird die PCAP-Datei in das JSON-Format konvertieren und in die KI-Anfrage einbeziehen</string>
+
+
+<string name="ai_analysis">KI-Analyse</string>
+<string name="prompt_label">Eingabeaufforderung:</string>
+<string name="the_app_has_two_types_of_webview_supported_if_the_custom_webview_recommended_doesnt_load_the_captive_website_properly_use_it_to_switch_to_the_backup_webview">Die App unterstützt zwei Arten von WebView. Wenn das benutzerdefinierte WebView (empfohlen) die Captive-Website nicht richtig lädt, verwenden Sie es, um auf das Backup-WebView umzuschalten.</string>
+
+<!-- Used in SessionGeneralDetails for labels -->
+<string name="ssid_label">SSID:</string>
+<string name="bssid_label">BSSID:</string>
+<string name="ip_label">IP-Adresse:</string>
+<string name="gateway_label">Gateway:</string>
+<string name="portal_url_label">Portal-URL:</string>
+<string name="new_pcap_file_available">Neue PCAP-Datei verfügbares Symbol</string> <!-- Content description -->
+<string name="pcap_file_label">PCAP-Datei</string>
+
+<!-- Used in FiltersHeader -->
+<string name="show_filters">Filter anzeigen</string> <!-- Content description for filter icon -->
+
+<!-- Used in RequestListItem for labels -->
+<string name="url_label">URL:</string>
+<string name="type_label">Typ:</string>
+<string name="timestamp_label">Zeitstempel:</string> <!-- Replaces timestamp_no_param -->
+
+<!-- Used in ContentItem for labels -->
+<!-- url_label is reused from RequestListItem -->
+<string name="html_path_label">HTML-Pfad:</string>
+<string name="js_path_label">JS-Pfad:</string>
+<!-- timestamp_label is reused from RequestListItem -->
+
+<!-- Used in ImageItem -->
+<string name="screenshot_image">Screenshot-Bild</string> <!-- Content description -->
+<string name="tos_privacy_related_label">AGB/Datenschutzbezogen</string> <!-- Overlay text -->
+
+<string name="long_press_hint">
+    Tipp: Halten Sie einige Tasten lange gedrückt, um eine Erklärung ihrer Funktionalität anzuzeigen
+</string>
+
 </resources>
