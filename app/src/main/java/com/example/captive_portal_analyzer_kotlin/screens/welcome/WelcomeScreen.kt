@@ -55,12 +55,12 @@ fun WelcomeScreen(
 
     // for testing only: skip pcapdroid setup screen
     var effectiveSkipSetup = skipSetup
-    if(BuildConfig.DEBUG_SKIP_PCAP_SETUP_SCREEN){
+    if (BuildConfig.DEBUG_SKIP_PCAP_SETUP_SCREEN) {
         effectiveSkipSetup = true
     }
 
     // for testing only: insert mock session
-    if(BuildConfig.DEBUG_ADD_MOCK_SESSION){
+    if (BuildConfig.DEBUG_ADD_MOCK_SESSION) {
         insertMockSession(repository)
     }
 
@@ -101,7 +101,7 @@ fun insertMockSession(
             gatewayAddress = "192.168.1.1", // Example gateway IP
             isCaptiveLocal = false, // Example value
             isUploadedToRemoteServer = false, // Typically false on initial insertion
-            pcapFilePath = "/data/data/com.yourapp/files/captures/$networkId.pcap", // Example local path
+            pcapFilePath = BuildConfig.DEBUG_LARGE_PCAP_FILE_PATH,
             pcapFileUrl = null // Typically null until uploaded
             // Or set a mock URL if testing uploaded state:
             // pcapFileUrl = "https://your.server.com/uploads/$networkId.pcap"
@@ -140,7 +140,7 @@ fun insertMockSession(
                 sessionId = networkId, // Use the SAME session ID!
                 type = "document",
                 url = "http://example.com/",
-                method =  RequestMethod.GET,
+                method = RequestMethod.GET,
                 body = null,
                 headers = "{ \"User-Agent\": \"MockBrowser\" }"
             ),
@@ -149,7 +149,7 @@ fun insertMockSession(
                 sessionId = networkId, // Use the SAME session ID!
                 type = "script",
                 url = "http://example.com/script.js",
-                method =  RequestMethod.GET,
+                method = RequestMethod.GET,
                 body = null,
                 headers = null
             ),
@@ -158,7 +158,7 @@ fun insertMockSession(
                 sessionId = networkId, // Use the SAME session ID!
                 type = "image",
                 url = "http://example.com/image.png",
-                method =  RequestMethod.GET,
+                method = RequestMethod.GET,
                 body = null,
                 headers = null
             ),
@@ -167,7 +167,7 @@ fun insertMockSession(
                 sessionId = networkId, // Use the SAME session ID!
                 type = "POST",
                 url = "http://example.com/post_url",
-                method =  RequestMethod.POST,
+                method = RequestMethod.POST,
                 body = "{ \"key\": \"value\" }",
                 headers = null,
                 hasFullInternetAccess = true,
@@ -206,9 +206,8 @@ fun insertMockSession(
         }
     }
 
-         Log.d("MockData", "Inserted mock session with networkId: $networkId")
-    }
-
+    Log.d("MockData", "Inserted mock session with networkId: $networkId")
+}
 
 
 /**
@@ -263,7 +262,10 @@ private fun WelcomeContent(
         )
 
         //Hint text
-        HintTextWithIcon(hint = stringResource(R.string.long_press_hint))
+        HintTextWithIcon(
+            hint = stringResource(R.string.long_press_hint),
+           rowAllignment = Alignment.Center,
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -279,7 +281,6 @@ private fun WelcomeContent(
                 )
             }
         )
-
 
 
     }

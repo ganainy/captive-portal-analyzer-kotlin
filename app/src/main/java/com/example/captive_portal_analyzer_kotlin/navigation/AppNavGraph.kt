@@ -1,6 +1,7 @@
 package com.example.captive_portal_analyzer_kotlin.navigation
 
 // Import NEW Screens and ViewModel Factory
+import AutomaticAnalysisInputScreen
 import NetworkSessionRepository
 import android.app.Application
 import android.content.Intent
@@ -26,10 +27,11 @@ import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.AnalysisSc
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.AnalysisScreenConfig
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.IntentLaunchConfig
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.NavigationConfig
-import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisInputScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisOutputScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisViewModel
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisViewModelFactory
+import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.PcapInclusionScreen
+import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.PromptPreviewScreen
 import com.example.captive_portal_analyzer_kotlin.screens.manual_connect.ManualConnectScreen
 import com.example.captive_portal_analyzer_kotlin.screens.request_details_screen.RequestDetailsScreen
 import com.example.captive_portal_analyzer_kotlin.screens.session.SessionScreen
@@ -58,6 +60,8 @@ sealed class Screen(val route: String, @StringRes val titleStringResource: Int) 
 val AutomaticAnalysisInputRoute = "automatic_analysis_input"
 val AutomaticAnalysisGraphRoute = "automatic_analysis_graph"
 val AutomaticAnalysisOutputRoute = "automatic_analysis_output"
+val PcapInclusionRoute = "pcap_inclusion"
+val AutomaticAnalysisPromptPreviewRoute = "automatic_analysis_prompt_preview"
 
 @Composable
 fun AppNavGraph(
@@ -127,7 +131,7 @@ fun AppNavGraph(
             SessionListScreen(
                 repository = repository,
                 navigateToWelcome = actions.navigateToWelcomeScreen,
-                updateClickedSessionId = mainViewModel::updateClickedSessionId, // Pass the function reference
+                updateClickedSessionId = mainViewModel::updateClickedSessionId,
                 navigateToSessionScreen = actions.navigateToSessionScreen
             )
         }
@@ -194,13 +198,53 @@ fun AppNavGraph(
 
                 AutomaticAnalysisInputScreen(
                     navController = navController,
-                    viewModel = automaticAnalysisViewModel, // Pass the shared ViewModel
+                    viewModel = automaticAnalysisViewModel,
                     mainViewModel = mainViewModel
                 )
             }
 
+            // --- PCAP Inclusion Screen Composable ---
+            composable(route = PcapInclusionRoute) { backStackEntry ->
+                // ---> Get the graph's NavBackStackEntry <---
+                val graphEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(AutomaticAnalysisGraphRoute)
+                }
+
+                // ---> Get the SAME ViewModel instance scoped to the graph <---
+                val automaticAnalysisViewModel: AutomaticAnalysisViewModel = viewModel(
+                    viewModelStoreOwner = graphEntry
+                )
+
+                PcapInclusionScreen(
+                    navController = navController,
+                    viewModel = automaticAnalysisViewModel,
+                    mainViewModel = mainViewModel
+                )
+            }
+            // --- END PCAP Inclusion Screen Composable ---
+
+            // ---  Prompt Preview Screen Composable ---
+            composable(route = AutomaticAnalysisPromptPreviewRoute) { backStackEntry ->
+                // ---> Get the graph's NavBackStackEntry <---
+                val graphEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(AutomaticAnalysisGraphRoute)
+                }
+
+                // ---> Get the SAME ViewModel instance scoped to the graph <---
+                val automaticAnalysisViewModel: AutomaticAnalysisViewModel = viewModel(
+                    viewModelStoreOwner = graphEntry
+                )
+
+                PromptPreviewScreen(
+                    navController = navController,
+                    viewModel = automaticAnalysisViewModel,
+                    mainViewModel = mainViewModel
+                )
+            }
+            // --- END Prompt Preview Screen Composable ---
+
             // Output Screen Composable
-            composable(route = AutomaticAnalysisOutputRoute) { backStackEntry -> // Get NavBackStackEntry here
+            composable(route = AutomaticAnalysisOutputRoute) { backStackEntry ->
                 // ---> Get the graph's NavBackStackEntry <---
                 val graphEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(AutomaticAnalysisGraphRoute)
@@ -213,7 +257,7 @@ fun AppNavGraph(
 
                 AutomaticAnalysisOutputScreen(
                     navController = navController,
-                    viewModel = automaticAnalysisViewModel, // Pass the shared ViewModel
+                    viewModel = automaticAnalysisViewModel,
                     mainViewModel = mainViewModel
                 )
             }
@@ -242,8 +286,7 @@ class NavigationActions(private val navController: NavHostController) {
 
     // Updated action: Navigate to the START of the nested graph
     val navigateToAutomaticAnalysisGraph: () -> Unit = {
-        // Make sure clickedSessionId is set in MainViewModel BEFORE calling this
-        navController.navigate(AutomaticAnalysisGraphRoute) // Use the graph's route constant
+        navController.navigate(AutomaticAnalysisGraphRoute)
     }
 
     val navigateToWebpageContentScreen: () -> Unit = {
@@ -255,7 +298,5 @@ class NavigationActions(private val navController: NavHostController) {
     val navigateToSetupPCAPDroidScreen: () -> Unit = {
         navController.navigate(Screen.PCAPDroidSetup.route)
     }
-    val navigateBack: () -> Unit = {
-        navController.popBackStack()
-    }
+
 }

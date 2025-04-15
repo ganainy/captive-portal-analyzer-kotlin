@@ -77,65 +77,65 @@
     <string name="welcome_to_app_2">Willkommen! Vielen Dank, dass Sie helfen, das Internet sicherer zu machen. Starten Sie eine Sitzung, um einen Bericht über das nächstgelegene Captive Portal für die Analyse zu erstellen.</string>
     <string name="upload_session_for_analysis">Sitzung hochladen</string>
     <string name="already_uploaded">Bereits hochgeladen</string>
-        <string name="network_name">Netzwerk: %1$s</string>
-        <string name="created">erstellt %1$s</string>
-        <string name="requests">Anfragen: %1$s</string>
-        <string name="webpages">Webseiten: %1$s</string>
-        <string name="screenshots">Screenshots: %1$s</string>
-        <string name="info">Information</string>
-        <string name="delete">Löschen</string>
-        <string name="cannot_connect_automatically_tap_here_to_connect_manually">Wenn Sie Probleme haben, sich automatisch mit dem Netzwerk zu verbinden, klicken Sie auf die Schaltfläche, um eine manuelle Verbindung zu versuchen.</string>
-        <string name="network_list_screen_title">Offene Netzwerke</string>
-        <string name="menu_screen_title">Menü</string>
-        <string name="manual_connect_screen_title">Mit einem Netzwerk verbinden</string>
-        <string name="menu">Menü</string>
-        <string name="welcome_screen_title">Willkommen</string>
-        <string name="welcome_to_captive_portal_analyzer">Willkommen beim Captive Portal Analyzer</string>
-        <string name="start">Start</string>
-        <string name="this_app_is_designed_to_assist_in_the_collection_of_data_related_to_captive_portals_with_the_aim_of_enhancing_user_security_and_ensuring_data_privacy">Diese App wurde entwickelt, um bei der Sammlung von Daten im Zusammenhang mit Captive Portals zu helfen, mit dem Ziel, die Sicherheit der Benutzer zu verbessern und die Datensicherheit zu gewährleisten.</string>
-        <string name="start_by_creating_a_session_and_login_to_your_network_with_a_captive_portal_we_ll_guide_you_step_by_step">Starten Sie, indem Sie eine Sitzung erstellen und sich in Ihr Netzwerk mit einem Captive Portal einloggen. Wir führen Sie Schritt für Schritt durch.</string>
-        <string name="couldnt_detect_captive_url">Konnte die Captive Portal-URL nicht erkennen</string>
-        <string name="something_went_wrong">Etwas ist schief gelaufen</string>
-        <string name="are_you_sure_current_network_has_captive_portal">Sind Sie sicher, dass das aktuelle Netzwerk ein Captive Portal hat?</string>
-        <string name="connect_to_another_network">Mit einem anderen Netzwerk verbinden</string>
-        <string name="on_login_completed">Bitte melden Sie sich über die App beim Captive Portal an und klicken Sie dann auf die Schaltfläche „Analyse beenden“.</string>
-        <string name="project_goal_captive_portals_revised">Unser Ziel ist es, eine Datenbank aufzubauen, die verschiedene Captive Portals dokumentiert, einschließlich der Benutzerdaten, die sie sammeln, und deren Datenschutzrichtlinien. Diese Ressource soll die Forschung zu den Herausforderungen im Bereich Datenschutz und Sicherheit in WLAN-Umgebungen unterstützen.</string>
-        <string name="_1_connect_to_a_network_with_a_captive_portal">1- Mit einem Netzwerk mit einem Captive Portal verbinden\n</string>
-  <string name="_2_enable_pcap_droid_packet_capture">2- Folgen Sie den Anweisungen im PCAPDroid Setup-Bildschirm, um die Erfassung von Netzwerkpaketen zu aktivieren\n</string>
-        <string name="_3_interact_with_as_many_pages_as_possible_within_the_captive_login_site_inside_the_app">3- Mit so vielen Seiten wie möglich innerhalb des Captive Login-Bereichs in der App interagieren\n</string>
-        <string name="_4_view_the_captive_portal_privacy_policy_and_terms_of_service_tos_if_found">4- Die Datenschutzrichtlinie und die Allgemeinen Geschäftsbedingungen (AGB) des Captive Portals einsehen, falls vorhanden\n</string>
-        <string name="_5_complete_login_to_the_captive_portal">5- Den Login beim Captive Portal abschließen\n</string>
-        <string name="_6_review_and_upload_the_session_data_for_more_analysis">6- Die Sitzungsdaten überprüfen und für weitere Analysen hochladen</string>
-        <string name="after_you_successfully_create_a_session_it_is_only_stored_on_your_device_and_won_t_be_shared_with_us_until_you_review_the_content_and_approve_the_upload_from_the_sessions_page">Nachdem Sie eine Sitzung erfolgreich erstellt haben, wird diese nur auf Ihrem Gerät gespeichert und nicht mit uns geteilt, bis Sie den Inhalt überprüfen und das Hochladen auf der Sitzungsseite genehmigen.</string>
-        <string name="what_data_will_i_share_with_you">Welche Daten werde ich mit Ihnen teilen?</string>
-        <string name="why_was_this_app_created">Warum wurde diese App erstellt?</string>
-        <string name="processing_request">Anfrage wird verarbeitet</string>
-        <string name="website_not_loading">Wenn die Webseite nicht richtig lädt, versuchen Sie bitte den Schalter.</string>
-        <string name="switch_browser_type">Browser wechseln</string>
-        <string name="error_retrieving_data">Fehler beim Abrufen der Daten</string>
-        <string name="no_requests_found">Keine Anfragen gefunden</string>
-        <string name="no_webpages_found">Keine Webseiten gefunden</string>
-        <string name="no_screenshots_found">Keine Screenshots gefunden</string>
-        <string name="please_process_to_manual_connection">Bitte fahren Sie mit der manuellen Verbindung zum Netzwerk fort</string>
-        <string name="image_selector_screen_title"><![CDATA[Wählen Sie Bilder mit Datenschutzrichtlinien & AGB]]></string>
-        <string name="select_privacy_images"><![CDATA[Wählen Sie Datenschutz- & AGB-Bilder aus]]></string>
-        <string name="hint_select_privacy_images">Bitte tippen Sie auf Bilder mit Datenschutzrichtlinien oder Allgemeinen Geschäftsbedingungen, um diese zu markieren.</string>
-        <string name="review_session_data">- Überprüfen Sie gerne die gesammelten Daten \n- Markieren Sie bitte Screenshots, die Datenschutzrichtlinien oder AGB enthalten, mit der Schaltfläche unten \n- Der letzte Schritt ist das Hochladen der gesammelten Daten, damit wir diese weiter analysieren können.</string>
-        <string name="automatic_analysis_result_screen_title">Analyse-Ergebnis</string>
-        <string name="automatic_analysis_button">Mit KI analysieren</string>
-        <string name="long_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</string>
-        <string name="short_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</string>
-        <string name="uploading_information_to_be_analyzed">Hochladen von Informationen zur Analyse</string>
-        <string name="ai_hint_1">- Die gesammelten Daten sind zu groß, um sie in ihrer Gesamtheit an das KI-Modell zu senden. Daher werden nur ausgewählte und gefilterte Teile übertragen.</string>
-        <string name="ai_hint_2">- Dies bietet eine erste Übersicht über das Captive Netzwerk. Eine umfassende Analyse wird von unseren Forschern durchgeführt, sobald Sie die Sitzungsdaten zur Überprüfung hochladen.</string>
-        <string name="here_is_the_result">Hier ist, was die KI über das Netzwerk herausgefunden hat:</string>
-        <string name="hint_network">- Stellen Sie sicher, dass Sie mit dem Internet verbunden sind.</string>
-        <string name="no_internet_connection">Keine Internetverbindung</string>
-        <string name="language_settings">Spracheinstellungen</string>
-        <string name="select_language">Sprache auswählen</string>
-        <string name="theme_settings">Themen-Einstellungen</string>
-        <string name="dark_mode">Dunkelmodus</string>
-        <string name="settings">Einstellungen</string>
+    <string name="network_name">Netzwerk: %1$s</string>
+    <string name="created">erstellt %1$s</string>
+    <string name="requests">Anfragen: %1$s</string>
+    <string name="webpages">Webseiten: %1$s</string>
+    <string name="screenshots">Screenshots: %1$s</string>
+    <string name="info">Information</string>
+    <string name="delete">Löschen</string>
+    <string name="cannot_connect_automatically_tap_here_to_connect_manually">Wenn Sie Probleme haben, sich automatisch mit dem Netzwerk zu verbinden, klicken Sie auf die Schaltfläche, um eine manuelle Verbindung zu versuchen.</string>
+    <string name="network_list_screen_title">Offene Netzwerke</string>
+    <string name="menu_screen_title">Menü</string>
+    <string name="manual_connect_screen_title">Mit einem Netzwerk verbinden</string>
+    <string name="menu">Menü</string>
+    <string name="welcome_screen_title">Willkommen</string>
+    <string name="welcome_to_captive_portal_analyzer">Willkommen beim Captive Portal Analyzer</string>
+    <string name="start">Start</string>
+    <string name="this_app_is_designed_to_assist_in_the_collection_of_data_related_to_captive_portals_with_the_aim_of_enhancing_user_security_and_ensuring_data_privacy">Diese App wurde entwickelt, um bei der Sammlung von Daten im Zusammenhang mit Captive Portals zu helfen, mit dem Ziel, die Sicherheit der Benutzer zu verbessern und die Datensicherheit zu gewährleisten.</string>
+    <string name="start_by_creating_a_session_and_login_to_your_network_with_a_captive_portal_we_ll_guide_you_step_by_step">Starten Sie, indem Sie eine Sitzung erstellen und sich in Ihr Netzwerk mit einem Captive Portal einloggen. Wir führen Sie Schritt für Schritt durch.</string>
+    <string name="couldnt_detect_captive_url">Konnte die Captive Portal-URL nicht erkennen</string>
+    <string name="something_went_wrong">Etwas ist schief gelaufen</string>
+    <string name="are_you_sure_current_network_has_captive_portal">Sind Sie sicher, dass das aktuelle Netzwerk ein Captive Portal hat?</string>
+    <string name="connect_to_another_network">Mit einem anderen Netzwerk verbinden</string>
+    <string name="on_login_completed">Bitte melden Sie sich über die App beim Captive Portal an und klicken Sie dann auf die Schaltfläche „Analyse beenden“.</string>
+    <string name="project_goal_captive_portals_revised">Unser Ziel ist es, eine Datenbank aufzubauen, die verschiedene Captive Portals dokumentiert, einschließlich der Benutzerdaten, die sie sammeln, und deren Datenschutzrichtlinien. Diese Ressource soll die Forschung zu den Herausforderungen im Bereich Datenschutz und Sicherheit in WLAN-Umgebungen unterstützen.</string>
+    <string name="_1_connect_to_a_network_with_a_captive_portal">1- Mit einem Netzwerk mit einem Captive Portal verbinden\n</string>
+    <string name="_2_enable_pcap_droid_packet_capture">2- Folgen Sie den Anweisungen im PCAPDroid Setup-Bildschirm, um die Erfassung von Netzwerkpaketen zu aktivieren\n</string>
+    <string name="_3_interact_with_as_many_pages_as_possible_within_the_captive_login_site_inside_the_app">3- Mit so vielen Seiten wie möglich innerhalb des Captive Login-Bereichs in der App interagieren\n</string>
+    <string name="_4_view_the_captive_portal_privacy_policy_and_terms_of_service_tos_if_found">4- Die Datenschutzrichtlinie und die Allgemeinen Geschäftsbedingungen (AGB) des Captive Portals einsehen, falls vorhanden\n</string>
+    <string name="_5_complete_login_to_the_captive_portal">5- Den Login beim Captive Portal abschließen\n</string>
+    <string name="_6_review_and_upload_the_session_data_for_more_analysis">6- Die Sitzungsdaten überprüfen und für weitere Analysen hochladen</string>
+    <string name="after_you_successfully_create_a_session_it_is_only_stored_on_your_device_and_won_t_be_shared_with_us_until_you_review_the_content_and_approve_the_upload_from_the_sessions_page">Nachdem Sie eine Sitzung erfolgreich erstellt haben, wird diese nur auf Ihrem Gerät gespeichert und nicht mit uns geteilt, bis Sie den Inhalt überprüfen und das Hochladen auf der Sitzungsseite genehmigen.</string>
+    <string name="what_data_will_i_share_with_you">Welche Daten werde ich mit Ihnen teilen?</string>
+    <string name="why_was_this_app_created">Warum wurde diese App erstellt?</string>
+    <string name="processing_request">Anfrage wird verarbeitet</string>
+    <string name="website_not_loading">Wenn die Webseite nicht richtig lädt, versuchen Sie bitte den Schalter.</string>
+    <string name="switch_browser_type">Browser wechseln</string>
+    <string name="error_retrieving_data">Fehler beim Abrufen der Daten</string>
+    <string name="no_requests_found">Keine Anfragen gefunden</string>
+    <string name="no_webpages_found">Keine Webseiten gefunden</string>
+    <string name="no_screenshots_found">Keine Screenshots gefunden</string>
+    <string name="please_process_to_manual_connection">Bitte fahren Sie mit der manuellen Verbindung zum Netzwerk fort</string>
+    <string name="image_selector_screen_title"><![CDATA[Wählen Sie Bilder mit Datenschutzrichtlinien & AGB]]></string>
+    <string name="select_privacy_images"><![CDATA[Wählen Sie Datenschutz- & AGB-Bilder aus]]></string>
+    <string name="hint_select_privacy_images">Bitte tippen Sie auf Bilder mit Datenschutzrichtlinien oder Allgemeinen Geschäftsbedingungen, um diese zu markieren.</string>
+    <string name="review_session_data">- Überprüfen Sie gerne die gesammelten Daten \n- Markieren Sie bitte Screenshots, die Datenschutzrichtlinien oder AGB enthalten, mit der Schaltfläche unten \n- Der letzte Schritt ist das Hochladen der gesammelten Daten, damit wir diese weiter analysieren können.</string>
+    <string name="automatic_analysis_result_screen_title">Analyse-Ergebnis</string>
+    <string name="automatic_analysis_button">Mit KI analysieren</string>
+    <string name="long_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</string>
+    <string name="short_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</string>
+    <string name="uploading_information_to_be_analyzed">Hochladen von Informationen zur Analyse</string>
+    <string name="ai_hint_1">- Die gesammelten Daten sind zu groß, um sie in ihrer Gesamtheit an das KI-Modell zu senden. Daher werden nur ausgewählte und gefilterte Teile übertragen.</string>
+    <string name="ai_hint_2">- Dies bietet eine erste Übersicht über das Captive Netzwerk. Eine umfassende Analyse wird von unseren Forschern durchgeführt, sobald Sie die Sitzungsdaten zur Überprüfung hochladen.</string>
+    <string name="here_is_the_result">Hier ist, was die KI über das Netzwerk herausgefunden hat:</string>
+    <string name="hint_network">- Stellen Sie sicher, dass Sie mit dem Internet verbunden sind.</string>
+    <string name="no_internet_connection">Keine Internetverbindung</string>
+    <string name="language_settings">Spracheinstellungen</string>
+    <string name="select_language">Sprache auswählen</string>
+    <string name="theme_settings">Themen-Einstellungen</string>
+    <string name="dark_mode">Dunkelmodus</string>
+    <string name="settings">Einstellungen</string>
     <string name="theme_light">Hell-Theme</string>
     <string name="theme_dark">Dunkel-Theme</string>
     <string name="theme_system">Gleich wie System</string>
@@ -191,9 +191,9 @@
     <string name="hint_click_to_view_request_content">Karte anklicken, um den vollständigen Anfrageinhalt anzuzeigen</string>
     <string name="hide_requests_with_empty_body">Anfragen mit leerem Body verstecken</string>
     <string name="select_method">Methode auswählen:</string>
-<string name="timestamp_no_param">"Zeitstempel: "</string>
-<string name="before_authentication">Vor der Authentifizierung</string>
-<string name="after_authentication">Nach der Authentifizierung</string>
+    <string name="timestamp_no_param">"Zeitstempel: "</string>
+    <string name="before_authentication">Vor der Authentifizierung</string>
+    <string name="after_authentication">Nach der Authentifizierung</string>
     <string name="after_authentication_request">Nach der Authentifizierung Anfrage</string>
     <string name="before_authentication_request">Vor der Authentifizierung Anfrage</string>
 
@@ -224,9 +224,6 @@
     Bitte stoppen Sie die Paketerfassung, nachdem Sie mit dem WebView fertig interagiert haben.
 </string>
     <string name="capture_state">Erfassungsstatus</string>
-    <string name="please_press_open_file_and_select_this_file">
-    Bitte drücken Sie auf "Datei öffnen" und wählen Sie diese Datei aus: %1$s
-</string>
     <string name="open_file">Datei öffnen</string>
     <string name="step_2">Schritt 2</string>
     <string name="filed_copied_as">Datei kopiert als: %1$s</string>
@@ -262,16 +259,16 @@
     PCAPDroid ist erforderlich, um Netzwerkverkehr zu erfassen. Bitte installieren Sie es aus dem Google Play Store.
 </string>
 
-  <string name="error_saving_pcap_to_session">Fehler beim Speichern des .pcap-Dateipfads in der Sitzung</string>
-<string name="no_need_to_open_pcapdroid">Es ist nicht mehr nötig, die PCAPDroid-App zu öffnen, ab jetzt steuern wir sie direkt über unsere App</string>
+    <string name="error_saving_pcap_to_session">Fehler beim Speichern des .pcap-Dateipfads in der Sitzung</string>
+    <string name="no_need_to_open_pcapdroid">Es ist nicht mehr nötig, die PCAPDroid-App zu öffnen, ab jetzt steuern wir sie direkt über unsere App</string>
 
-   <string name="end_analysis_anyway">Analyse trotzdem beenden</string>
-<string name="finish">Fertig</string>
-<string name="please_select_correct_file">Bitte wählen Sie die richtige .pcap-Datei aus</string>
+    <string name="end_analysis_anyway">Analyse trotzdem beenden</string>
+    <string name="finish">Fertig</string>
+    <string name="please_select_correct_file">Bitte wählen Sie die richtige .pcap-Datei aus</string>
 
-<string name="pcap_file">PCAPDroid-Datei: %1$s</string>
-<string name="select_capture_mode">Bitte wählen Sie zuerst den Analysemodus aus.</string>
-<string name="select_capture_mode_description">Kehren Sie zum ersten Tab (WebView) zurück und wählen Sie den Analysemodus, um fortzufahren.</string>
+    <string name="pcap_file">PCAPDroid-Datei: %1$s</string>
+    <string name="select_capture_mode">Bitte wählen Sie zuerst den Analysemodus aus.</string>
+    <string name="select_capture_mode_description">Kehren Sie zum ersten Tab (WebView) zurück und wählen Sie den Analysemodus, um fortzufahren.</string>
 
     <!-- Thank You Message -->
     <string name="thanks_for_uploading_the_data_for_further_manual_review">Vielen Dank für das Hochladen der Daten zur weiteren manuellen Überprüfung.</string>
@@ -297,8 +294,8 @@
     <!-- Translation Disclaimer -->
     <string name="translations_are_automatically_generated">Übersetzungen werden automatisch generiert und sind möglicherweise nicht perfekt.</string> <!-- "werden automatisch generiert" (are automatically generated), "möglicherweise nicht perfekt" (may not be perfect) -->
 
-   <string name="please_install_setup_pcapdroid_from_the_link_above_to_use_the_advanced_mode"><![CDATA[Bitte installieren & richten Sie PCAPDroid über den obigen Link ein, um den erweiterten Modus zu nutzen.]]></string>
-<string name="please_stop_running_pcap_droid_capture_before_continuing">Bitte stoppen Sie die laufende PCAPDroid-Erfassung, bevor Sie fortfahren, und drücken Sie dann auf das Aktualisierungssymbol</string>
+    <string name="please_install_setup_pcapdroid_from_the_link_above_to_use_the_advanced_mode"><![CDATA[Bitte installieren & richten Sie PCAPDroid über den obigen Link ein, um den erweiterten Modus zu nutzen.]]></string>
+    <string name="please_stop_running_pcap_droid_capture_before_continuing">Bitte stoppen Sie die laufende PCAPDroid-Erfassung, bevor Sie fortfahren, und drücken Sie dann auf das Aktualisierungssymbol</string>
 
     <string name="something_went_wrong_loading_data">Beim Laden der Daten ist ein Fehler aufgetreten</string>
     <string name="network_requests_count">Netzwerk-Anfragen (%1$d)</string>
@@ -351,44 +348,63 @@
     <string name="analyze_pro">Tiefenanalyse mit Gemini Pro (Empfohlen)</string>
     <string name="analyze_fast">Schnelle Analyse mit Gemini Flash</string>
 
-<string name="include_pcap_in_prompt">PCAP-Datei in die KI-Anfrage einbeziehen</string>
-<string name="retry_pcap_conversion">PCAP-Konvertierung erneut versuchen</string>
-<string name="app_will_convert_the_pcap_file_to_json_format_and_include_it_in_the_ai_prompt">Die App wird die PCAP-Datei in das JSON-Format konvertieren und in die KI-Anfrage einbeziehen</string>
+    <string name="include_pcap_in_prompt">PCAP-Datei in die KI-Anfrage einbeziehen</string>
+    <string name="retry_pcap_conversion">PCAP-Konvertierung erneut versuchen</string>
+    <string name="app_will_convert_the_pcap_file_to_json_format_and_include_it_in_the_ai_prompt">Die App wird die PCAP-Datei in das JSON-Format konvertieren und in die KI-Anfrage einbeziehen</string>
 
 
-<string name="ai_analysis">KI-Analyse</string>
-<string name="prompt_label">Eingabeaufforderung:</string>
-<string name="the_app_has_two_types_of_webview_supported_if_the_custom_webview_recommended_doesnt_load_the_captive_website_properly_use_it_to_switch_to_the_backup_webview">Die App unterstützt zwei Arten von WebView. Wenn das benutzerdefinierte WebView (empfohlen) die Captive-Website nicht richtig lädt, verwenden Sie es, um auf das Backup-WebView umzuschalten.</string>
+    <string name="ai_analysis">KI-Analyse</string>
+    <string name="prompt_label">Eingabeaufforderung:</string>
+    <string name="the_app_has_two_types_of_webview_supported_if_the_custom_webview_recommended_doesnt_load_the_captive_website_properly_use_it_to_switch_to_the_backup_webview">Die App unterstützt zwei Arten von WebView. Wenn das benutzerdefinierte WebView (empfohlen) die Captive-Website nicht richtig lädt, verwenden Sie es, um auf das Backup-WebView umzuschalten.</string>
 
-<!-- Used in SessionGeneralDetails for labels -->
-<string name="ssid_label">SSID:</string>
-<string name="bssid_label">BSSID:</string>
-<string name="ip_label">IP-Adresse:</string>
-<string name="gateway_label">Gateway:</string>
-<string name="portal_url_label">Portal-URL:</string>
-<string name="new_pcap_file_available">Neue PCAP-Datei verfügbares Symbol</string> <!-- Content description -->
-<string name="pcap_file_label">PCAP-Datei</string>
+    <!-- Used in SessionGeneralDetails for labels -->
+    <string name="ssid_label">SSID:</string>
+    <string name="bssid_label">BSSID:</string>
+    <string name="ip_label">IP-Adresse:</string>
+    <string name="gateway_label">Gateway:</string>
+    <string name="portal_url_label">Portal-URL:</string>
+    <string name="new_pcap_file_available">Neue PCAP-Datei verfügbares Symbol</string> <!-- Content description -->
+    <string name="pcap_file_label">PCAP-Datei</string>
 
-<!-- Used in FiltersHeader -->
-<string name="show_filters">Filter anzeigen</string> <!-- Content description for filter icon -->
+    <!-- Used in FiltersHeader -->
+    <string name="show_filters">Filter anzeigen</string> <!-- Content description for filter icon -->
 
-<!-- Used in RequestListItem for labels -->
-<string name="url_label">URL:</string>
-<string name="type_label">Typ:</string>
-<string name="timestamp_label">Zeitstempel:</string> <!-- Replaces timestamp_no_param -->
+    <!-- Used in RequestListItem for labels -->
+    <string name="url_label">URL:</string>
+    <string name="type_label">Typ:</string>
+    <string name="timestamp_label">Zeitstempel:</string> <!-- Replaces timestamp_no_param -->
 
-<!-- Used in ContentItem for labels -->
-<!-- url_label is reused from RequestListItem -->
-<string name="html_path_label">HTML-Pfad:</string>
-<string name="js_path_label">JS-Pfad:</string>
-<!-- timestamp_label is reused from RequestListItem -->
+    <!-- Used in ContentItem for labels -->
+    <!-- url_label is reused from RequestListItem -->
+    <string name="html_path_label">HTML-Pfad:</string>
+    <string name="js_path_label">JS-Pfad:</string>
+    <!-- timestamp_label is reused from RequestListItem -->
 
-<!-- Used in ImageItem -->
-<string name="screenshot_image">Screenshot-Bild</string> <!-- Content description -->
-<string name="tos_privacy_related_label">AGB/Datenschutzbezogen</string> <!-- Overlay text -->
+    <!-- Used in ImageItem -->
+    <string name="screenshot_image">Screenshot-Bild</string> <!-- Content description -->
+    <string name="tos_privacy_related_label">AGB/Datenschutzbezogen</string> <!-- Overlay text -->
 
-<string name="long_press_hint">
+    <string name="long_press_hint">
     Tipp: Halten Sie einige Tasten lange gedrückt, um eine Erklärung ihrer Funktionalität anzuzeigen
 </string>
 
+    <string name="yes_just_like_that">Ja, genau so :)</string>
+
+    <!-- Neue Strings für den PCAP-Einbeziehungsbildschirm und -Ablauf -->
+    <string name="pcap_inclusion_screen_title">PCAP-Daten einbeziehen?</string>
+    <string name="proceed_to_pcap_step">Fortfahren</string> <!-- Geändert von nur "Fortfahren", um den Kontext leicht zu spezifizieren, bei Bedarf anpassen -->
+    <string name="include_pcap_question">Möchten Sie die Netzwerkerfassung (PCAP)-Datei in die Analyse einbeziehen?</string>
+    <string name="pcap_not_available">Für diese Sitzung ist keine PCAP-Netzwerkerfassungsdatei verfügbar.</string>
+    <string name="pcap_conversion_starts_on_selection">Das Aktivieren dieses Kästchens startet den PCAP-zu-JSON-Konvertierungsprozess.</string>
+    <string name="converting_pcap">PCAP wird konvertiert...</string>
+    <string name="analyzing_with_ai">Analyse mit KI...</string>
+    <string name="pcap_error_not_included_hint">PCAP-Daten werden nicht in die Eingabeaufforderung einbezogen.</string>
+    <string name="here">hier.</string>
+    <string name="prompt_preview_screen_title">Eingabeaufforderungsvorschau</string>
+    <string name="prompt_not_generated">Die Eingabeaufforderungsvorschau wurde noch nicht generiert.</string>
+    <string name="you_can_check_the_prompt_that_will_be_sent_to_the_model_by_clicking">"Sie können die vollständige Eingabeaufforderung überprüfen, die an das Modell gesendet wird, indem Sie klicken "</string>
+    <string name="please_press_open_file_and_select_this_file"> "Bitte drücken Sie 'Datei öffnen', navigieren Sie zum Downloads-Ordner (oder überprüfen Sie 'Zuletzt verwendet'), suchen Sie den PCAPdroid-Unterordner, falls vorhanden, und wählen Sie die Datei mit dem Namen %1$s aus</string>
+
+   <string name="error_invalid_pcap_uri">Fehler: Ungültiger Speicherort der PCAP-Datei.</string>
+  <string name="error_saving_pcap_to_session_no_id">Fehler: Sitzungs-ID nicht gefunden, PCAP-Datei konnte nicht gespeichert werden.</string>
 </resources>

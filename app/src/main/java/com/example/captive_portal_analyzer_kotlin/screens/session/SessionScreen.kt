@@ -6,10 +6,12 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +35,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -100,14 +103,6 @@ import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.AppUtils.Companion.formatDate
 
 // region Main Screen Composable
-/**
- * Composable function to display the session details of a network with captive portal.
- *
- * @param mainViewModel The shared view model containing the clicked session ID and
- * connectivity status.
- * @param repository The repository to access network session data.
- * @param navigateToAutomaticAnalysis A function that navigates to the automatic analysis screen.
- */
 @Composable
 fun SessionScreen(
     mainViewModel: MainViewModel,
@@ -116,10 +111,8 @@ fun SessionScreen(
     navigateToWebpageContentScreen: () -> Unit,
     navigateToRequestDetailsScreen: () -> Unit
 ) {
-    // Collect the clicked session ID from the shared view model.
     val clickedSessionId by mainViewModel.clickedSessionId.collectAsState()
 
-    // Create a view model for the session data.
     val sessionViewModel: SessionViewModel = viewModel(
         factory = SessionViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
@@ -128,16 +121,10 @@ fun SessionScreen(
         )
     )
 
-    // Collect the session data from the view model.
     val sessionUiData by sessionViewModel.sessionUiData.collectAsState()
-
-    // Collect the upload state from the view model.
     val sessionState by sessionViewModel.sessionState.collectAsState()
-
-    // Collect the connectivity status from the shared view model.
     val isConnected by mainViewModel.isConnected.collectAsState()
 
-    // A function to show a toast message that will be passed to viewModel to show toast when needed.
     val showToast = { message: String, style: ToastStyle ->
         mainViewModel.showToast(
             message = message, style = style,
@@ -183,29 +170,14 @@ private fun SessionScreenContent(
     updateClickedRequest: (CustomWebViewRequestEntity) -> Unit
 ) {
     Scaffold { paddingValues ->
-        /**
-         * Handles the upload state.
-         *
-         * If the upload state is [SessionState.Uploading], it displays a loading indicator.
-         *
-         * If the upload state is [SessionState.Loading], it displays a loading indicator.
-         *
-         * If the upload state is [SessionState.Error], it displays an error component with a retry button.
-         *
-         * If the upload state is [SessionState.AlreadyUploaded], [SessionState.Success], or [SessionState.NeverUploaded],
-         * it displays the session details with only the button changed based on the three different states.
-         */
         Box(Modifier.padding(paddingValues)) {
             when (sessionState) {
-                // Display a loading indicator while the session is being uploaded to remote server
                 SessionState.Uploading -> {
                     LoadingIndicator(message = stringResource(R.string.uploading_information_to_be_analyzed))
                 }
-                // Display a loading indicator while the session is being loaded from DB
                 SessionState.Loading -> {
                     LoadingIndicator(message = stringResource(R.string.loading_session))
                 }
-                //Display an error component with a retry button if error while uploading to remote server
                 is SessionState.ErrorUploading -> {
                     val errorMessage = (sessionState as SessionState.ErrorUploading).message
                     ErrorComponent(
@@ -218,18 +190,13 @@ private fun SessionScreenContent(
                         }
                     )
                 }
-                //Display an error message if error while loading from DB
                 is SessionState.ErrorLoading -> {
                     val errorMessage = (sessionState as SessionState.ErrorLoading).message
                     ErrorComponent(
                         error = errorMessage,
                     )
                 }
-
                 else -> {
-                    // This branch is for all other SessionState values
-                    // If the upload state is UploadState.AlreadyUploaded, UploadState.Success, or UploadState.NeverUploaded,
-                    // it displays the session details with only the button changed based on the three different states.
                     if (sessionState is SessionState.AlreadyUploaded || sessionState is SessionState.Success || sessionState is SessionState.NeverUploaded) {
                         Box(
                             modifier = Modifier
@@ -260,7 +227,6 @@ private fun SessionScreenContent(
                                 onResetFilters = resetFilters,
                             )
 
-
                             HintInfoBox(
                                 context = LocalContext.current,
                                 modifier = Modifier.align(Alignment.Center),
@@ -269,7 +235,6 @@ private fun SessionScreenContent(
                             AnimatedNoInternetBanner(isConnected = isConnected)
                         }
                     } else {
-                        // If the upload state is not recognized, throw an exception
                         throw IllegalStateException("Unexpected upload state: $sessionState")
                     }
                 }
@@ -280,16 +245,7 @@ private fun SessionScreenContent(
 // endregion
 
 // region Session Detail Structure
-/**
- * A composable function to display a session detail page.
- *
- * @param sessionUiData The SessionUiData of the clicked session.
- * @param uploadSession A function to upload the session to the remote server.
- * @param uploadState The state of the upload process.
- * @param switchScreenshotPrivacyOrToSrealted A function to switch the privacy of a screenshot or to
- * its related screenshot (as a reaction to user clicking the image).
- * @param navigateToAutomaticAnalysis A function to navigate to the automatic AI analysis screen.
- */
+@OptIn(ExperimentalFoundationApi::class) // Added for stickyHeader
 @Composable
 fun SessionDetail(
     sessionUiData: SessionUiData,
@@ -304,128 +260,195 @@ fun SessionDetail(
     onModifySelectedMethods: (RequestMethod) -> Unit,
     onResetFilters: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp) // Apply horizontal padding here
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val requests = sessionUiData.sessionData?.requests ?: emptyList()
+    val content = sessionUiData.sessionData?.webpageContent ?: emptyList()
+    val screenshots = sessionUiData.sessionData?.screenshots ?: emptyList()
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Section displaying network details (no longer a Card)
-        SessionGeneralDetails(
-            sessionUiData.sessionData,
-            Modifier.padding(top = 16.dp)
-        ) // Add top padding
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // TabRow for navigating between requests, content, and screenshots
-        var selectedTab by remember { mutableIntStateOf(0) }
-        TabRow(selectedTabIndex = selectedTab) {
-            Tab(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
-                text = { Text("Requests (${sessionUiData.sessionData?.requests?.size ?: 0})") }
-            )
-            Tab(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
-                text = { Text("Content (${sessionUiData.sessionData?.webpageContent?.size ?: 0})") }
-            )
-            Tab(
-                selected = selectedTab == 2,
-                onClick = { selectedTab = 2 },
-                text = { Text("Images (${sessionUiData.sessionData?.screenshots?.size ?: 0})") }
-            )
+        // 1. General Details - This will scroll off screen
+        item {
+            SessionGeneralDetails(sessionUiData.sessionData)
         }
 
-        // Container for tab content
-        Column(modifier = Modifier.weight(1f)) { // This column takes remaining space
-            // Fixed Filter Header for Requests Tab
-            if (selectedTab == 0) {
-                FiltersHeader(
-                    onToggleShowBottomSheet = onToggleShowBottomSheet,
-                    modifier = Modifier.padding(vertical = 8.dp) // Consistent padding
-                )
-                Divider() // Optional divider below filters
+        // 2. Sticky Header - Contains Tabs and conditional Filters
+        stickyHeader {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shadowElevation = 4.dp // Optional elevation
+            ) {
+                Column {
+                    TabRow(selectedTabIndex = selectedTab) {
+                        Tab(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            text = { Text("Requests (${requests.size})") }
+                        )
+                        Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            text = { Text("Content (${content.size})") }
+                        )
+                        Tab(
+                            selected = selectedTab == 2,
+                            onClick = { selectedTab = 2 },
+                            text = { Text("Images (${screenshots.size})") }
+                        )
+                    }
+                    if (selectedTab == 0) {
+                        FiltersHeader(
+                            onToggleShowBottomSheet = onToggleShowBottomSheet,
+                            // Padding adjusted to be within the Surface
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        Divider()
+                    }
+                }
+            }
+        }
+
+        // 3. Tab Content - Placed directly within LazyColumn's scope
+        when (selectedTab) {
+            0 -> { // Requests Tab
+                if (requests.isEmpty()) {
+                    item { EmptyListUi(R.string.no_requests_found) }
+                } else {
+                    // --- Before Authentication Section ---
+                    val beforeAuthRequests = requests.filter { !it.hasFullInternetAccess }
+                    if (beforeAuthRequests.isNotEmpty()) {
+                        item { ListSectionHeader(stringResource(R.string.before_authentication)) }
+                        itemsIndexed(
+                            items = beforeAuthRequests,
+                            key = { _, item -> "before-${item.customWebViewRequestId}" } // Unique key
+                        ) { index, request ->
+                            RequestListItem(
+                                onRequestItemClick = onRequestItemClick,
+                                request = request
+                            )
+                            if (index < beforeAuthRequests.size - 1) {
+                                Divider() // Use full width divider from LazyColumn
+                            }
+                        }
+                    } else {
+                        item {
+                            ListSectionHeader(stringResource(R.string.before_authentication))
+                            Text(
+                                text = stringResource(R.string.no_requests_found),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+                    }
+
+                    // --- After Authentication Section ---
+                    val afterAuthRequests = requests.filter { it.hasFullInternetAccess }
+                    if (afterAuthRequests.isNotEmpty()) {
+                        if (beforeAuthRequests.isNotEmpty()) {
+                            item { Spacer(Modifier.height(16.dp)) } // Space between sections
+                        }
+                        item { ListSectionHeader(stringResource(R.string.after_authentication)) }
+                        itemsIndexed(
+                            items = afterAuthRequests,
+                            key = { _, item -> "after-${item.customWebViewRequestId}" } // Unique key
+                        ) { index, request ->
+                            RequestListItem(
+                                onRequestItemClick = onRequestItemClick,
+                                request = request
+                            )
+                            if (index < afterAuthRequests.size - 1) {
+                                Divider()
+                            }
+                        }
+                    } else {
+                        if (beforeAuthRequests.isNotEmpty()) {
+                            item { Spacer(Modifier.height(16.dp)) }
+                        }
+                        item {
+                            ListSectionHeader(stringResource(R.string.after_authentication))
+                            Text(
+                                text = stringResource(R.string.no_requests_found),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+                    }
+                }
             }
 
-            // Scrollable Content Area based on selected tab
-            Box(
-                modifier = Modifier
-                    .weight(1f) // This Box takes space within the Column below tabs/filters
-                    .fillMaxWidth()
-            ) {
-                when (selectedTab) {
-                    0 -> RequestsList(
-                        requests = sessionUiData.sessionData?.requests,
-                        onRequestItemClick = onRequestItemClick
-                    )
+            1 -> { // Content Tab
+                if (content.isEmpty()) {
+                    item { EmptyListUi(R.string.no_webpages_found) }
+                } else {
+                    itemsIndexed(
+                        items = content,
+                        key = { _, item -> item.contentId }
+                    ) { index, item ->
+                        ContentItem(item, onContentItemClick)
+                        if (index < content.size - 1) {
+                            Divider()
+                        }
+                    }
+                }
+            }
 
-                    1 -> ContentList(
-                        content = sessionUiData.sessionData?.webpageContent,
-                        onContentItemClick = onContentItemClick
-                    )
-
-                    2 -> ScreenshotsList(
-                        screenshots = sessionUiData.sessionData?.screenshots,
+            2 -> { // Screenshots Tab
+                item { // Place the entire ScreenshotsList composable within a single item
+                    ScreenshotsList(
+                        screenshots = screenshots,
                         toggleScreenshotPrivacyOrToSrelated = switchScreenshotPrivacyOrToSrealted,
                     )
                 }
             }
         }
 
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Action buttons for upload and analysis functionalities
-        SessionActionButtons(
-            uploadState = uploadState,
-            onUploadClick = uploadSession,
-            onAnalysisClick = navigateToAutomaticAnalysis,
-            modifier = Modifier.padding(bottom = 16.dp) // Add bottom padding
-        )
-
-        // Bottom Sheet shown only when user clicks on filter icon (controlled outside the main layout flow)
-        if (sessionUiData.showFilteringBottomSheet) {
-            FilterBottomSheet(
-                onDismiss = onToggleShowBottomSheet,
-                isBodyEmptyChecked = sessionUiData.isBodyEmptyChecked,
-                onToggleIsBodyEmpty = onToggleIsBodyEmpty,
-                selectedMethods = sessionUiData.selectedMethods,
-                onToggleSelectedMethods = onModifySelectedMethods,
-                onResetFilters = onResetFilters
+        // 4. Action Buttons - At the bottom of the scrollable list
+        item {
+            SessionActionButtons(
+                uploadState = uploadState,
+                onUploadClick = uploadSession,
+                onAnalysisClick = navigateToAutomaticAnalysis,
             )
         }
     }
+
+    // Bottom Sheet remains outside the LazyColumn layout flow
+    if (sessionUiData.showFilteringBottomSheet) {
+        FilterBottomSheet(
+            onDismiss = onToggleShowBottomSheet,
+            isBodyEmptyChecked = sessionUiData.isBodyEmptyChecked,
+            onToggleIsBodyEmpty = onToggleIsBodyEmpty,
+            selectedMethods = sessionUiData.selectedMethods,
+            onToggleSelectedMethods = onModifySelectedMethods,
+            onResetFilters = onResetFilters
+        )
+    }
 }
 
-/**
- * Displays the general network session details. No longer uses a Card.
- *
- * @param clickedSessionData The session data to display.
- * @param modifier Modifier for the outer Box.
- */
+
 @Composable
 private fun SessionGeneralDetails(clickedSessionData: SessionData?, modifier: Modifier = Modifier) {
     var isExpanded by remember { mutableStateOf(false) }
-    val maxHeight = 85.dp // Max height when collapsed
+    val maxHeight = 85.dp
 
-    // Using Box to allow positioning the expand/collapse icon easily
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .border( // Optional: add a subtle border if desired
+            .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(8.dp)
             )
-            .padding(bottom = 8.dp) // Add some padding at the bottom
+            .padding(bottom = 8.dp)
     ) {
-        // Expand/Collapse Icon Button in top-right corner
         IconButton(
             onClick = { isExpanded = !isExpanded },
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp) // Keep padding for the icon button itself
+                .padding(8.dp)
         ) {
             Icon(
                 imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
@@ -433,11 +456,10 @@ private fun SessionGeneralDetails(clickedSessionData: SessionData?, modifier: Mo
             )
         }
 
-        // Content with max height constraint
         Column(
             modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 8.dp) // Apply padding to content
-                .padding(end = 48.dp) // Padding to avoid overlap with icon
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(end = 48.dp)
                 .then(
                     if (!isExpanded) Modifier.heightIn(max = maxHeight) else Modifier
                 )
@@ -452,16 +474,16 @@ private fun SessionGeneralDetails(clickedSessionData: SessionData?, modifier: Mo
                         modifier = Modifier.padding(vertical = 2.dp)
                     ) {
                         Text(
-                            text = "${stringResource(R.string.pcap_file_label)} ", // Added space
+                            text = "${stringResource(R.string.pcap_file_label)} ",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = it.substringAfterLast('/'), // Show only filename
+                            text = it.substringAfterLast('/'),
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false) // Adjust weight
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
@@ -491,7 +513,6 @@ private fun SessionGeneralDetails(clickedSessionData: SessionData?, modifier: Mo
     }
 }
 
-/** Helper composable for key-value pairs in SessionGeneralDetails */
 @Composable
 private fun DetailItem(label: String, value: String) {
     Row(
@@ -499,7 +520,7 @@ private fun DetailItem(label: String, value: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "$label ", // Add space after label
+            text = "$label ",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold
         )
@@ -507,21 +528,12 @@ private fun DetailItem(label: String, value: String) {
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             overflow = TextOverflow.Ellipsis,
-            maxLines = 1 // Ensure long values don't wrap excessively
+            maxLines = 1
         )
     }
 }
 
 
-/**
- * A composable function to display two buttons for a session detail page.
- *
- * @param uploadState The state of the upload process.
- * @param onUploadClick A function to upload the session to the remote server.
- * @param onAnalysisClick A function to navigate to the automatic AI analysis screen.
- * @param modifier Modifier to apply to the FlowRow container.
- */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SessionActionButtons(
     uploadState: SessionState,
@@ -529,207 +541,93 @@ private fun SessionActionButtons(
     onAnalysisClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    FlowRow(
+    Box(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(
-            16.dp,
-            Alignment.CenterHorizontally
-        ), // Spacing and centering
-        verticalArrangement = Arrangement.Center
+        contentAlignment = Alignment.Center
     ) {
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
 
-        when (uploadState) {
-            SessionState.AlreadyUploaded -> {
-                RoundCornerButton(
-                    onClick = { },
-                    buttonText = stringResource(R.string.already_uploaded),
-                    enabled = false,
-                    fillWidth = false,
-                )
+            when (uploadState) {
+                SessionState.AlreadyUploaded -> {
+                    RoundCornerButton(
+                        onClick = { },
+                        buttonText = stringResource(R.string.already_uploaded),
+                        enabled = false,
+                        fillWidth = false,
+                    )
+                }
+
+                SessionState.Success -> {
+                    RoundCornerButton(
+                        onClick = { },
+                        buttonText = stringResource(R.string.thanks_for_uploading),
+                        enabled = false,
+                        fillWidth = false,
+                    )
+                }
+
+                SessionState.NeverUploaded -> {
+                    RoundCornerButton(
+                        onClick = onUploadClick,
+                        buttonText = stringResource(R.string.upload_session_for_analysis),
+                        enabled = true,
+                        fillWidth = false,
+                    )
+                }
+                else -> {
+                    // No button shown for other states for now
+                }
             }
 
-            SessionState.Success -> {
-                RoundCornerButton(
-                    onClick = { },
-                    buttonText = stringResource(R.string.thanks_for_uploading),
-                    enabled = false,
-                    fillWidth = false,
-                )
-            }
-
-            SessionState.NeverUploaded -> {
-                RoundCornerButton(
-                    onClick = onUploadClick,
-                    buttonText = stringResource(R.string.upload_session_for_analysis),
-                    enabled = true,
-                    fillWidth = false,
-                )
-            }
-            // Handle error states if needed, though usually handled by ErrorComponent
-            else -> {
-                // Button might be hidden or disabled in error states, handled by the parent logic
-            }
+            GhostButton(
+                onClick = onAnalysisClick,
+                buttonText = stringResource(R.string.automatic_analysis_button),
+                fillWidth = false,
+            )
         }
-
-        // Always show the analysis button if data is present
-        GhostButton(
-            onClick = onAnalysisClick,
-            buttonText = stringResource(R.string.automatic_analysis_button),
-            fillWidth = false,
-        )
     }
 }
 // endregion
 
 // region Requests Tab Content
-/**
- * Header section for the filters in the Requests tab. This part is fixed.
- *
- * @param onToggleShowBottomSheet Callback to open/close the filter bottom sheet.
- * @param modifier Modifier for the Row container.
- */
 @Composable
 private fun FiltersHeader(onToggleShowBottomSheet: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp) // Use padding from parent if needed, or add specific here
+        modifier = modifier.fillMaxWidth()
     ) {
         Text(
             stringResource(R.string.filters),
             style = MaterialTheme.typography.titleMedium
-        ) // Use TitleMedium for prominence
+        )
         Spacer(modifier = Modifier.weight(1f))
         IconButton(onClick = onToggleShowBottomSheet) {
             Icon(
                 modifier = Modifier.size(24.dp),
                 painter = painterResource(id = R.drawable.filter),
-                contentDescription = stringResource(R.string.show_filters) // More descriptive
+                contentDescription = stringResource(R.string.show_filters)
             )
         }
     }
 }
 
-/**
- * A composable function to display a list of web requests.
- * The filter header is now separate and fixed. This LazyColumn only contains the list items.
- *
- * @param requests A list of CustomWebViewRequestEntity to display.
- * @param onRequestItemClick Callback when a request item is clicked.
- */
-@Composable
-private fun RequestsList(
-    requests: List<CustomWebViewRequestEntity>?,
-    onRequestItemClick: (CustomWebViewRequestEntity) -> Unit
-) {
-    if (requests.isNullOrEmpty()) {
-        EmptyListUi(R.string.no_requests_found)
-        return
-    }
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) { // Fill available space
-        // --- Before Authentication Section ---
-        val beforeAuthRequests = requests.filter { !it.hasFullInternetAccess }
-        if (beforeAuthRequests.isNotEmpty()) {
-            item {
-                ListSectionHeader(stringResource(R.string.before_authentication))
-            }
-            itemsIndexed(
-                beforeAuthRequests,
-                key = { _, item -> item.customWebViewRequestId }) { index, request ->
-                RequestListItem(
-                    onRequestItemClick = onRequestItemClick,
-                    request = request
-                )
-                // Add divider after each item except the last one in this section
-                if (index < beforeAuthRequests.size - 1) {
-                    Divider(modifier = Modifier.padding(horizontal = 16.dp)) // Add horizontal padding to divider
-                }
-            }
-        } else {
-            item {
-                ListSectionHeader(stringResource(R.string.before_authentication))
-                Text(
-                    text = stringResource(R.string.no_requests_found),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(
-                        start = 16.dp,
-                        end = 16.dp,
-                        bottom = 8.dp
-                    ) // Consistent padding
-                )
-            }
-        }
-
-
-        // --- After Authentication Section ---
-        val afterAuthRequests = requests.filter { it.hasFullInternetAccess }
-        if (afterAuthRequests.isNotEmpty()) {
-            // Add a visual separator if both sections have items
-            if (beforeAuthRequests.isNotEmpty()) {
-                item { Spacer(Modifier.height(16.dp)) } // Space between sections
-            }
-
-            item {
-                ListSectionHeader(stringResource(R.string.after_authentication))
-            }
-            itemsIndexed(
-                afterAuthRequests,
-                key = { _, item -> item.customWebViewRequestId }) { index, request ->
-                RequestListItem(
-                    onRequestItemClick = onRequestItemClick,
-                    request = request
-                )
-                // Add divider after each item except the last one in this section
-                if (index < afterAuthRequests.size - 1) {
-                    Divider(modifier = Modifier.padding(horizontal = 16.dp)) // Add horizontal padding to divider
-                }
-            }
-        } else {
-            // Only show the "No requests found" message if the "Before" section also had no requests
-            if (beforeAuthRequests.isNotEmpty()) {
-                item { Spacer(Modifier.height(16.dp)) } // Space between sections
-            }
-            item {
-                ListSectionHeader(stringResource(R.string.after_authentication))
-                Text(
-                    text = stringResource(R.string.no_requests_found),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(
-                        start = 16.dp,
-                        end = 16.dp,
-                        bottom = 8.dp
-                    ) // Consistent padding
-                )
-            }
-        }
-    }
-}
-
-/** Helper for section headers in lists */
 @Composable
 private fun ListSectionHeader(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(
-            start = 16.dp,
-            end = 16.dp,
-            top = 16.dp,
-            bottom = 8.dp
-        ) // Consistent padding
+        // Padding adjusted for context within LazyColumn items
+        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
     )
 }
 
 
-/**
- * A composable that displays a [CustomWebViewRequestEntity]. No longer uses Card.
- * A divider is added *after* this item in the parent LazyColumn.
- *
- * @param onRequestItemClick A callback function invoked when the user clicks on the item.
- * @param request The [CustomWebViewRequestEntity] to display.
- */
 @Composable
 private fun RequestListItem(
     onRequestItemClick: (CustomWebViewRequestEntity) -> Unit,
@@ -739,7 +637,7 @@ private fun RequestListItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onRequestItemClick(request) }
-            .padding(horizontal = 16.dp, vertical = 12.dp) // Adjust padding as needed
+            .padding(vertical = 12.dp)
     ) {
         request.url?.let {
             Row(
@@ -747,9 +645,9 @@ private fun RequestListItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.url_label), // Use label string resource
+                    text = stringResource(R.string.url_label),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.width(IntrinsicSize.Min) // Prevent label from taking too much space
+                    modifier = Modifier.width(IntrinsicSize.Min)
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
@@ -759,7 +657,7 @@ private fun RequestListItem(
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
-            Spacer(Modifier.height(4.dp)) // Space between rows
+            Spacer(Modifier.height(4.dp))
         }
         request.type?.let {
             Row(
@@ -767,30 +665,30 @@ private fun RequestListItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.type_label), // Use label string resource
+                    text = stringResource(R.string.type_label),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(it, style = MaterialTheme.typography.bodyMedium)
             }
-            Spacer(Modifier.height(4.dp)) // Space between rows
+            Spacer(Modifier.height(4.dp))
         }
-        RequestMethodView(request.method) // Assumes this component handles its own padding/layout internally
+        RequestMethodView(request.method)
 
-        Spacer(Modifier.height(4.dp)) // Space between rows
+        Spacer(Modifier.height(4.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = stringResource(R.string.timestamp_label), // Use label string resource
+                text = stringResource(R.string.timestamp_label),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
             )
             Spacer(Modifier.width(4.dp))
             Text(formatDate(request.timestamp), style = MaterialTheme.typography.bodyMedium)
         }
-        Spacer(Modifier.height(8.dp)) // Space before hint
+        Spacer(Modifier.height(8.dp))
         HintTextWithIcon(
             hint = stringResource(R.string.hint_click_to_view_request_content),
             iconResId = R.drawable.tap
@@ -809,7 +707,7 @@ fun FilterBottomSheet(
     onToggleSelectedMethods: (RequestMethod) -> Unit,
     onResetFilters: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true) // Keep expanded
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -820,16 +718,15 @@ fun FilterBottomSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .navigationBarsPadding() // Add padding for navigation bar
+                .navigationBarsPadding()
         ) {
             Text(stringResource(R.string.filters), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Checkbox to hide requests with empty body
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onToggleIsBodyEmpty() } // Make row clickable
+                    .clickable { onToggleIsBodyEmpty() }
                     .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -843,13 +740,12 @@ fun FilterBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Method selection
             Text(stringResource(R.string.select_method))
             Spacer(modifier = Modifier.height(8.dp))
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp) // Add vertical spacing for wrapping
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 selectedMethods.forEach { methodMap ->
                     val method = methodMap.keys.first()
@@ -862,74 +758,42 @@ fun FilterBottomSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp)) // More space before button
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Remove filters button
             GhostButton(
                 onClick = {
                     onResetFilters()
-                    // onDismiss() // Optionally dismiss after reset
                 },
                 buttonText = stringResource(R.string.remove_filters),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp)) // Space at the bottom
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 // endregion
 
 // region Content Tab Content
-/**
- * A composable function to display a list of webpage content.
- * If the content list is empty, a message is displayed indicating no content is found.
- * Otherwise, each item in the content list is displayed in a card format.
- *
- * @param content A list of WebpageContentEntity to display.
- */
-@Composable
-private fun ContentList(
-    content: List<WebpageContentEntity>?,
-    onContentItemClick: (WebpageContentEntity) -> Unit
-) {
-    if (content.isNullOrEmpty()) {
-        EmptyListUi(R.string.no_webpages_found)
-        return
-    }
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(vertical = 8.dp)
-    ) { // Add padding
-        itemsIndexed(content, key = { _, item -> item.contentId }) { index, item ->
-            ContentItem(item, onContentItemClick)
-            if (index < content.size - 1) {
-                Divider(modifier = Modifier.padding(horizontal = 16.dp)) // Add divider between items
-            }
-        }
-    }
-}
 
 @Composable
 private fun ContentItem(
     item: WebpageContentEntity,
     onContentItemClick: (WebpageContentEntity) -> Unit,
 ) {
-    // Removed the Card wrapper
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onContentItemClick(item) } // Apply clickable to the Column
-            .padding(horizontal = 16.dp, vertical = 12.dp) // Consistent padding like RequestListItem
+            .clickable { onContentItemClick(item) }
+            // Padding applied within the item
+            .padding(vertical = 12.dp)
     ) {
         item.url?.let { urlValue ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = stringResource(R.string.url_label), // Use label string
+                    text = stringResource(R.string.url_label),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.width(IntrinsicSize.Min) // Prevent label taking too much space
+                    modifier = Modifier.width(IntrinsicSize.Min)
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
@@ -942,16 +806,15 @@ private fun ContentItem(
             Spacer(Modifier.height(4.dp))
         }
 
-        // Show only filenames for paths, using Row for consistency
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = stringResource(R.string.html_path_label), // Use label string
+                text = stringResource(R.string.html_path_label),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.width(IntrinsicSize.Min)
             )
             Spacer(Modifier.width(4.dp))
             Text(
-                text = item.htmlContentPath.substringAfterLast('/'), // Filename only
+                text = item.htmlContentPath.substringAfterLast('/'),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -961,13 +824,13 @@ private fun ContentItem(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = stringResource(R.string.js_path_label), // Use label string
+                text = stringResource(R.string.js_path_label),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.width(IntrinsicSize.Min)
             )
             Spacer(Modifier.width(4.dp))
             Text(
-                text = item.jsContentPath.substringAfterLast('/'), // Filename only
+                text = item.jsContentPath.substringAfterLast('/'),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -977,7 +840,7 @@ private fun ContentItem(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = stringResource(R.string.timestamp_label), // Use label string
+                text = stringResource(R.string.timestamp_label),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.width(IntrinsicSize.Min)
             )
@@ -987,64 +850,50 @@ private fun ContentItem(
                 style = MaterialTheme.typography.bodyMedium
             )
         }
-        Spacer(Modifier.height(8.dp)) // Space before hint
+        Spacer(Modifier.height(8.dp))
 
         HintTextWithIcon(
             hint = stringResource(R.string.hint_click_to_view_content),
             iconResId = R.drawable.tap
         )
     }
-    // Divider is added by the parent LazyColumn (ContentList)
 }
-
 // endregion
 
 // region Screenshots Tab Content
-/**
- * A composable function to display a list of screenshots.
- * If the list is empty, a message is displayed indicating no screenshots are found.
- * Otherwise, each screenshot item in the list is displayed in a card format.
- *
- * @param screenshots A list of ScreenshotEntity to display.
- * @param toggleScreenshotPrivacyOrToSrelated A function to call when the user wants
- * to toggle whether a screenshot is privacy-related or related to terms of service.
- */
 @Composable
 private fun ScreenshotsList(
     screenshots: List<ScreenshotEntity>?,
     toggleScreenshotPrivacyOrToSrelated: (ScreenshotEntity) -> Unit,
 ) {
-
-    // Check if the screenshots list is empty and display a message if true
     if (screenshots.isNullOrEmpty()) {
         EmptyListUi(R.string.no_screenshots_found)
         return
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-
-        // Display a hint text for selecting privacy-related images
+    // Column needed to place the hint text *above* the grid within the single item scope
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = stringResource(R.string.hint_select_privacy_images),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp) // Add padding
+            // Adjusted padding as it's inside the parent LazyColumn's item padding
+            modifier = Modifier.padding(vertical = 12.dp)
         )
 
-        // LazyVerticalGrid to display screenshots in a grid layout
+        // LazyVerticalGrid scrolls internally within the LazyColumn item
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 150.dp), // Adjust minSize if needed
+            columns = GridCells.Adaptive(minSize = 150.dp),
             modifier = Modifier
-                .weight(1f) // Ensure grid takes available space
-                .padding(horizontal = 8.dp), // Padding around the grid
-            contentPadding = PaddingValues(bottom = 16.dp), // Padding at the bottom of the grid
-            verticalArrangement = Arrangement.spacedBy(8.dp), // Space between rows
-            horizontalArrangement = Arrangement.spacedBy(8.dp) // Space between columns
+                .fillMaxWidth() // Grid takes full width within the item
+                .heightIn(max = 600.dp),
+            contentPadding = PaddingValues(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Iterate over each screenshot and display it using ImageItem
             items(
                 items = screenshots,
-                key = { it.screenshotId } // Add key for better performance
+                key = { it.screenshotId }
             ) { screenshot ->
                 ImageItem(
                     imagePath = screenshot.path,
@@ -1058,60 +907,50 @@ private fun ScreenshotsList(
     }
 }
 
-/**
- * A composable function to display a single image with a border and a background
- * that can be clicked to toggle whether it is selected or not.
- *
- * @param imagePath The path of the image to display.
- * @param isSelected Whether the image is currently selected.
- * @param onImageClick A function to call when the image is clicked.
- */
+
 @Composable
 fun ImageItem(
     imagePath: String,
     isSelected: Boolean,
-    onImageClick: () -> Unit // Simplified callback
+    onImageClick: () -> Unit
 ) {
-    // Using Card provides shape and elevation, good for grid items
     Card(
         modifier = Modifier
-            .aspectRatio(1f) // Maintain square aspect ratio
+            .aspectRatio(1f)
             .clickable(onClick = onImageClick),
-        shape = RoundedCornerShape(8.dp), // Softer corners
+        shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke( // Use Card's border property
-            width = if (isSelected) 3.dp else 0.dp, // Thicker border when selected
+        border = BorderStroke(
+            width = if (isSelected) 3.dp else 0.dp,
             color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
         )
     ) {
-        Box(contentAlignment = Alignment.Center) { // Box to layer image and overlay
+        Box(contentAlignment = Alignment.Center) {
             Image(
                 painter = rememberAsyncImagePainter(
                     ImageRequest.Builder(LocalContext.current)
                         .data(data = imagePath.toUri())
-                        .crossfade(true) // Add crossfade animation
+                        .crossfade(true)
                         .build()
                 ),
-                contentDescription = stringResource(R.string.screenshot_image), // Add content description
-                modifier = Modifier.fillMaxSize(), // Fill the Card
-                contentScale = ContentScale.Crop // Crop to fit
+                contentDescription = stringResource(R.string.screenshot_image),
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
 
-            // Overlay with text for selected images
             if (isSelected) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
-                            // Use scrim color for better contrast/theming
                             color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f),
                         )
                         .padding(8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = stringResource(R.string.tos_privacy_related_label), // Use string resource
-                        color = MaterialTheme.colorScheme.onPrimary, // Ensure text is visible on scrim
+                        text = stringResource(R.string.tos_privacy_related_label),
+                        color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center
                     )
@@ -1124,12 +963,6 @@ fun ImageItem(
 // endregion
 
 // region Utility Composables (Hint, Empty List, etc.)
-/**
- * A composable function to display a hint information box with a "Never see again" option.
- *
- * @param context The Android context for retrieving the "Never see again" state.
- * @param modifier The modifier to be applied to the AlertDialog.
- */
 @Composable
 private fun HintInfoBox(
     context: Context,
@@ -1137,7 +970,6 @@ private fun HintInfoBox(
 ) {
     var showInfoBox2 by remember { mutableStateOf(false) }
 
-    // Launch a coroutine to collect the "Never see again" state from the DataStore
     LaunchedEffect(Unit) {
         AlertDialogState.getNeverSeeAgainState(context, "info_box_2")
             .collect { neverSeeAgain ->
@@ -1158,18 +990,13 @@ private fun HintInfoBox(
     }
 }
 
-/**
- * A composable function to display an empty list message.
- *
- * @param stringRes The string resource to display.
- */
 @Composable
 private fun EmptyListUi(@StringRes stringRes: Int) {
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp), // Add padding
-        contentAlignment = Alignment.Center // Center content
+            .fillMaxWidth() // Changed from fillMaxSize
+            .padding(32.dp), // Increased padding for visibility
+        contentAlignment = Alignment.Center
     ) {
         Text(
             stringResource(id = stringRes),
@@ -1205,8 +1032,8 @@ private fun createMockSessionData(requests: List<CustomWebViewRequestEntity>): S
                 path = "/preview/path/ss1.png",
                 isPrivacyOrTosRelated = false,
                 timestamp = System.currentTimeMillis() - 50000,
-         size = "1024 KB",
-         url = "http://example.com/screenshot1",
+                size = "1024 KB",
+                url = "http://example.com/screenshot1",
             ),
             ScreenshotEntity(
                 screenshotId = 2,
@@ -1315,18 +1142,16 @@ private fun createMockRequests(): List<CustomWebViewRequestEntity> {
 fun SessionScreenContentPreview_Requests() {
     val mockRequests = createMockRequests()
     val mockSessionData = createMockSessionData(mockRequests)
-    val mockSessionState =
-        SessionState.NeverUploaded // Preview different states: Success, AlreadyUploaded
+    val mockSessionState = SessionState.NeverUploaded
 
     val mockSessionUiData = SessionUiData(
         sessionData = mockSessionData,
-        showFilteringBottomSheet = false, // Set to true to preview bottom sheet open
+        showFilteringBottomSheet = false,
         isBodyEmptyChecked = false,
-        selectedMethods = RequestMethod.entries.map { mapOf(it to true) }, // Start with all selected
-        unfilteredRequests = mockRequests // Assuming unfiltered is same initially
+        selectedMethods = RequestMethod.entries.map { mapOf(it to true) },
+        unfilteredRequests = mockRequests
     )
     AppTheme {
-        // Need to wrap in Surface for theme colors
         Surface(color = MaterialTheme.colorScheme.background) {
             SessionScreenContent(
                 sessionState = mockSessionState,
@@ -1406,17 +1231,18 @@ fun RequestListItemPreview() {
     )
     AppTheme {
         Surface {
-            Column {
-                RequestListItem(onRequestItemClick = {}, request = request)
-                Divider(modifier = Modifier.padding(horizontal = 16.dp))
-                RequestListItem(
+            // Wrap in LazyColumn for realistic context if needed, or just Column
+            LazyColumn(contentPadding = PaddingValues(horizontal=16.dp)){
+                item { RequestListItem(onRequestItemClick = {}, request = request) }
+                item { Divider() }
+                item { RequestListItem(
                     onRequestItemClick = {},
                     request = request.copy(
                         customWebViewRequestId = 2,
                         method = RequestMethod.GET,
                         url = "http://short.url"
                     )
-                )
+                ) }
             }
         }
     }
@@ -1428,10 +1254,10 @@ fun ImageItemPreview() {
     AppTheme {
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp).height(150.dp) // Added height for preview
         ) {
             ImageItem(
-                imagePath = "mock", // Coil won't load this, but shows layout
+                imagePath = "mock",
                 isSelected = true,
                 onImageClick = {}
             )
@@ -1448,14 +1274,16 @@ fun ImageItemPreview() {
 @Composable
 fun FilterBottomSheetPreview() {
     AppTheme {
-        FilterBottomSheet(
-            onDismiss = { },
-            isBodyEmptyChecked = true,
-            onToggleIsBodyEmpty = { },
-            selectedMethods = RequestMethod.entries.mapIndexed { index, method -> mapOf(method to (index % 2 == 0)) }, // Select alternating methods
-            onToggleSelectedMethods = { },
-            onResetFilters = { }
-        )
+        Box(Modifier.fillMaxSize()) {
+            FilterBottomSheet(
+                onDismiss = { },
+                isBodyEmptyChecked = true,
+                onToggleIsBodyEmpty = { },
+                selectedMethods = RequestMethod.entries.mapIndexed { index, method -> mapOf(method to (index % 2 == 0)) },
+                onToggleSelectedMethods = { },
+                onResetFilters = { }
+            )
+        }
     }
 }
 
@@ -1468,5 +1296,4 @@ fun SessionGeneralDetailsPreview() {
         }
     }
 }
-
 // endregion

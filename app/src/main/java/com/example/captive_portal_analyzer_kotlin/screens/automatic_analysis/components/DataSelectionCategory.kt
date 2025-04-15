@@ -1,5 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.components
 
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +20,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,8 +31,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.R
+import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 
 @Composable
 fun <T, ID> DataSelectionCategory( // Use correct ID type parameter if not Any
@@ -106,15 +110,158 @@ fun <T, ID> DataSelectionCategory( // Use correct ID type parameter if not Any
                     }
                 }
             }
-            // Handle case where category is disabled but has no items yet (e.g. loading)
+            // Handle case where category has no items
             if (items.isEmpty()) {
                 Text(
                     text = stringResource(R.string.no_items_available),
                     fontStyle = FontStyle.Italic,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    color = LocalContentColor.current.copy(alpha =  0.38f)
+                    color = LocalContentColor.current.copy(alpha =  0.38f) // Use disabled color alpha
                 )
             }
         }
     }
+}
+
+
+// --- Previews for DataSelectionCategory ---
+
+// Sample data structure for previews
+private data class SampleItem(val id: Int, val description: String)
+
+// Sample data list
+private val sampleItems = listOf(
+    SampleItem(1, "GET https://example.com/resource1"),
+    SampleItem(2, "POST https://api.example.com/data"),
+    SampleItem(3, "GET https://example.com/resource2?param=value"),
+    SampleItem(4, "PUT https://another.api.com/items/123"),
+)
+
+@Preview(name = "Category - Enabled Expanded Some Selected", showBackground = true)
+@Composable
+private fun DataSelectionCategoryPreview_EnabledExpandedSomeSelected_Light() {
+    AppTheme(darkTheme = false) {
+        Surface {
+            Column(Modifier.padding(8.dp)) {
+                DataSelectionCategory(
+                    title = "Network Requests (2 / 4)",
+                    items = sampleItems,
+                    selectedIds = setOf(1, 3), // Sample selection
+                    idProvider = { it.id },
+                    contentDescProvider = { it.description },
+                    onToggle = { /* Dummy */ },
+                    onSetAllSelected = { /* Dummy */ },
+                    enabled = true
+                )
+            }
+        }
     }
+}
+
+@Preview(name = "Category - Enabled Expanded All Selected", showBackground = true)
+@Composable
+private fun DataSelectionCategoryPreview_EnabledExpandedAllSelected_Light() {
+    AppTheme(darkTheme = false) {
+        Surface {
+            Column(Modifier.padding(8.dp)) {
+                DataSelectionCategory(
+                    title = "Screenshots (4 / 4)",
+                    items = sampleItems,
+                    selectedIds = sampleItems.map { it.id }.toSet(), // All selected
+                    idProvider = { it.id },
+                    contentDescProvider = { "Screenshot ${it.id}: ${it.description.take(20)}..." },
+                    onToggle = { /* Dummy */ },
+                    onSetAllSelected = { /* Dummy */ },
+                    enabled = true
+                )
+            }
+        }
+    }
+}
+
+@Preview(name = "Category - Enabled No Items", showBackground = true)
+@Composable
+private fun DataSelectionCategoryPreview_EnabledNoItems_Light() {
+    AppTheme(darkTheme = false) {
+        Surface {
+            Column(Modifier.padding(8.dp)) {
+                DataSelectionCategory(
+                    title = "Webpage Content (0 / 0)",
+                    items = emptyList<SampleItem>(), // No items
+                    selectedIds = emptySet<Int>(),
+                    idProvider = { it.id },
+                    contentDescProvider = { it.description },
+                    onToggle = { /* Dummy */ },
+                    onSetAllSelected = { /* Dummy */ },
+                    enabled = true
+                )
+            }
+        }
+    }
+}
+
+
+@Preview(name = "Category - Disabled With Items", showBackground = true)
+@Composable
+private fun DataSelectionCategoryPreview_DisabledWithItems_Light() {
+    AppTheme(darkTheme = false) {
+        Surface {
+            Column(Modifier.padding(8.dp)) {
+                DataSelectionCategory(
+                    title = "Network Requests (1 / 4)",
+                    items = sampleItems,
+                    selectedIds = setOf(2), // Some selected but disabled
+                    idProvider = { it.id },
+                    contentDescProvider = { it.description },
+                    onToggle = { /* Dummy */ },
+                    onSetAllSelected = { /* Dummy */ },
+                    enabled = false // Disabled state
+                )
+            }
+        }
+    }
+}
+
+// --- Dark Mode Previews ---
+
+@Preview(name = "Category - Enabled Expanded (Dark)", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DataSelectionCategoryPreview_EnabledExpanded_Dark() {
+    AppTheme(darkTheme = true) {
+        Surface {
+            Column(Modifier.padding(8.dp)) {
+                DataSelectionCategory(
+                    title = "Network Requests (2 / 4)",
+                    items = sampleItems,
+                    selectedIds = setOf(1, 3),
+                    idProvider = { it.id },
+                    contentDescProvider = { it.description },
+                    onToggle = { /* Dummy */ },
+                    onSetAllSelected = { /* Dummy */ },
+                    enabled = true
+                )
+            }
+        }
+    }
+}
+
+@Preview(name = "Category - Disabled No Items (Dark)", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun DataSelectionCategoryPreview_DisabledNoItems_Dark() {
+    AppTheme(darkTheme = true) {
+        Surface {
+            Column(Modifier.padding(8.dp)) {
+                DataSelectionCategory(
+                    title = "Webpage Content (0 / 0)",
+                    items = emptyList<SampleItem>(),
+                    selectedIds = emptySet<Int>(),
+                    idProvider = { it.id },
+                    contentDescProvider = { it.description },
+                    onToggle = { /* Dummy */ },
+                    onSetAllSelected = { /* Dummy */ },
+                    enabled = false // Disabled state
+                )
+            }
+        }
+    }
+}

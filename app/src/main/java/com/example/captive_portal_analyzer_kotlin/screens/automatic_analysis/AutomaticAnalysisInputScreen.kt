@@ -1,5 +1,3 @@
-package com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -14,16 +12,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,16 +43,14 @@ import com.example.captive_portal_analyzer_kotlin.IMainViewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
-import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
-import com.example.captive_portal_analyzer_kotlin.navigation.AutomaticAnalysisOutputRoute
+import com.example.captive_portal_analyzer_kotlin.navigation.PcapInclusionRoute
+import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.IAutomaticAnalysisViewModel
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.components.DataSelectionCategory
-import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.components.PcapSelectionItem
-import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.models.PcapProcessingState
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.PreviewAutomaticAnalysisViewModel
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.PreviewMainViewModel
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.mockUiStateInputLoaded
@@ -80,16 +72,22 @@ fun AutomaticAnalysisInputScreen(
     // Determine initial error state (error during session data fetch)
     val initialError = uiState.error != null && uiState.sessionData == null && !uiState.isLoading && !uiState.isPcapConverting
 
-    // Determine if any data is *selectable* (used for enabling sections and buttons)
-    val isAnyDataSelectable = uiState.totalRequestsCount > 0 ||
+    // Determine if any non-PCAP data is *selectable*
+    val isAnyBaseDataSelectable = uiState.totalRequestsCount > 0 ||
             uiState.totalScreenshotsCount > 0 ||
-            uiState.totalWebpageContentCount > 0 ||
-            uiState.isPcapIncludable // PCAP is selectable if includable
+            uiState.totalWebpageContentCount > 0
 
-    // Determine if Analyze button should be enabled
-    val isAnalyzeButtonEnabled = uiState.canStartAnalysis && isAnyDataSelectable
-// Determine if the prompt clear button should be enabled
-    val isPromptClearEnabled = !uiState.inputText.isEmpty() && !initialLoading && uiState.canStartAnalysis
+    // Determine if at least one piece of data is *selected*
+    val isAnyDataSelected = uiState.selectedRequestIds.isNotEmpty() ||
+            uiState.selectedScreenshotIds.isNotEmpty() ||
+            uiState.selectedWebpageContentIds.isNotEmpty()
+
+    // Determine if "Proceed" button should be enabled
+    // Needs data loaded, no initial error, and at least one item selected
+    val isProceedButtonEnabled = !initialLoading && !initialError && isAnyDataSelected
+
+    // Determine if the prompt clear button should be enabled
+    val isPromptClearEnabled = !uiState.inputText.isEmpty() && !initialLoading && !initialError
 
     Scaffold(
         topBar = {
@@ -113,8 +111,8 @@ fun AutomaticAnalysisInputScreen(
                     label = { Text(stringResource(R.string.custom_prompt)) },
                     singleLine = false,
                     maxLines = 4,
-                    // Disable if initially loading OR if PCAP is converting OR if AI analysis is running
-                    enabled = !initialLoading && uiState.canStartAnalysis,
+                    // Disable if initially loading
+                    enabled = !initialLoading,
                     // --- Add trailing icon ---
                     trailingIcon = {
                         // Show icon only if text is not empty and field is enabled
@@ -177,8 +175,8 @@ fun AutomaticAnalysisInputScreen(
                             },
                             onToggle = { viewModel.toggleRequestSelection(it) },
                             onSetAllSelected = { viewModel.setAllRequestsSelected(it) },
-                            // Disable selection controls if PCAP/AI is running
-                            enabled = uiState.canStartAnalysis && uiState.totalRequestsCount > 0
+                            // Enable selection if data loaded and selectable
+                            enabled = !initialLoading && uiState.totalRequestsCount > 0
                         )
                         // Screenshots Category
                         DataSelectionCategory(
@@ -195,8 +193,8 @@ fun AutomaticAnalysisInputScreen(
                             },
                             onToggle = { viewModel.toggleScreenshotSelection(it) },
                             onSetAllSelected = { viewModel.setAllScreenshotsSelected(it) },
-                            // Disable selection controls if PCAP/AI is running
-                            enabled = uiState.canStartAnalysis && uiState.totalScreenshotsCount > 0
+                            // Enable selection if data loaded and selectable
+                            enabled = !initialLoading && uiState.totalScreenshotsCount > 0
                         )
                         // Webpage Content Category
                         DataSelectionCategory(
@@ -214,20 +212,11 @@ fun AutomaticAnalysisInputScreen(
                             },
                             onToggle = { viewModel.toggleWebpageContentSelection(it) },
                             onSetAllSelected = { viewModel.setAllWebpageContentSelected(it) },
-                            // Disable selection controls if PCAP/AI is running
-                            enabled = uiState.canStartAnalysis && uiState.totalWebpageContentCount > 0
+                            // Enable selection if data loaded and selectable
+                            enabled = !initialLoading && uiState.totalWebpageContentCount > 0
                         )
 
-                        // --- NEW: PCAP File Selection ---
-                        if (uiState.isPcapIncludable) {
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            PcapSelectionItem(
-                                uiState = uiState, // Pass the whole state
-                                onToggle = { viewModel.togglePcapSelection(it) },
-                                onRetry = { viewModel.retryPcapConversion() }
-                            )
-                        }
-                        // --- End PCAP File Selection ---
+                        // --- REMOVED: PCAP File Selection ---
 
                     }
                 } // End AnimatedVisibility for Data Selection
@@ -248,59 +237,20 @@ fun AutomaticAnalysisInputScreen(
                         )
                     }
                     else -> {
-                        // Show Analyze buttons only when data is loaded successfully
+                        // Show Proceed button only when data is loaded successfully
                         Column (
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally // Center loading indicator
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ){
-                            // Loading overlay specifically for ongoing AI analysis or PCAP conversion
-                            // Show this *above* the buttons when active
-                            AnimatedVisibility(visible = uiState.isLoading || uiState.isPcapConverting) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 10.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        text = when {
-                                            uiState.isPcapConverting -> "Converting PCAP..."
-                                            uiState.isLoading -> "Analyzing with AI..."
-                                            else -> "Loading..." // Generic fallback (shouldn't be reached here)
-                                        },
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
-                            }
-
-                            // Button for Gemini Pro
+                            // --- Proceed Button ---
                             RoundCornerButton(
                                 onClick = {
-                                    // Specify the exact model name you want to use
-                                    viewModel.analyzeWithAi("gemini-2.5-pro-preview-03-25")
-                                    navController.navigate(AutomaticAnalysisOutputRoute) // Navigate to output screen
+                                    // Navigate to the new PCAP inclusion screen
+                                    navController.navigate(PcapInclusionRoute)
                                 },
-                                buttonText = stringResource(R.string.analyze_pro),
-                                enabled = isAnalyzeButtonEnabled,
-                                isLoading = false,
-                                fillWidth = true,
-                            )
-
-                            Spacer(Modifier.height(16.dp)) // Space between buttons
-
-                            // Button for Gemini Flash
-                            GhostButton(
-                                onClick = {
-                                    // Specify the exact model name you want to use
-                                    viewModel.analyzeWithAi("gemini-2.0-flash")
-                                    navController.navigate(AutomaticAnalysisOutputRoute) // Navigate to output screen
-                                },
-                                buttonText = stringResource(R.string.analyze_fast),
-                                enabled = isAnalyzeButtonEnabled,
-                                isLoading = false,
+                                buttonText = stringResource(R.string.proceed_to_pcap_step), // Updated button text
+                                enabled = isProceedButtonEnabled, // Use calculated enabled state
+                                isLoading = false, // This button doesn't trigger the main loading state
                                 fillWidth = true,
                             )
                         }
@@ -317,19 +267,15 @@ fun AutomaticAnalysisInputScreen(
 }
 
 
-//Previews - Remember to update these with PCAP states
+//Previews - Update these, removing PCAP specific states from this screen's preview
 
 @Preview(name = "Input - Loaded State", showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
 fun AutomaticAnalysisInputScreenPreview_Loaded_Light() {
     val mockNavController = rememberNavController()
     val mockMainViewModel = PreviewMainViewModel()
-    // Add a mock state that includes PCAP being available but idle
-    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoaded.copy(
-        isPcapIncludable = true,
-        pcapFilePath = "/fake/path.pcap",
-        pcapProcessingState = PcapProcessingState.Idle
-    ))
+    // Mock state without PCAP elements for this screen's preview
+    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoaded)
 
     AppTheme(darkTheme = false) { // Wrap with AppTheme (Light)
         AutomaticAnalysisInputScreen(
@@ -339,46 +285,3 @@ fun AutomaticAnalysisInputScreenPreview_Loaded_Light() {
         )
     }
 }
-
-@Preview(name = "Input - PCAP Converting", showBackground = true, device = "spec:width=411dp,height=891dp")
-@Composable
-fun AutomaticAnalysisInputScreenPreview_PcapConverting_Light() {
-    val mockNavController = rememberNavController()
-    val mockMainViewModel = PreviewMainViewModel()
-    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoaded.copy(
-        isPcapIncludable = true,
-        isPcapSelected = true, // Must be selected to be converting
-        pcapFilePath = "/fake/path.pcap",
-        pcapProcessingState = PcapProcessingState.Processing("job123") // Example converting state
-    ))
-
-    AppTheme(darkTheme = false) {
-        AutomaticAnalysisInputScreen(
-            navController = mockNavController,
-            viewModel = mockViewModel,
-            mainViewModel = mockMainViewModel
-        )
-    }
-}
-
-@Preview(name = "Input - PCAP Error", showBackground = true, device = "spec:width=411dp,height=891dp")
-@Composable
-fun AutomaticAnalysisInputScreenPreview_PcapError_Light() {
-    val mockNavController = rememberNavController()
-    val mockMainViewModel = PreviewMainViewModel()
-    val mockViewModel = PreviewAutomaticAnalysisViewModel(mockUiStateInputLoaded.copy(
-        isPcapIncludable = true,
-        isPcapSelected = true, // Can be selected even if error occurred
-        pcapFilePath = "/fake/path.pcap",
-        pcapProcessingState = PcapProcessingState.Error("Upload failed: 400 Bad Request") // Example error state
-    ))
-
-    AppTheme(darkTheme = false) {
-        AutomaticAnalysisInputScreen(
-            navController = mockNavController,
-            viewModel = mockViewModel,
-            mainViewModel = mockMainViewModel
-        )
-    }
-}
-

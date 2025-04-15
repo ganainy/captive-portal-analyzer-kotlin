@@ -263,6 +263,7 @@ fun PermissionRationaleScreen(onRequestPermission: () -> Unit) {
         RoundCornerButton(
             onClick = onRequestPermission,
             buttonText = stringResource(R.string.grant_permissions),
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
     }
 }
@@ -372,11 +373,12 @@ private fun ManualConnectContent(
 
 
         Spacer(modifier = Modifier.height(16.dp))
-        HintTextWithIcon(stringResource(R.string.hint1),rowAllignment = Alignment.Center)
+        HintTextWithIcon(stringResource(R.string.hint1),rowAllignment = Alignment.Center, modifier = Modifier.padding(horizontal = 16.dp))
         Spacer(modifier = Modifier.height(16.dp))
 
 
         RoundCornerButton(
+            modifier = Modifier.padding(horizontal = 16.dp),
             onClick = { navigateToAnalysis() },
             enabled =  areAllRequirementsFulfilled,
             buttonText = stringResource(R.string.continuee)

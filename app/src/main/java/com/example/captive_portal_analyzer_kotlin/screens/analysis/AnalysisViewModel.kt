@@ -684,35 +684,78 @@ class AnalysisViewModel(
     // Add the .pcap file path to the session object of the network
     fun storePcapFilePathInTheSession() {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                sessionManager.getCurrentSessionId()?.let { sessionId ->
-                    if (mainViewModel.copiedPcapFileUri.value != null) {
-                        val session = repository.getSessionBySessionId(sessionId)
-                        if (session != null) {
-                            repository.updateSession(
-                                session.copy(
-                                    pcapFilePath =
-                                        mainViewModel.copiedPcapFileUri.value.toString()
-                                )
-                            )
-                        }
-                    }
-                } ?: run {
+            val currentSessionId =
+                sessionManager.getCurrentSessionId() // Get ID for this specific ViewModel instance
+            val copiedFileUri =
+                mainViewModel.copiedPcapFileUri.value // Get the URI from MainViewModel
+
+            if (copiedFileUri == null) {
+                Log.w(
+                    TAG,
+                    "Cannot store PCAP path, copiedFileUri from MainViewModel is null. User might not have picked a file yet."
+                )
+                // This might be expected if the user hasn't reached Step 3 or cancelled.
+                return@launch
+            }
+
+            // *** Extract the actual file path from the Uri ***
+            // Ensure it's a 'file' scheme URI before extracting the path
+            val actualPcapPath: String? = if (copiedFileUri.scheme == "file") {
+                copiedFileUri.path // This gives the absolute path for file URIs (e.g., /data/user/0/...)
+            } else {
+                Log.e(
+                    TAG,
+                    "Cannot store PCAP path, copiedFileUri scheme is not 'file': $copiedFileUri"
+                )
+                withContext(Dispatchers.Main) {
+                    showToast(
+                        context.getString(R.string.error_invalid_pcap_uri),
+                        ToastStyle.ERROR
+                    ) // Add this string
+                }
+                null
+            }
+
+            if (currentSessionId == null || actualPcapPath == null) {
+                Log.e(
+                    TAG,
+                    "Cannot store PCAP path, currentSessionId ($currentSessionId) or actualPcapPath ($actualPcapPath) is null."
+                )
+                if (currentSessionId == null) { // Only show session error if that was the cause
                     withContext(Dispatchers.Main) {
                         showToast(
-                            context.getString(R.string.error_saving_pcap_to_session),
+                            context.getString(R.string.error_saving_pcap_to_session_no_id),
                             ToastStyle.ERROR
                         )
                     }
                 }
-            } catch (e: Exception) {
+                // If actualPcapPath is null but currentSessionId is not, the URI scheme error was already logged/toasted.
+                return@launch
+            }
+
+            try {
+                val session = repository.getSessionBySessionId(currentSessionId)
+                if (session != null) {
+                    // *** Store the extracted actual file path ***
+                    repository.updateSession(session.copy(pcapFilePath = actualPcapPath))
+                    Log.i(TAG, "Stored PCAP path '$actualPcapPath' for session $currentSessionId")
+                } else {
+                    Log.e(
+                        TAG,
+                        "Session object not found in repository for ID $currentSessionId when trying to store PCAP path."
+                    )
+                    // Throw an exception to be caught below, providing specific error context
+                    throw IOException("Session $currentSessionId not found in DB")
+                }
+
+            } catch (e: Exception) { // Catch broader exceptions from repository interaction
+                Log.e(TAG, "Error saving pcap path to session $currentSessionId", e)
                 withContext(Dispatchers.Main) {
                     showToast(
-                        context.getString(R.string.error_saving_pcap_to_session),
+                        context.getString(R.string.error_saving_pcap_to_session), // Generic DB error
                         ToastStyle.ERROR
                     )
                 }
-                Log.e(TAG, "Error saving pcap to session: ${e.message}")
             }
         }
     }

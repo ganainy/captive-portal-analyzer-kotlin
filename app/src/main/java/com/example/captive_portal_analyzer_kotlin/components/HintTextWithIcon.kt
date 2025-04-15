@@ -63,7 +63,7 @@ fun HintTextWithIcon(
             style = TextStyle(
                 color = color,
                 fontSize = 12.sp,         // Set a smaller font size
-                fontWeight = FontWeight.Normal
+                fontWeight = FontWeight.Normal,
             ),
             modifier = Modifier
                 .padding(start = 8.dp)

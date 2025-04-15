@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
+// import kotlinx.coroutines.cancel // Removed unused import
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -94,16 +95,21 @@ data class AutomaticAnalysisUiState(
     val pcapFilePath: String? = null,      // Path to the local PCAP file
     val isPcapSelected: Boolean = false,   // User wants to include PCAP data
     val pcapProcessingState: PcapProcessingState = PcapProcessingState.Idle, // Tracks conversion status
-    val pcapJsonContent: String? = null    // Stores the converted JSON (set on Success)
+    val pcapJsonContent: String? = null,    // Stores the converted JSON (set on Success)
     // --- End PCAP Related State ---
+    val promptPreview: String? = null // Holds the generated prompt for preview
+
 ) {
     // Helper property to determine if analysis can start
+    // Analysis cannot start if it's already loading OR if PCAP is selected but still converting
     val canStartAnalysis: Boolean
         get() {
-            // Analysis cannot start if it's already loading OR if PCAP is selected but still converting
-            return !isLoading && !(isPcapSelected && pcapProcessingState !is PcapProcessingState.Idle &&
-                    pcapProcessingState !is PcapProcessingState.Success &&
-                    pcapProcessingState !is PcapProcessingState.Error)
+            val isPcapReadyOrNotSelected = !isPcapSelected ||
+                    pcapProcessingState is PcapProcessingState.Idle ||
+                    pcapProcessingState is PcapProcessingState.Success ||
+                    pcapProcessingState is PcapProcessingState.Error // Allow starting even if PCAP failed, it just won't be included
+
+            return !isLoading && isPcapReadyOrNotSelected
         }
 
     // Helper to check if PCAP conversion is actively running
@@ -136,12 +142,12 @@ interface IAutomaticAnalysisViewModel {
     fun setClickedSessionId(clickedSessionId: String?)
     fun togglePcapSelection(isSelected: Boolean)
     fun retryPcapConversion()
+    fun generatePromptForPreview()
 }
 
 /**
  * A [ViewModel] that generates text based on a given [SessionData] using a generative AI model.
  *
- * @param generativeModel the generative AI model to use for generating text
  * @param application the application context
  * @param repository the repository of network sessions
  * @param clickedSessionId the id of the session that was clicked
@@ -247,7 +253,7 @@ open class AutomaticAnalysisViewModel(
 
     /**
      * Analyzes the selected session data using AI.
-     * @param modelName The name of the Gemini model to use (e.g., "gemini-2.0-flash").
+     * @param modelName The name of the Gemini model to use (e.g., "gemini-2.0-flash"). Defaults to last used or state's selected model.
      */
     override fun analyzeWithAi(modelName: String?) {
         val currentState = _automaticAnalysisUiState.value
@@ -274,19 +280,28 @@ open class AutomaticAnalysisViewModel(
             return
         }
 
-        // Prevent starting analysis if already loading or PCAP is converting
-        if (currentState.isLoading || currentState.isPcapConverting) {
+        // Check if PCAP is selected and still converting
+        if (currentState.isPcapSelected && currentState.isPcapConverting) {
+            Log.w("AnalyzeAI", "Analysis start delayed: PCAP conversion is still in progress.")
+            // Potentially show a message to the user, or just let the button remain disabled
+            // For now, we assume the UI prevents clicking 'Analyze' in this state via `canStartAnalysis`
+            return
+        }
+
+        // Prevent starting AI analysis if already loading
+        if (currentState.isLoading) {
             Log.w(
                 "AnalyzeAI",
-                "Analysis skipped: Already loading (isLoading=${currentState.isLoading}) or PCAP converting (isPcapConverting=${currentState.isPcapConverting})."
+                "Analysis skipped: AI analysis is already in progress (isLoading=true)."
             )
             return
         }
 
+
         _automaticAnalysisUiState.value = currentState.copy(
             isLoading = true, // Set main loading flag for AI call
             error = null,
-            outputText = null,
+            outputText = null, // Clear previous output
             selectedModelName = effectiveModelName // Store the model being used
         )
 
@@ -295,11 +310,13 @@ open class AutomaticAnalysisViewModel(
                 var pcapJsonForPrompt: String? = null
                 var pcapErrorForPrompt: String? = null
 
-                // --- Handle PCAP Conversion if Selected ---
+                // --- Handle PCAP Data Acquisition (Check status, maybe start conversion if needed and not already done/failed) ---
                 if (currentState.isPcapSelected && currentState.isPcapIncludable && currentState.pcapFilePath != null) {
-                    // Check the current state of PCAP processing
-                    when (val pcapState =
-                        _automaticAnalysisUiState.value.pcapProcessingState) { // Re-read state in case it changed
+                    // Check the *current* state of PCAP processing just before analysis
+                    val pcapState =
+                        _automaticAnalysisUiState.value.pcapProcessingState // Re-read state
+
+                    when (pcapState) {
                         is PcapProcessingState.Success -> {
                             Log.i(
                                 "AnalyzeAI",
@@ -309,23 +326,42 @@ open class AutomaticAnalysisViewModel(
                                 pcapState.jsonContent // Use existing successful result
                         }
 
-                        is PcapProcessingState.Idle, is PcapProcessingState.Error -> {
-                            // --- Trigger Conversion ---
-                            Log.i("AnalyzeAI", "PCAP selected, starting conversion process...")
+                        is PcapProcessingState.Error -> {
+                            Log.w(
+                                "AnalyzeAI",
+                                "PCAP conversion previously failed. Proceeding without PCAP data. Error: ${pcapState.message}"
+                            )
+                            pcapErrorForPrompt =
+                                "PCAP conversion failed: ${pcapState.message.take(100)}"
+                        }
+
+                        is PcapProcessingState.Idle -> {
+                            // PCAP was selected, but conversion wasn't triggered or completed yet.
+                            // This could happen if user selected PCAP then immediately clicked Analyze.
+                            // Trigger conversion *now* and wait for it.
+                            Log.i(
+                                "AnalyzeAI",
+                                "PCAP selected but conversion not started/completed. Starting conversion now..."
+                            )
                             try {
                                 // Call the suspend function that handles upload, polling, download
                                 val convertedJson =
                                     convertPcapToJsonAndWait(currentState.pcapFilePath)
                                 pcapJsonForPrompt = convertedJson // Store the successful result
                                 Log.i("AnalyzeAI", "PCAP conversion successful.")
-                                // State should be updated to Success inside convertPcapToJsonAndWait
                             } catch (pcapException: Exception) {
                                 if (pcapException is CancellationException) {
-                                    Log.i("AnalyzeAI", "PCAP conversion was cancelled.")
-                                    // Do not proceed with AI analysis if PCAP was essential and cancelled
+                                    Log.i(
+                                        "AnalyzeAI",
+                                        "PCAP conversion was cancelled during analysis trigger."
+                                    )
+                                    // Since AI call is already started (isLoading=true), we need to handle cancellation
                                     withContext(Dispatchers.Main + NonCancellable) {
                                         _automaticAnalysisUiState.value =
-                                            _automaticAnalysisUiState.value.copy(isLoading = false) // Clear AI loading flag
+                                            _automaticAnalysisUiState.value.copy(
+                                                isLoading = false,
+                                                error = "PCAP conversion cancelled."
+                                            ) // Clear AI loading flag and show error
                                     }
                                     throw pcapException // Re-throw to stop the outer launch block
                                 }
@@ -339,16 +375,17 @@ open class AutomaticAnalysisViewModel(
                                 // State should be updated to Error inside convertPcapToJsonAndWait's catch block
                             }
                         }
-                        // If PCAP is already converting (Uploading, Processing, Polling, DownloadingJson)
-                        // this function shouldn't have been called due to the initial check.
-                        // Handle defensively just in case.
-                        else -> {
-                            Log.w(
+                        // If PCAP is currently converting (Uploading, Processing, etc.)
+                        // This case should ideally be prevented by the initial check outside the launch block.
+                        // Handle defensively. We decided to *wait* if conversion is ongoing.
+                        // But if the check failed somehow, log an error and proceed without PCAP.
+                        else -> { // is PcapProcessingState.Uploading, Processing, Polling, DownloadingJson
+                            Log.e(
                                 "AnalyzeAI",
-                                "PCAP is selected but is unexpectedly in state: $pcapState. Skipping PCAP inclusion."
+                                "PCAP is selected but unexpectedly still converting at analysis start time. State: $pcapState. Proceeding without PCAP data."
                             )
                             pcapErrorForPrompt =
-                                "PCAP data skipped (unexpected state during analysis start)."
+                                "PCAP data skipped (unexpected state: ${pcapState::class.simpleName})."
                         }
                     }
                 }
@@ -356,7 +393,7 @@ open class AutomaticAnalysisViewModel(
 
                 // --- Proceed with building prompt and calling AI ---
 
-                // Re-read state in case PCAP conversion updated it (e.g., set an error)
+                // Re-read state in case PCAP conversion updated it
                 val currentStateAfterPcap = _automaticAnalysisUiState.value
 
                 // Filter data based on selection (use currentStateAfterPcap for consistency)
@@ -420,12 +457,15 @@ open class AutomaticAnalysisViewModel(
                     currentStateAfterPcap.isPcapSelected && pcapJsonForPrompt == null && pcapErrorForPrompt == null -> {
                         if (!currentStateAfterPcap.isPcapIncludable || currentStateAfterPcap.pcapFilePath == null) {
                             dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (File not available for this session)."
+                        } else if (currentStateAfterPcap.pcapProcessingState is PcapProcessingState.Idle) {
+                            // This case implies conversion wasn't started/completed successfully before this point
+                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (Conversion did not complete successfully)."
                         } else {
                             // Should not happen if logic is correct, but catch potential edge cases
-                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (Unknown reason)."
+                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (Unknown reason, state: ${currentStateAfterPcap.pcapProcessingState::class.simpleName})."
                             Log.w(
                                 "AnalyzeAI",
-                                "PCAP selected but neither JSON nor error available, and file path exists."
+                                "PCAP selected but neither JSON nor error available. Path: ${currentStateAfterPcap.pcapFilePath}, State: ${currentStateAfterPcap.pcapProcessingState}"
                             )
                         }
                     }
@@ -463,16 +503,6 @@ open class AutomaticAnalysisViewModel(
                             }
                         }
                     }
-
-                    //todo
-                    // Add selected webpage content text here if desired and feasible within token limits
-                    // Example: Concatenate text content (be very careful with limits)
-                    // if (selectedWebpageContent.isNotEmpty()) {
-                    //    val combinedHtml = selectedWebpageContent.mapNotNull { loadFileContent(it.htmlContentPath) }.joinToString("\n\n")
-                    //    if (combinedHtml.isNotBlank()) {
-                    //        text("\n\n--- Selected Webpage HTML Content (Snippets) ---\n${combinedHtml.take(10000)}") // Strict limit
-                    //    }
-                    // }
 
                     // Add the main text prompt
                     text(finalPrompt)
@@ -526,29 +556,35 @@ open class AutomaticAnalysisViewModel(
                     Log.i("AnalyzeAI", "AI Analysis or preceding PCAP conversion was cancelled.")
                     // Reset loading state and potentially clear partial output only if cancelled here
                     withContext(Dispatchers.Main + NonCancellable) { // Ensure state reset happens
-                        if (_automaticAnalysisUiState.value.isLoading) { // Check if still loading
+                        // Check if still loading *and* this cancellation wasn't handled earlier (e.g., PCAP cancel)
+                        if (_automaticAnalysisUiState.value.isLoading) {
                             _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
                                 isLoading = false,
-                                outputText = null
-                            ) // Clear partial output
+                                error = _automaticAnalysisUiState.value.error
+                                    ?: "Analysis cancelled.", // Keep existing error if set
+                                outputText = null // Clear partial output
+                            )
                         }
                     }
-                    throw e // Re-throw cancellation
-                }
-                // Catch errors from AI call or prompt building
-                Log.e(
-                    "AnalyzeAI",
-                    "Error during AI analysis phase with model $effectiveModelName",
-                    e
-                )
-                withContext(Dispatchers.Main + NonCancellable) { // Ensure state update happens
-                    _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
-                        isLoading = false, // Stop loading indicator
-                        error = "AI Analysis failed: ${e.localizedMessage ?: context.getString(R.string.unknown_error)}"
+                    // Don't re-throw cancellation here if it was handled, otherwise it might crash
+                    // If we want the calling coroutine to know about cancellation, re-throw might be needed,
+                    // but for UI updates, handling it here is usually sufficient.
+                } else {
+                    // Catch errors from AI call or prompt building
+                    Log.e(
+                        "AnalyzeAI",
+                        "Error during AI analysis phase with model $effectiveModelName",
+                        e
                     )
+                    withContext(Dispatchers.Main + NonCancellable) { // Ensure state update happens
+                        _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
+                            isLoading = false, // Stop loading indicator
+                            error = "AI Analysis failed: ${e.localizedMessage ?: context.getString(R.string.unknown_error)}"
+                        )
+                    }
                 }
             } finally {
-                // Ensure loading is always reset, even if unexpected exceptions occur
+                // Ensure loading is always reset, even if unexpected exceptions occur or cancellation happened
                 withContext(Dispatchers.Main + NonCancellable) {
                     if (_automaticAnalysisUiState.value.isLoading) {
                         _automaticAnalysisUiState.value =
@@ -564,34 +600,203 @@ open class AutomaticAnalysisViewModel(
     // --- Toggle PCAP Selection ---
     override fun togglePcapSelection(isSelected: Boolean) {
         val currentState = _automaticAnalysisUiState.value
-        // Only allow selection if PCAP is includable and not currently converting
-        if (currentState.isPcapIncludable) { // Removed check for !isPcapConverting here - allow toggling off during conversion
-            _automaticAnalysisUiState.value = currentState.copy(isPcapSelected = isSelected)
-            // If selecting and state is Error, reset state to Idle to allow retry
-            if (isSelected && currentState.pcapProcessingState is PcapProcessingState.Error) {
-                _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
-                    pcapProcessingState = PcapProcessingState.Idle,
-                    pcapJsonContent = null // Clear old content/error
-                )
+        // Allow toggling only if PCAP is includable
+        if (currentState.isPcapIncludable) {
+            // If turning ON and state is Idle/Error, initiate conversion
+            if (isSelected && (currentState.pcapProcessingState is PcapProcessingState.Idle || currentState.pcapProcessingState is PcapProcessingState.Error)) {
+                if (currentState.pcapFilePath != null) {
+                    _automaticAnalysisUiState.value = currentState.copy(
+                        isPcapSelected = true,
+                        pcapProcessingState = PcapProcessingState.Idle, // Ensure state is Idle before starting
+                        pcapJsonContent = null // Clear old content/error
+                    )
+                    // Launch conversion asynchronously - don't wait here
+                    viewModelScope.launch {
+                        try {
+                            convertPcapToJsonAndWait(currentState.pcapFilePath)
+                            // Success state is updated within convertPcapToJsonAndWait
+                        } catch (e: Exception) {
+                            if (e is CancellationException) {
+                                Log.i("PCAP_Toggle", "PCAP Conversion cancelled during toggle ON.")
+                                // State should be reset by cancelPcapConversion
+                            } else {
+                                Log.e(
+                                    "PCAP_Toggle",
+                                    "Error starting PCAP conversion on toggle ON",
+                                    e
+                                )
+                                // Error state is updated within convertPcapToJsonAndWait
+                            }
+                        }
+                    }
+                } else {
+                    Log.e("PCAP_Toggle", "Cannot select PCAP, file path is null.")
+                    // Optionally update state with an error? For now, just log.
+                }
             }
-            // If toggling *off* during conversion, cancel the ongoing job
-            if (!isSelected && currentState.isPcapConverting) {
-                cancelPcapConversion("User deselected PCAP")
-                _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
+            // If turning OFF
+            else if (!isSelected) {
+                cancelPcapConversion("User deselected PCAP") // Cancel any ongoing job
+                _automaticAnalysisUiState.value = currentState.copy(
+                    isPcapSelected = false,
                     pcapProcessingState = PcapProcessingState.Idle // Reset state
                 )
+            }
+            // If turning ON but already processing/success, just update the selection flag
+            else if (isSelected) {
+                _automaticAnalysisUiState.value = currentState.copy(isPcapSelected = true)
             }
         }
     }
 
+
     // ---  Retry PCAP Conversion ---
     override fun retryPcapConversion() {
         val currentState = _automaticAnalysisUiState.value
-        if (currentState.isPcapIncludable && currentState.pcapProcessingState is PcapProcessingState.Error) {
+        // Only allow retry if PCAP is includable, was in Error state, and a file path exists
+        if (currentState.isPcapIncludable && currentState.pcapProcessingState is PcapProcessingState.Error && currentState.pcapFilePath != null) {
             _automaticAnalysisUiState.value = currentState.copy(
-                pcapProcessingState = PcapProcessingState.Idle,
+                pcapProcessingState = PcapProcessingState.Idle, // Reset state to allow restart
                 isPcapSelected = true // Assume user wants to retry because they clicked retry
             )
+            // Launch conversion asynchronously
+            viewModelScope.launch {
+                try {
+                    convertPcapToJsonAndWait(currentState.pcapFilePath)
+                    // Success/Error state handled within the function
+                } catch (e: Exception) {
+                    if (e is CancellationException) {
+                        Log.i("PCAP_Retry", "PCAP Conversion cancelled during retry.")
+                    } else {
+                        Log.e("PCAP_Retry", "Error starting PCAP conversion on retry", e)
+                    }
+                }
+            }
+        } else {
+            Log.w(
+                "PCAP_Retry",
+                "Retry ignored. State: ${currentState.pcapProcessingState}, Path: ${currentState.pcapFilePath}"
+            )
+        }
+    }
+
+    /**
+     * Generates the full prompt string based on current selections and PCAP state,
+     * updating the `promptPreview` state without calling the AI model.
+     */
+    override fun generatePromptForPreview() {
+        val currentState = _automaticAnalysisUiState.value
+        val effectiveModelName = currentState.selectedModelName
+            ?: "gemini-1.5-pro-preview-0409" // Default or last used for context
+
+        if (currentState.sessionData == null) {
+            Log.e("PromptPreview", "Cannot generate preview: Session data is null.")
+            _automaticAnalysisUiState.value =
+                currentState.copy(promptPreview = "[Error: Session data not loaded]")
+            return
+        }
+
+        // Use IO dispatcher for potentially reading file content (though currently not done here)
+        viewModelScope.launch(Dispatchers.IO) {
+            var pcapJsonForPrompt: String? = null
+            var pcapErrorForPrompt: String? = null
+
+            // --- Determine PCAP content for prompt based on current state ---
+            if (currentState.isPcapSelected && currentState.isPcapIncludable && currentState.pcapFilePath != null) {
+                when (val pcapState = currentState.pcapProcessingState) {
+                    is PcapProcessingState.Success -> {
+                        pcapJsonForPrompt = pcapState.jsonContent
+                    }
+
+                    is PcapProcessingState.Error -> {
+                        pcapErrorForPrompt =
+                            "PCAP conversion failed: ${pcapState.message.take(100)}"
+                    }
+
+                    is PcapProcessingState.Idle -> {
+                        pcapErrorForPrompt = "PCAP conversion not initiated or completed."
+                    }
+
+                    else -> { // Uploading, Processing, Polling, DownloadingJson
+                        pcapErrorForPrompt =
+                            "PCAP conversion in progress (will be included if successful)."
+                    }
+                }
+            }
+            // --- End PCAP Handling ---
+
+            // Filter data based on selection
+            val selectedRequests = currentState.sessionData.requests?.filter {
+                currentState.selectedRequestIds.contains(it.customWebViewRequestId)
+            } ?: emptyList()
+
+            val selectedScreenshots = currentState.sessionData.screenshots?.filter {
+                it.isPrivacyOrTosRelated && currentState.selectedScreenshotIds.contains(
+                    it.screenshotId
+                )
+            } ?: emptyList()
+
+            val selectedWebpageContent =
+                currentState.sessionData.webpageContent?.filter {
+                    currentState.selectedWebpageContentIds.contains(it.contentId)
+                } ?: emptyList()
+
+            // Build Prompt Dynamically (Mirroring logic in analyzeWithAi)
+            val basePrompt = currentState.inputText
+            var dynamicPromptPart =
+                "\n\n--- Analysis Context ---\nModel Used: '$effectiveModelName'"
+
+            // Requests
+            if (selectedRequests.isNotEmpty()) {
+                val requestsDTOString = buildRequestsString(selectedRequests)
+                dynamicPromptPart += "\n\n- Network Requests (${selectedRequests.size} selected, truncated if necessary):\n$requestsDTOString"
+            } else {
+                dynamicPromptPart += "\n\n- Network Requests: None selected."
+            }
+
+            // Screenshots
+            if (selectedScreenshots.isNotEmpty()) {
+                dynamicPromptPart += "\n\n- Relevant Screenshots (${selectedScreenshots.size} selected): Included as images."
+            } else {
+                dynamicPromptPart += "\n\n- Relevant Screenshots: None selected."
+            }
+
+            // Webpage Content
+            if (selectedWebpageContent.isNotEmpty()) {
+                dynamicPromptPart += "\n\n- Webpage Content (${selectedWebpageContent.size} selected): Included separately." // Simplified for preview
+            } else {
+                dynamicPromptPart += "\n\n- Webpage Content: None selected."
+            }
+
+            // PCAP JSON or Error
+            when {
+                pcapJsonForPrompt != null -> {
+                    val truncatedJson = pcapJsonForPrompt.take(PCAP_JSON_MAX_LENGTH)
+                    dynamicPromptPart += "\n\n- PCAP Network Summary (JSON, truncated if necessary):\n$truncatedJson"
+                    if (truncatedJson.length < pcapJsonForPrompt.length) {
+                        dynamicPromptPart += "\n... (PCAP JSON truncated due to length limit)"
+                    }
+                }
+
+                pcapErrorForPrompt != null -> {
+                    dynamicPromptPart += "\n\n- PCAP Network Summary: Not included ($pcapErrorForPrompt)"
+                }
+
+                currentState.isPcapSelected -> { // Selected but no JSON and no specific error message generated above
+                    dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (File unavailable or unexpected state)."
+                }
+
+                else -> { // PCAP was not selected
+                    dynamicPromptPart += "\n\n- PCAP Network Summary: Not selected."
+                }
+            }
+            dynamicPromptPart += "\n--- End Analysis Context ---"
+
+            val finalPrompt = "$basePrompt $dynamicPromptPart"
+            withContext(Dispatchers.Main) {
+                _automaticAnalysisUiState.value =
+                    _automaticAnalysisUiState.value.copy(promptPreview = finalPrompt)
+            }
         }
     }
 
@@ -604,33 +809,51 @@ open class AutomaticAnalysisViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val currentSessionId = _automaticAnalysisUiState.value.clickedSessionId
             if (currentSessionId == null) {
-                // ... (handle error) ...
+                Log.e("LoadSession", "Cannot load data, clickedSessionId is null.")
+                _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
+                    isLoading = false,
+                    error = "Session ID not found."
+                )
                 return@launch
             }
 
             _automaticAnalysisUiState.value =
-                _automaticAnalysisUiState.value.copy(isLoading = true, error = null)
+                _automaticAnalysisUiState.value.copy(
+                    isLoading = true,
+                    error = null,
+                    outputText = null
+                ) // Reset output text too
             try {
                 val sessionData = repository.getCompleteSessionData(currentSessionId).first()
 
                 // --- Check for PCAP file ---
                 val pcapPath = sessionData.session.pcapFilePath
-                val isPcapPresent = pcapPath != null
+                val isPcapPresent =
+                    pcapPath != null && File(pcapPath).exists() // Check existence too
+
+                //for debugging
+                val file = if (pcapPath != null) File(pcapPath) else null
+                val fileExists = file?.exists() == true
+                Log.d("PcapCheck", "pcapPath from sessionData: $pcapPath")
+                Log.d("PcapCheck", "File object created: ${file?.absolutePath}")
+                Log.d("PcapCheck", "File.exists() result: $fileExists")
 
                 // Reset PCAP state when loading new session data
                 cancelPcapConversion("New session data loaded")
 
-                // Default selections
+                // Default selections (Select all initially)
                 val allRequestIds =
                     sessionData.requests?.mapNotNull { it.customWebViewRequestId }?.toSet()
                         ?: emptySet()
-                val allScreenshotIds = sessionData.screenshots?.filter { it.isPrivacyOrTosRelated }
-                    ?.mapNotNull { it.screenshotId }?.toSet() ?: emptySet()
+                val allScreenshotIds =
+                    sessionData.screenshots?.filter { it.isPrivacyOrTosRelated }
+                        ?.mapNotNull { it.screenshotId }?.toSet() ?: emptySet()
                 val allWebpageContentIds =
-                    sessionData.webpageContent?.mapNotNull { it.contentId }?.toSet() ?: emptySet()
+                    sessionData.webpageContent?.mapNotNull { it.contentId }?.toSet()
+                        ?: emptySet()
 
                 _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
-                    isLoading = false,
+                    isLoading = false, // Data loading finished
                     sessionData = sessionData,
                     // Default selections
                     selectedRequestIds = allRequestIds,
@@ -650,7 +873,7 @@ open class AutomaticAnalysisViewModel(
                     // --- End PCAP State Update ---
                 )
             } catch (e: Exception) {
-                Log.e("AutomaticAnalysisViewModel", "Error during loadSessionData", e)
+                Log.e("LoadSession", "Error during loadSessionData for ID $currentSessionId", e)
                 _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
                     isLoading = false,
                     error = "Failed to load session data: ${e.message}"
@@ -727,6 +950,7 @@ open class AutomaticAnalysisViewModel(
 
             pcapConversionJob = launch { // Launch conversion in a child job
                 try {
+                    // Make sure state reflects the start
                     updatePcapState(PcapProcessingState.Uploading(0f)) // Initial state
 
                     val requestBody = MultipartBody.Builder()
@@ -741,7 +965,8 @@ open class AutomaticAnalysisViewModel(
                         )
                         .build()
 
-                    val request = Request.Builder().url(SERVER_UPLOAD_URL).post(requestBody).build()
+                    val request =
+                        Request.Builder().url(SERVER_UPLOAD_URL).post(requestBody).build()
 
                     Log.d("PCAP_CONVERT", "Uploading PCAP: ${fileToUpload.name}")
                     pcapHttpClient.newCall(request).execute().use { response ->
@@ -757,16 +982,30 @@ open class AutomaticAnalysisViewModel(
                             throw IOException("Upload failed: ${response.code} - ${response.message}")
                         }
 
-                        val responseBody = response.body?.string()
-                        if (responseBody != null) {
-                            val result =
-                                jsonParser.decodeFromString<Map<String, String>>(responseBody)
-                            val jobId = result["job_id"]
-                            Log.i("PCAP_CONVERT", "Upload successful, Job ID: $jobId")
-                            // --- Start Polling ---
-                            val finalJson =
-                                pollAndDownloadResult(jobId!!) // This will suspend until completion or error
-                            deferredResult.complete(finalJson) // Complete the deferred with the JSON
+                        if (responseBodyString != null) {
+                            try {
+                                val result =
+                                    jsonParser.decodeFromString<Map<String, String>>(
+                                        responseBodyString
+                                    )
+                                val jobId = result["job_id"]
+                                if (jobId != null) {
+                                    Log.i("PCAP_CONVERT", "Upload successful, Job ID: $jobId")
+                                    // --- Start Polling ---
+                                    val finalJson =
+                                        pollAndDownloadResult(jobId) // This will suspend until completion or error
+                                    deferredResult.complete(finalJson) // Complete the deferred with the JSON
+                                } else {
+                                    throw IOException("Server response missing 'job_id' after upload.")
+                                }
+                            } catch (e: kotlinx.serialization.SerializationException) {
+                                Log.e(
+                                    "PCAP_CONVERT",
+                                    "Failed to parse server response after upload: $responseBodyString",
+                                    e
+                                )
+                                throw IOException("Invalid server response after upload.")
+                            }
                         } else {
                             throw IOException("Server returned empty response body after upload.")
                         }
@@ -776,7 +1015,12 @@ open class AutomaticAnalysisViewModel(
                     if (e is CancellationException) {
                         Log.i("PCAP_CONVERT", "PCAP Conversion cancelled.")
                         updatePcapState(PcapProcessingState.Idle) // Reset state on cancellation
-                        deferredResult.cancel(CancellationException("PCAP conversion cancelled", e))
+                        deferredResult.cancel(
+                            CancellationException(
+                                "PCAP conversion cancelled",
+                                e
+                            )
+                        )
                     } else {
                         Log.e("PCAP_CONVERT", "PCAP conversion failed", e)
                         updatePcapState(PcapProcessingState.Error("Conversion failed: ${e.message}"))
@@ -790,154 +1034,237 @@ open class AutomaticAnalysisViewModel(
         }
 
     // --- Combined Polling and Downloading (Suspendable) ---
-    private suspend fun pollAndDownloadResult(jobId: String): String = withContext(Dispatchers.IO) {
-        pcapPollingJob?.cancelAndJoin() // Cancel previous polling
+    private suspend fun pollAndDownloadResult(jobId: String): String =
+        withContext(Dispatchers.IO) {
+            pcapPollingJob?.cancelAndJoin() // Cancel previous polling
 
-        var attempt = 0
-        val deferredResult = CompletableDeferred<String>()
+            var attempt = 0
+            val deferredResult = CompletableDeferred<String>()
 
-        updatePcapState(PcapProcessingState.Processing(jobId))
-        Log.i("PCAP_POLL", "Starting polling for job: $jobId")
-
-        pcapPollingJob = launch pollLoop@{ // Child job for polling
-            delay(PCAP_POLL_INITIAL_DELAY_MS) // Initial delay
-
-            while (isActive && attempt < PCAP_POLL_MAX_ATTEMPTS) {
-                attempt++
-                Log.d("PCAP_POLL", "Polling attempt $attempt for job $jobId")
-                updatePcapState(PcapProcessingState.Polling(jobId, attempt))
-
-                try {
-                    val statusUrl = "$SERVER_STATUS_URL_BASE$jobId"
-                    val request = Request.Builder().url(statusUrl).get().build()
-
-                    pcapHttpClient.newCall(request).execute().use checkStatus@{ response ->
-                        val responseBodyString = response.body?.string() // Read once
-
-                        if (!response.isSuccessful) {
-                            Log.w(
-                                "PCAP_POLL",
-                                "Polling $jobId: Status check failed code ${response.code}. Body: ${
-                                    responseBodyString?.take(200)
-                                }"
-                            )
-                            if (response.code == 404) throw IOException("Job ID '$jobId' not found on server.")
-                            // For other errors, let's wait and retry
-                            delay(PCAP_POLL_INTERVAL_SECONDS.seconds)
-                            return@checkStatus // Continue to next loop iteration
-                        }
-
-                        if (responseBodyString != null) {
-                            Log.d("PCAP_POLL", "Status Response $jobId: $responseBodyString")
-                            val statusResponse =
-                                jsonParser.decodeFromString<JobStatusResponse>(responseBodyString)
-
-                            when (statusResponse.status) {
-                                "completed" -> {
-                                    statusResponse.url?.let { url ->
-                                        Log.i(
-                                            "PCAP_POLL",
-                                            "Job $jobId completed. Downloading from $url"
-                                        )
-                                        updatePcapState(
-                                            PcapProcessingState.DownloadingJson(
-                                                jobId,
-                                                url
-                                            )
-                                        )
-                                        try {
-                                            val jsonContent =
-                                                downloadJsonResult(url) // Suspend download
-                                            updatePcapState(
-                                                PcapProcessingState.Success(
-                                                    jobId,
-                                                    jsonContent
-                                                )
-                                            )
-                                            deferredResult.complete(jsonContent) // Success!
-                                            this@pollLoop.cancel("Job finished") // Stop polling loop
-                                        } catch (downloadError: Exception) {
-                                            if (downloadError is CancellationException) throw downloadError
-                                            Log.e(
-                                                "PCAP_DOWNLOAD",
-                                                "Failed to download JSON for $jobId",
-                                                downloadError
-                                            )
-                                            updatePcapState(
-                                                PcapProcessingState.Error(
-                                                    "Download failed: ${downloadError.message}",
-                                                    jobId
-                                                )
-                                            )
-                                            deferredResult.completeExceptionally(downloadError) // Fail deferred
-                                            this@pollLoop.cancel("Download error")
-                                        }
-                                    } ?: run {
-                                        throw IOException("Job completed but result URL missing.")
-                                    }
-                                    return@checkStatus // Exit loop implicitly via cancellation
-                                }
-
-                                "failed" -> {
-                                    val errorMsg =
-                                        statusResponse.error ?: "Unknown server processing error"
-                                    Log.e("PCAP_POLL", "Job $jobId failed on server: $errorMsg")
-                                    throw IOException("Processing failed: $errorMsg") // Throw to catch block
-                                }
-
-                                "processing" -> {
-                                    // Continue polling, state already updated to Polling
-                                    Log.d("PCAP_POLL", "Job $jobId still processing...")
-                                }
-
-                                else -> {
-                                    Log.w(
-                                        "PCAP_POLL",
-                                        "Job $jobId: Unknown status: ${statusResponse.status}"
-                                    )
-                                    // Treat unknown as still processing for now
-                                }
-                            }
-                        } else {
-                            Log.w(
-                                "PCAP_POLL",
-                                "Polling $jobId: Empty status response body. Retrying..."
-                            )
-                        }
-                    } // End response.use
-
-                    // Only delay if the job is still processing or had a transient error
-                    if (isActive) { // Check if loop wasn't cancelled by success/failure
-                        delay(PCAP_POLL_INTERVAL_SECONDS.seconds)
-                    }
-
-                } catch (e: Exception) {
-                    if (e is CancellationException) {
-                        Log.i("PCAP_POLL", "Polling for $jobId cancelled.")
-                        // Don't update state here, let the cancellation reason dictate
-                        deferredResult.cancel(CancellationException("Polling cancelled", e))
-                        throw e // Re-throw
-                    }
-                    Log.e("PCAP_POLL", "Error during status check for $jobId", e)
-                    updatePcapState(PcapProcessingState.Error("Polling error: ${e.message}", jobId))
-                    deferredResult.completeExceptionally(e) // Fail deferred
-                    this@pollLoop.cancel("Polling error") // Stop polling loop
-                    return@pollLoop // Exit launch block
-                }
-            } // End while loop
-
-            // Handle timeout if loop finished due to maxAttempts
-            if (isActive && attempt >= PCAP_POLL_MAX_ATTEMPTS) {
-                Log.w("PCAP_POLL", "Polling $jobId timed out ")
-                val timeoutError = IOException("Processing timed out on server.")
-                updatePcapState(PcapProcessingState.Error("Processing timed out.", jobId))
-                deferredResult.completeExceptionally(timeoutError)
+            // Only update state if the current job is still relevant (i.e., not cancelled)
+            if (pcapConversionJob?.isActive == true) {
+                updatePcapState(PcapProcessingState.Processing(jobId))
+                Log.i("PCAP_POLL", "Starting polling for job: $jobId")
+            } else {
+                Log.i(
+                    "PCAP_POLL",
+                    "Polling skipped for $jobId, parent conversion job is not active."
+                )
+                deferredResult.cancel(CancellationException("Parent conversion job not active"))
+                return@withContext deferredResult.await() // Return cancelled deferred
             }
-        } // End polling launch
 
-        // Wait for polling/downloading to complete or fail
-        return@withContext deferredResult.await()
-    }
+
+            pcapPollingJob = launch pollLoop@{ // Child job for polling
+                delay(PCAP_POLL_INITIAL_DELAY_MS) // Initial delay
+
+                while (isActive && attempt < PCAP_POLL_MAX_ATTEMPTS) {
+                    attempt++
+                    Log.d("PCAP_POLL", "Polling attempt $attempt for job $jobId")
+                    // Update state only if the job is still active
+                    if (isActive) updatePcapState(
+                        PcapProcessingState.Polling(
+                            jobId,
+                            attempt
+                        )
+                    ) else break
+
+                    try {
+                        val statusUrl = "$SERVER_STATUS_URL_BASE$jobId"
+                        val request = Request.Builder().url(statusUrl).get().build()
+
+                        pcapHttpClient.newCall(request).execute().use checkStatus@{ response ->
+                            val responseBodyString = response.body?.string() // Read once
+
+                            if (!response.isSuccessful) {
+                                Log.w(
+                                    "PCAP_POLL",
+                                    "Polling $jobId: Status check failed code ${response.code}. Body: ${
+                                        responseBodyString?.take(200)
+                                    }"
+                                )
+                                if (response.code == 404) throw IOException("Job ID '$jobId' not found on server.")
+                                // For other errors, let's wait and retry
+                                delay(PCAP_POLL_INTERVAL_SECONDS.seconds)
+                                return@checkStatus // Continue to next loop iteration
+                            }
+
+                            if (responseBodyString != null) {
+                                Log.d(
+                                    "PCAP_POLL",
+                                    "Status Response $jobId: $responseBodyString"
+                                )
+                                val statusResponse: JobStatusResponse
+                                try {
+                                    statusResponse =
+                                        jsonParser.decodeFromString<JobStatusResponse>(
+                                            responseBodyString
+                                        )
+                                } catch (e: kotlinx.serialization.SerializationException) {
+                                    Log.e(
+                                        "PCAP_POLL",
+                                        "Failed to parse status response for $jobId: $responseBodyString",
+                                        e
+                                    )
+                                    throw IOException("Invalid status response from server.")
+                                }
+
+
+                                when (statusResponse.status) {
+                                    "completed" -> {
+                                        statusResponse.url?.let { url ->
+                                            Log.i(
+                                                "PCAP_POLL",
+                                                "Job $jobId completed. Downloading from $url"
+                                            )
+                                            // Update state only if job is still active
+                                            if (isActive) updatePcapState(
+                                                PcapProcessingState.DownloadingJson(
+                                                    jobId,
+                                                    url
+                                                )
+                                            ) else return@checkStatus
+
+                                            try {
+                                                val jsonContent =
+                                                    downloadJsonResult(url) // Suspend download
+
+                                                // Update state only if job is still active
+                                                if (isActive) {
+                                                    updatePcapState(
+                                                        PcapProcessingState.Success(
+                                                            jobId,
+                                                            jsonContent
+                                                        )
+                                                    )
+                                                    deferredResult.complete(jsonContent) // Success!
+                                                } else {
+                                                    deferredResult.cancel(
+                                                        CancellationException(
+                                                            "Job cancelled before download completion"
+                                                        )
+                                                    )
+                                                }
+
+                                                this@pollLoop.cancel("Job finished successfully") // Stop polling loop
+
+                                            } catch (downloadError: Exception) {
+                                                if (downloadError is CancellationException) throw downloadError
+                                                Log.e(
+                                                    "PCAP_DOWNLOAD",
+                                                    "Failed to download JSON for $jobId",
+                                                    downloadError
+                                                )
+                                                // Update state only if job is still active
+                                                if (isActive) {
+                                                    updatePcapState(
+                                                        PcapProcessingState.Error(
+                                                            "Download failed: ${downloadError.message}",
+                                                            jobId
+                                                        )
+                                                    )
+                                                    deferredResult.completeExceptionally(
+                                                        downloadError
+                                                    ) // Fail deferred
+                                                } else {
+                                                    deferredResult.cancel(
+                                                        CancellationException(
+                                                            "Job cancelled during download error handling"
+                                                        )
+                                                    )
+                                                }
+                                                this@pollLoop.cancel("Download error")
+                                            }
+                                        } ?: run {
+                                            throw IOException("Job completed but result URL missing.")
+                                        }
+                                        return@checkStatus // Exit loop implicitly via cancellation
+                                    }
+
+                                    "failed" -> {
+                                        val errorMsg =
+                                            statusResponse.error
+                                                ?: "Unknown server processing error"
+                                        Log.e(
+                                            "PCAP_POLL",
+                                            "Job $jobId failed on server: $errorMsg"
+                                        )
+                                        throw IOException("Processing failed: $errorMsg") // Throw to catch block
+                                    }
+
+                                    "processing" -> {
+                                        // Continue polling, state already updated to Polling
+                                        Log.d("PCAP_POLL", "Job $jobId still processing...")
+                                    }
+
+                                    else -> {
+                                        Log.w(
+                                            "PCAP_POLL",
+                                            "Job $jobId: Unknown status: ${statusResponse.status}"
+                                        )
+                                        // Treat unknown as still processing for now
+                                    }
+                                }
+                            } else {
+                                Log.w(
+                                    "PCAP_POLL",
+                                    "Polling $jobId: Empty status response body. Retrying..."
+                                )
+                            }
+                        } // End response.use
+
+                        // Only delay if the job is still processing or had a transient error
+                        if (isActive) { // Check if loop wasn't cancelled by success/failure
+                            delay(PCAP_POLL_INTERVAL_SECONDS.seconds)
+                        }
+
+                    } catch (e: Exception) {
+                        if (e is CancellationException) {
+                            Log.i("PCAP_POLL", "Polling for $jobId cancelled.")
+                            // Don't update state here, let the cancellation reason dictate
+                            deferredResult.cancel(CancellationException("Polling cancelled", e))
+                            throw e // Re-throw
+                        }
+                        Log.e("PCAP_POLL", "Error during status check for $jobId", e)
+                        // Update state only if job is still active
+                        if (isActive) {
+                            updatePcapState(
+                                PcapProcessingState.Error(
+                                    "Polling error: ${e.message}",
+                                    jobId
+                                )
+                            )
+                            deferredResult.completeExceptionally(e) // Fail deferred
+                        } else {
+                            deferredResult.cancel(CancellationException("Job cancelled during polling error handling"))
+                        }
+                        this@pollLoop.cancel("Polling error") // Stop polling loop
+                        return@pollLoop // Exit launch block
+                    }
+                } // End while loop
+
+                // Handle timeout if loop finished due to maxAttempts
+                if (isActive && attempt >= PCAP_POLL_MAX_ATTEMPTS) {
+                    Log.w("PCAP_POLL", "Polling $jobId timed out ")
+                    val timeoutError = IOException("Processing timed out on server.")
+                    // Update state only if job is still active
+                    if (isActive) {
+                        updatePcapState(
+                            PcapProcessingState.Error(
+                                "Processing timed out.",
+                                jobId
+                            )
+                        )
+                        deferredResult.completeExceptionally(timeoutError)
+                    } else {
+                        deferredResult.cancel(CancellationException("Job cancelled before timeout completion"))
+                    }
+                }
+            } // End polling launch
+
+            // Wait for polling/downloading to complete or fail
+            return@withContext deferredResult.await()
+        }
 
     // --- Download JSON Function (Suspendable, returns String) ---
     private suspend fun downloadJsonResult(url: String): String = withContext(Dispatchers.IO) {
@@ -960,34 +1287,66 @@ open class AutomaticAnalysisViewModel(
 
     // ---  Helper to update PCAP state on Main thread ---
     private suspend fun updatePcapState(newState: PcapProcessingState) {
-        withContext(Dispatchers.Main) {
-            // Store JSON content separately when state is Success
-            val jsonContent =
-                if (newState is PcapProcessingState.Success) newState.jsonContent else _automaticAnalysisUiState.value.pcapJsonContent
-            _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
-                pcapProcessingState = newState,
-                pcapJsonContent = jsonContent // Keep existing JSON unless overwritten by new Success
+        // Update state only if the corresponding job hasn't been cancelled externally
+        // This prevents state updates from completed jobs after cancellation
+        if (pcapConversionJob?.isActive == true || newState is PcapProcessingState.Idle || newState is PcapProcessingState.Error) {
+            withContext(Dispatchers.Main) {
+                // Store JSON content separately when state is Success
+                val jsonContent =
+                    if (newState is PcapProcessingState.Success) newState.jsonContent else _automaticAnalysisUiState.value.pcapJsonContent
+
+                // Only update if the state is actually changing, or if it's an error/success overwrite
+                if (_automaticAnalysisUiState.value.pcapProcessingState != newState || newState is PcapProcessingState.Success || newState is PcapProcessingState.Error) {
+                    _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
+                        pcapProcessingState = newState,
+                        pcapJsonContent = jsonContent // Keep existing JSON unless overwritten by new Success
+                    )
+                    Log.d("PcapStateUpdate", "Updated PCAP state to: $newState")
+                }
+            }
+        } else {
+            Log.d(
+                "PcapStateUpdate",
+                "Skipped PCAP state update to $newState because job is not active."
             )
         }
     }
 
+
     // ---  Helper to cancel ongoing PCAP conversion/polling ---
     private fun cancelPcapConversion(reason: String) {
-        if (pcapPollingJob?.isActive == true) {
+        val wasPolling = pcapPollingJob?.isActive == true
+        val wasConverting = pcapConversionJob?.isActive == true
+
+        if (wasPolling) {
             Log.i("PCAP_CANCEL", "Cancelling PCAP polling: $reason")
-            pcapPollingJob?.cancel(reason)
+            pcapPollingJob?.cancel(CancellationException(reason))
         }
-        if (pcapConversionJob?.isActive == true) {
+        if (wasConverting) {
             Log.i("PCAP_CANCEL", "Cancelling PCAP conversion job: $reason")
-            pcapConversionJob?.cancel(reason)
+            pcapConversionJob?.cancel(CancellationException(reason))
         }
-        pcapPollingJob = null
-        pcapConversionJob = null
+        // Reset jobs only if they were active, avoid resetting if already null
+        if (wasPolling) pcapPollingJob = null
+        if (wasConverting) pcapConversionJob = null
+
+        // Reset state to Idle only if it was actually converting/polling
+        if (wasConverting || wasPolling) {
+            // Use launch on Main thread to ensure UI state update happens correctly
+            viewModelScope.launch(Dispatchers.Main) {
+                if (_automaticAnalysisUiState.value.pcapProcessingState !is PcapProcessingState.Idle) {
+                    _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
+                        pcapProcessingState = PcapProcessingState.Idle
+                    )
+                    Log.d("PCAP_CANCEL", "Reset PCAP state to Idle after cancellation.")
+                }
+            }
+        }
     }
 
+
     override fun onCleared() {
-        pcapConversionJob?.cancel("ViewModel cleared")
-        pcapPollingJob?.cancel("ViewModel cleared")
+        cancelPcapConversion("ViewModel cleared")
         super.onCleared()
     }
 
@@ -1000,7 +1359,16 @@ open class AutomaticAnalysisViewModel(
  * @return the decoded Bitmap
  */
 private fun pathToBitmap(path: String): Bitmap {
-    val bitmap = BitmapFactory.decodeFile(path)
+    // Consider adding error handling here (e.g., if file not found or decode fails)
+    // and maybe return a placeholder Bitmap or throw a specific exception.
+    val options = BitmapFactory.Options().apply {
+        // Example: Add subsampling if images are very large to avoid OOM errors
+        // inSampleSize = 2 // Sample every 2nd pixel
+    }
+    val bitmap = BitmapFactory.decodeFile(path, options)
+    if (bitmap == null) {
+        throw IOException("Failed to decode bitmap from path: $path")
+    }
     return bitmap
 }
 

@@ -216,7 +216,6 @@
     <string name="you_choose_to_continue_without_packet_capture_end_the_analysis_to_proceed">You choose to continue without Packet capture. End the analysis to proceed.</string>
     <string name="please_stop_packet_capture_after_finishing_interacting_with_the_webview">Please stop packet capture after finishing interacting with the WebView.</string>
     <string name="capture_state">Capture State</string>
-    <string name="please_press_open_file_and_select_this_file">Please press Open File and select this file: %1$s</string>
     <string name="open_file">Open File</string>
     <string name="step_2">Step 2</string>
     <string name="filed_copied_as">Filed copied as: %1$s</string>
@@ -354,4 +353,22 @@
    </string>
     <string name="yes_just_like_that">Yes just like that :)</string>
 
+    <!-- New Strings for PCAP Inclusion Screen and Flow -->
+    <string name="pcap_inclusion_screen_title">Include PCAP Data?</string>
+    <string name="proceed_to_pcap_step">Proceed</string> <!-- Changed from just "Proceed" to specify context slightly, adjust as needed -->
+    <string name="include_pcap_question">Do you want to include the network capture (PCAP) file in the analysis?</string>
+    <string name="pcap_not_available">A PCAP network capture file is not available for this session.</string>
+    <string name="pcap_conversion_starts_on_selection">Checking this box will start the PCAP to JSON conversion process.</string>
+    <string name="converting_pcap">Converting PCAP...</string>
+    <string name="analyzing_with_ai">Analyzing with AI...</string>
+    <string name="pcap_error_not_included_hint">PCAP data will not be included in the prompt.</string>
+    <string name="here">here.</string>
+    <string name="prompt_preview_screen_title">Prompt Preview</string>
+    <string name="prompt_not_generated">Prompt preview has not been generated yet.</string>
+    <string name="you_can_check_the_prompt_that_will_be_sent_to_the_model_by_clicking">"You can check the full prompt that will be sent to the model by clicking "</string>
+
+    <string name="please_press_open_file_and_select_this_file"> "Please press 'Open File', navigate to the Downloads folder (or check 'Recent' files), find the PCAPdroid subfolder if it exists, and select the file named %1$s</string>
+
+    <string name="error_invalid_pcap_uri">Error: Invalid PCAP file location.</string>
+    <string name="error_saving_pcap_to_session_no_id">Error: Session ID not found, PCAP file could not be saved.</string>
 </resources>

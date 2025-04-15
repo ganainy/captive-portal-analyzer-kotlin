@@ -1,5 +1,8 @@
 package com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis
 
+// import androidx.compose.material.icons.filled.Close // Removed unused import
+// Import the HidableAnalysisHints composable
+
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
@@ -18,7 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,7 +44,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -53,8 +54,8 @@ import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetBanner
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.ErrorIcon
-import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
+import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.components.CollapsibleAnalysisHints
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.PreviewAutomaticAnalysisViewModel
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.PreviewMainViewModel
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.mockUiStateOutputError
@@ -284,6 +285,12 @@ fun AnalysisInfoHeader(uiState: AutomaticAnalysisUiState) {
                             maxLines = 1, // Show filename concisely
                             overflow = TextOverflow.Ellipsis
                         )
+                    } else if (uiState.isPcapSelected) { // Added case: PCAP was selected but not included (e.g., error)
+                        Text(
+                            text = "- PCAP File: Not included (see error/status)",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontStyle = FontStyle.Italic
+                        )
                     }
                 } else {
                     Text(
@@ -335,68 +342,10 @@ fun AutomaticAnalysisResultContent(outputText: String?) {
     }
 }
 
-// Collapsible and Hidable Hints Section --- Starts Collapsed
-@Composable
-fun CollapsibleAnalysisHints(
-    isVisible: Boolean,
-    isExpanded: Boolean, // Passed in state
-    onToggleExpand: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AnimatedVisibility(visible = isVisible) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // --- Header Row for Hints (Always visible when isVisible=true) ---
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onToggleExpand)
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.analysis_hints_title),
-                    style = MaterialTheme.typography.titleSmall, // Keep small title
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                // Expand/Collapse Icon
-                Icon(
-                    imageVector = if (isExpanded) Icons.Filled.KeyboardArrowDown else Icons.Filled.KeyboardArrowUp, // Note: Icons are reversed now for collapse state
-                    contentDescription = if (isExpanded) stringResource(R.string.collapse_hints) else stringResource(R.string.expand_hints),
-                    modifier = Modifier.size(20.dp) // Smaller icon
-                )
-                Spacer(Modifier.width(8.dp))
-                // Dismiss ('X') Icon
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(24.dp) // Keep dismiss clickable area reasonable
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.dismiss_hints),
-                        modifier = Modifier.size(20.dp) // Smaller dismiss icon
-                    )
-                }
-            } // End Header Row
-
-            // --- Animated Content for Hints ---
-            AnimatedVisibility(visible = isExpanded) {
-                Column(modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)) { // Padding when expanded
-                    HintTextWithIcon(hint = stringResource(R.string.ai_hint_1), textAlign = TextAlign.Start)
-                    Spacer(modifier = Modifier.height(2.dp))
-                    HintTextWithIcon(hint = stringResource(R.string.ai_hint_2), textAlign = TextAlign.Start)
-                    Spacer(modifier = Modifier.height(2.dp))
-                    HintTextWithIcon(hint = stringResource(R.string.hint_network), textAlign = TextAlign.Start)
-                }
-            } // End Animated Content
-        } // End Main Column for Hints
-    } // End AnimatedVisibility for overall visibility
-}
-
-
 
 // --- Previews ---
 
+// Previews remain largely the same for the Output screen
 @Preview(name = "Output - Loading Analysis", showBackground = true)
 @Composable
 fun AutomaticAnalysisOutputScreenPreview_Loading_Light() {
@@ -541,4 +490,3 @@ fun AutomaticAnalysisOutputScreenPreview_Success_Tablet() {
         )
     }
 }
-

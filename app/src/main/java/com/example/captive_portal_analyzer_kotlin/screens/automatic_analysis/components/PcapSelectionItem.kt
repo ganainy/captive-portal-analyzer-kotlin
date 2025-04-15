@@ -37,10 +37,8 @@ fun PcapSelectionItem(
     onRetry: () -> Unit
 ) {
     val pcapState = uiState.pcapProcessingState
-    // Checkbox enabled state:
-    // - Always allow toggling OFF.
-    // - Allow toggling ON only if not currently converting.
-    val checkboxEnabled = !uiState.isPcapConverting || !uiState.isPcapSelected
+    // Checkbox enabled state: Always enabled unless actively uploading/processing/polling/downloading
+    val checkboxEnabled = !uiState.isPcapConverting
 
     Row(
         modifier = Modifier
@@ -60,63 +58,101 @@ fun PcapSelectionItem(
                 style = MaterialTheme.typography.bodyLarge
             )
             // --- Status Display ---
-            AnimatedVisibility(visible = uiState.isPcapSelected || pcapState is PcapProcessingState.Error) { // Show status if selected or if there's an error
+            // Show status if selected OR if there's an error (even if not selected)
+            AnimatedVisibility(visible = uiState.isPcapSelected || pcapState is PcapProcessingState.Error) {
                 when (pcapState) {
                     is PcapProcessingState.Idle -> {
+                        // Show hint if selected and Idle (means conversion ready to start or finished previously and user deselected/reselected)
                         if (uiState.isPcapSelected) {
-                            Text("Ready to include", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                stringResource(R.string.pcap_conversion_starts_on_selection),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
                         }
                         // If not selected & Idle, show nothing extra here
                     }
+
                     is PcapProcessingState.Uploading -> {
                         Column { // Progress bar and text
-                            LinearProgressIndicator(modifier = Modifier
-                                .fillMaxWidth(0.6f)
-                                .padding(top = 4.dp))
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.6f)
+                                    .padding(top = 4.dp)
+                            )
                             Text("Uploading...", style = MaterialTheme.typography.bodySmall)
                         }
                     }
-                    is PcapProcessingState.Processing -> Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+
+                    is PcapProcessingState.Processing -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
                         CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(6.dp))
                         Text("Processing on server...", style = MaterialTheme.typography.bodySmall)
                     }
-                    is PcapProcessingState.Polling -> Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+
+                    is PcapProcessingState.Polling -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
                         CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(6.dp))
-                        Text("Checking status (Attempt ${pcapState.attempt})...", style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            "Checking status (Attempt ${pcapState.attempt})...",
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
-                    is PcapProcessingState.DownloadingJson -> Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+
+                    is PcapProcessingState.DownloadingJson -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
                         CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(6.dp))
                         Text("Downloading result...", style = MaterialTheme.typography.bodySmall)
                     }
+
                     is PcapProcessingState.Success -> Text(
                         "Conversion successful, ready",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    is PcapProcessingState.Error -> Text(
-                        "Error: ${pcapState.message.take(60)}${if (pcapState.message.length > 60) "..." else ""}", // Show truncated error
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
+
+                    is PcapProcessingState.Error -> Column { // Use Column for error + explanation
+                        Text(
+                            "Error: ${pcapState.message.take(60)}${if (pcapState.message.length > 60) "..." else ""}", // Show truncated error
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        // Add explanation text below the error
+                        Text(
+                            stringResource(R.string.pcap_error_not_included_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
-            // Show hint if PCAP is not selected and not in error state
+            // Show hint ONLY if PCAP is NOT selected and NOT in error state
             if (!uiState.isPcapSelected && pcapState !is PcapProcessingState.Error) {
-                Text(stringResource(R.string.app_will_convert_the_pcap_file_to_json_format_and_include_it_in_the_ai_prompt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                Text(
+                    stringResource(R.string.app_will_convert_the_pcap_file_to_json_format_and_include_it_in_the_ai_prompt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
             }
             // --- End Status Display ---
         }
 
         // --- Retry Button for Error State ---
-        // Show retry button only if there is an error
-        AnimatedVisibility(visible = pcapState is PcapProcessingState.Error) {
-            IconButton(onClick = onRetry, enabled = !uiState.isPcapConverting) { // Disable retry if a new conversion started
+        // Show retry button only if there is an error AND it's not currently trying again
+        AnimatedVisibility(visible = pcapState is PcapProcessingState.Error && !uiState.isPcapConverting) {
+            IconButton(onClick = onRetry, enabled = true) { // Enable button when visible
                 Icon(
                     Icons.Filled.Refresh,
-                    contentDescription = stringResource(R.string.retry_pcap_conversion), // Add string resource
+                    contentDescription = stringResource(R.string.retry_pcap_conversion),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -209,7 +245,10 @@ fun PcapSelectionItemPreview_Downloading() {
         val mockUiState = AutomaticAnalysisUiState(
             isPcapIncludable = true,
             isPcapSelected = true,
-            pcapProcessingState = PcapProcessingState.DownloadingJson("job-id-789", "http://example.com/result.json")
+            pcapProcessingState = PcapProcessingState.DownloadingJson(
+                "job-id-789",
+                "http://example.com/result.json"
+            )
         )
         Column(Modifier.padding(8.dp)) {
             PcapSelectionItem(uiState = mockUiState, onToggle = {}, onRetry = {})
@@ -224,7 +263,10 @@ fun PcapSelectionItemPreview_Success() {
         val mockUiState = AutomaticAnalysisUiState(
             isPcapIncludable = true,
             isPcapSelected = true,
-            pcapProcessingState = PcapProcessingState.Success("job-id-abc", "[{...}]") // JSON content doesn't matter for preview appearance
+            pcapProcessingState = PcapProcessingState.Success(
+                "job-id-abc",
+                "[{...}]"
+            ) // JSON content doesn't matter for preview appearance
         )
         Column(Modifier.padding(8.dp)) {
             PcapSelectionItem(uiState = mockUiState, onToggle = {}, onRetry = {})
@@ -239,7 +281,10 @@ fun PcapSelectionItemPreview_ErrorSelected() {
         val mockUiState = AutomaticAnalysisUiState(
             isPcapIncludable = true,
             isPcapSelected = true, // Selected when error occurred
-            pcapProcessingState = PcapProcessingState.Error("Conversion timed out after 30 attempts. Please check server status.", "job-err-1")
+            pcapProcessingState = PcapProcessingState.Error(
+                "Conversion timed out after 30 attempts. Please check server status.",
+                "job-err-1"
+            )
         )
         Column(Modifier.padding(8.dp)) {
             PcapSelectionItem(uiState = mockUiState, onToggle = {}, onRetry = {})
@@ -254,7 +299,10 @@ fun PcapSelectionItemPreview_ErrorNotSelected() {
         val mockUiState = AutomaticAnalysisUiState(
             isPcapIncludable = true,
             isPcapSelected = false, // Not selected, but still showing the error state
-            pcapProcessingState = PcapProcessingState.Error("Server returned 503 Service Unavailable.", "job-err-2")
+            pcapProcessingState = PcapProcessingState.Error(
+                "Server returned 503 Service Unavailable.",
+                "job-err-2"
+            )
         )
         Column(Modifier.padding(8.dp)) {
             PcapSelectionItem(uiState = mockUiState, onToggle = {}, onRetry = {})
@@ -265,7 +313,12 @@ fun PcapSelectionItemPreview_ErrorNotSelected() {
 
 // --- Dark Mode Examples ---
 
-@Preview(name = "PCAP Item - Idle Selected (Dark)", showBackground = true, widthDp = 380, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(
+    name = "PCAP Item - Idle Selected (Dark)",
+    showBackground = true,
+    widthDp = 380,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
 @Composable
 fun PcapSelectionItemPreview_IdleSelected_Dark() {
     AppTheme(darkTheme = true) { // Ensure your AppTheme respects darkTheme parameter
@@ -280,7 +333,12 @@ fun PcapSelectionItemPreview_IdleSelected_Dark() {
     }
 }
 
-@Preview(name = "PCAP Item - Error Selected (Dark)", showBackground = true, widthDp = 380, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(
+    name = "PCAP Item - Error Selected (Dark)",
+    showBackground = true,
+    widthDp = 380,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
 @Composable
 fun PcapSelectionItemPreview_ErrorSelected_Dark() {
     AppTheme(darkTheme = true) {
@@ -294,3 +352,4 @@ fun PcapSelectionItemPreview_ErrorSelected_Dark() {
         }
     }
 }
+

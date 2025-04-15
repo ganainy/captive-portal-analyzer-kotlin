@@ -45,6 +45,9 @@ android {
             buildConfigBooleanField("DEBUG_SKIP_PCAP_SETUP_SCREEN", false)
             buildConfigBooleanField("DEBUG_ADD_MOCK_SESSION", false)
             buildConfigBooleanField("DEBUG_SET_ANALYSIS_STATE_AS_CAPTIVE_PORTAL_DETECTED", false)
+            //dont forget to copy big_pcap.pcap to the path /data/data/com.example.captive_portal_analyzer_kotlin/files/
+            buildConfigStringField("DEBUG_LARGE_PCAP_FILE_PATH",
+                "/data/data/com.example.captive_portal_analyzer_kotlin/files/big_pcap.pcap")
         }
 
         getByName("release") {
@@ -59,6 +62,9 @@ android {
             buildConfigBooleanField("DEBUG_SKIP_PCAP_SETUP_SCREEN", false)
             buildConfigBooleanField("DEBUG_ADD_MOCK_SESSION", false)
             buildConfigBooleanField("DEBUG_SET_ANALYSIS_STATE_AS_CAPTIVE_PORTAL_DETECTED", false)
+            //dont forget to copy big_pcap.pcap to the path /data/data/com.example.captive_portal_analyzer_kotlin/files/
+            buildConfigStringField("DEBUG_LARGE_PCAP_FILE_PATH",
+                "/data/data/com.example.captive_portal_analyzer_kotlin/files/big_pcap.pcap")
 
             signingConfig = signingConfigs.getByName("debug")
         }
@@ -75,7 +81,9 @@ android {
             buildConfigBooleanField("DEBUG_SKIP_PCAP_SETUP_SCREEN", true)
             buildConfigBooleanField("DEBUG_ADD_MOCK_SESSION", true)
             buildConfigBooleanField("DEBUG_SET_ANALYSIS_STATE_AS_CAPTIVE_PORTAL_DETECTED", true)
-
+            //dont forget to copy big_pcap.pcap to the path /data/data/com.example.captive_portal_analyzer_kotlin/files/
+            buildConfigStringField("DEBUG_LARGE_PCAP_FILE_PATH",
+                "/data/data/com.example.captive_portal_analyzer_kotlin/files/big_pcap.pcap")
         }
     }
 

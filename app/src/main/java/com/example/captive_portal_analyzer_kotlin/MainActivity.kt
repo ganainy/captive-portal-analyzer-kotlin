@@ -25,8 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
-import androidx.documentfile.provider.DocumentFile
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.rememberNavController
 import com.example.captive_portal_analyzer_kotlin.datastore.settingsDataStore
 import com.example.captive_portal_analyzer_kotlin.navigation.AppNavGraph
@@ -36,12 +35,6 @@ import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 import com.google.firebase.FirebaseApp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -99,7 +92,16 @@ class MainActivity : ComponentActivity() {
             val connectivityObserver = NetworkConnectivityObserver(this)
 
             // Main ViewModel for communicating between composable screens and the main activity if needed
-         mainViewModel = MainViewModel(connectivityObserver, settingsDataStore)
+            mainViewModel = ViewModelProvider(
+                this, // Activity is the ViewModelStoreOwner
+                MainViewModelFactory(
+                    application,
+                    sessionManager,
+                    connectivityObserver,
+                    settingsDataStore
+                )
+            )[MainViewModel::class.java]
+
 
             // Update app locale whenever language changes
             val currentLocale by mainViewModel.currentLocale.collectAsState()
@@ -248,31 +250,21 @@ class MainActivity : ComponentActivity() {
         openPcapFileLauncher =
             registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
                 if (uri != null) {
-                    //user selected from file picker the right .pcap file
+                    // User selected a file. Pass the URI and context to the ViewModel
+                    // to handle validation, copying, and state updates.
                     Log.i(TAG, "User selected file URI: $uri")
-
-                    if (DocumentFile.fromSingleUri(this, uri)?.name == "captive_portal_analyzer.pcap") {
-                        // Launch a coroutine to handle the suspend function
-                    lifecycleScope.launch {
-                        val copiedUri = processSelectedPcapFile(uri)
-                        if (copiedUri != null) {
-                            // the .pcap file from PCAPdroid is copied to our app storage
-                            mainViewModel.setCopiedPcapFileUri(copiedUri) // Treat as done with file ready state
-                            mainViewModel.updateCaptureState(MainViewModel.CaptureState.FILE_READY)
-                            Log.i(TAG, "File successfully copied to: $copiedUri")
-                            // Handle the copied URI as needed
-                        } else {
-                            Log.w(TAG, "File copy operation failed")
-                        }
-                    }
-                    }else{
-                        // user picked a wrong file from the explorer
-                        mainViewModel.updateCaptureState(MainViewModel.CaptureState.WRONG_FILE_PICKED)
-                    }
+                    mainViewModel.handleSelectedPcapFile(
+                        sourceUri = uri,
+                        context = applicationContext, // Pass application context
+                    )
                 } else {
+                    // User cancelled the file picker
                     Log.w(TAG, "User cancelled file selection.")
                     showToast("File selection cancelled.")
-                    mainViewModel.fileProcessingDone() // Treat cancellation as done with file ready state
+                    // todo: Optionally update the state if cancellation needs specific handling
+                    // For example, if we were in WRONG_FILE_PICKED state, maybe reset it?
+                    // Or just let the state remain as it was before opening the picker.
+                    // mainViewModel.updateCaptureState(MainViewModel.CaptureState.FILE_READY) // Or whatever state makes sense on cancel
                 }
             }
     }
@@ -306,78 +298,6 @@ class MainActivity : ComponentActivity() {
             Log.e(TAG, "Error launching file picker.", e)
             showToast("Error opening file picker.")
             mainViewModel.fileProcessingDone() // Cannot proceed
-        }
-    }
-
-    // --- Process the URI obtained from SAF ---
-    private suspend fun processSelectedPcapFile(sourceFileUri: Uri): Uri? {
-        // Get source filename for display/logging
-        val sourceFileName =
-            DocumentFile.fromSingleUri(this, sourceFileUri)?.name ?: "unknown_capture.pcap"
-        //showToast("Copying '$sourceFileName' to app storage...")
-
-        return withContext(Dispatchers.IO) {
-            var destinationFile: File? = null
-            var bytesCopied: Long = 0
-            try {
-                // 1. Define Destination in App's External Storage
-                val appStorageDir =
-                    getExternalFilesDir(null) // -> Android/data/your.package.name/files/
-                if (appStorageDir == null) {
-                    throw IOException("Cannot access app external storage directory.")
-                }
-                // Ensure the directory exists (usually does, but good practice)
-                if (!appStorageDir.exists()) {
-                    appStorageDir.mkdirs()
-                }
-                destinationFile = File(
-                    appStorageDir,
-                    "copied_${sourceFileName}"
-                ) // Add prefix or use original name
-
-                Log.d(TAG, "Source URI: $sourceFileUri")
-                Log.d(TAG, "Destination File: ${destinationFile.absolutePath}")
-
-                // 2. Open Streams using 'use' for automatic closing
-                contentResolver.openInputStream(sourceFileUri)?.use { inputStream ->
-                    FileOutputStream(destinationFile).use { outputStream ->
-                        // 3. Copy Data
-                        bytesCopied =
-                            inputStream.copyTo(outputStream) // Efficient Kotlin copy function
-                    }
-                } ?: run {
-                    // Handle case where InputStream couldn't be opened
-                    throw IOException("Could not open InputStream for source URI.")
-                }
-
-                // 4. Success: Report and maybe process the copied file
-                Log.i(
-                    TAG,
-                    "Successfully copied $bytesCopied bytes to ${destinationFile.absolutePath}"
-                )
-                withContext(Dispatchers.Main) {
-                    //showToast("Copied '$sourceFileName' (${bytesCopied / 1024} KB) to app storage.")
-                    // Now you can work with 'destinationFile' within your app's storage
-                    // Example: processCopiedFileInternally(destinationFile)
-                }
-
-                // Return the URI of the copied file
-                Uri.fromFile(destinationFile)
-
-            } catch (e: Exception) {
-                Log.e(
-                    TAG,
-                    "Error copying file URI: $sourceFileUri to ${destinationFile?.absolutePath}",
-                    e
-                )
-                withContext(Dispatchers.Main) { showToast("Error copying file: ${e.message}") }
-                // Clean up partially copied file if it exists on error
-                destinationFile?.delete()
-                null // Return null on failure
-            } finally {
-                // Optionally update ViewModel state if needed after copy attempt
-                // viewModel.fileProcessingDone() // Or similar signal
-            }
         }
     }
 

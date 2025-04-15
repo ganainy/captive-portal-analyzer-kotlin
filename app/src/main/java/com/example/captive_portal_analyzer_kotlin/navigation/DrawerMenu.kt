@@ -119,7 +119,9 @@ fun AppScaffold(
                     setOf(
                         Screen.Analysis.route,
                         AutomaticAnalysisInputRoute,
-                        AutomaticAnalysisOutputRoute
+                        AutomaticAnalysisOutputRoute,
+                        PcapInclusionRoute,
+                        AutomaticAnalysisPromptPreviewRoute,
                     )
                 }
 

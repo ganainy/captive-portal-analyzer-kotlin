@@ -54,4 +54,8 @@ class PreviewAutomaticAnalysisViewModel(
     override fun retryPcapConversion() {
         /* No-op */
     }
+
+    override fun generatePromptForPreview() {
+        /* No-op */
+    }
 }
