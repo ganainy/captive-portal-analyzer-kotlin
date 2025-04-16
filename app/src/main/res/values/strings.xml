@@ -382,4 +382,9 @@
      <string name="status_local_only">Status: Local Only</string>
      <string name="no_sessions_detected_explanation">We couldn\'t find any saved interactions with captive portals generated from the app. Try connecting to a network with a captive portal.</string>
     <string name="checking_network_status">Checking network status</string>
+    <string name="normal_webview_chip_label">Basic WebView (Backup)</string>
+    <string name="custom_webview_chip_label">Custom WebView (Recommended)</string>
+    <string name="testing_webview_chip_label">Testing WebView</string>
+    <string name="error_no_captive_portal_url_found">No captive portal url found</string>
+    <string name="refresh_webview">Refresh WebView</string>
 </resources>

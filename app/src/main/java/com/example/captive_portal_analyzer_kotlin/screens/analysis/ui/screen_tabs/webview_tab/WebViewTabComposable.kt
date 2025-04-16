@@ -5,6 +5,7 @@ import android.content.Context
 import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebView.setWebContentsDebuggingEnabled
 import android.webkit.WebViewClient
@@ -15,10 +16,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -87,9 +95,11 @@ internal fun WebViewTabComposable(
 ) {
 
     var effectiveUiState = uiState
-    //for testing only, force captive portal detected state
+    var effectiveUiData = uiData
+    //for testing only, force captive portal detected state, set captive portal url to google.com
     if (BuildConfig.DEBUG_SET_ANALYSIS_STATE_AS_CAPTIVE_PORTAL_DETECTED) {
         effectiveUiState = AnalysisUiState.CaptiveUrlDetected
+        effectiveUiData = uiData.copy(portalUrl = "https://www.google.com")
     }
 
 
@@ -102,10 +112,10 @@ internal fun WebViewTabComposable(
 
             is AnalysisUiState.CaptiveUrlDetected -> CaptivePortalWebsiteContent(
                 config = WebViewContentConfig(
-                    webViewType = uiData.webViewType,
-                    portalUrl = uiData.portalUrl,
-                    showedHint = uiData.showedHint,
-                    contentPadding = PaddingValues(0.dp),
+                    webViewType = effectiveUiData.webViewType,
+                    portalUrl = effectiveUiData.portalUrl,
+                    showedHint = effectiveUiData.showedHint,
+                    contentPadding = PaddingValues(0.dp), // Padding applied inside now
                     captureState = captureState,
                     statusMessage = statusMessage,
                     targetPcapName = targetPcapName
@@ -117,10 +127,8 @@ internal fun WebViewTabComposable(
             )
 
             is AnalysisUiState.Error -> AnalysisError(
-                contentPadding = PaddingValues(0.dp),
                 uiState = effectiveUiState,
                 onRetry = getCaptivePortalAddress,
-                analysisCallbacks = analysisCallbacks,
                 onNavigateToManualConnect = onNavigateToManualConnect
             )
 
@@ -152,18 +160,53 @@ internal fun CaptivePortalWebsiteContent(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val webView = remember { WebView(context) }
+    // Remember the WebView instance
+    val webView = remember {
+        // Avoid creating WebView in preview
+        if (context is androidx.activity.ComponentActivity) {
+            WebView(context).apply {
+                // Apply common settings once here if desired
+                settings.apply {
+                    @SuppressLint("SetJavaScriptEnabled") // Keep if needed
+                    javaScriptEnabled = true
+                    loadWithOverviewMode = true
+                    useWideViewPort = true // Often useful with loadWithOverviewMode
+                    domStorageEnabled = true
+                    loadsImagesAutomatically = true
+                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                }
+                setWebContentsDebuggingEnabled(true) // Enable debugging
+            }
+        } else {
+            // Return a dummy or null for preview environments if strict checks are needed
+            null // Or handle appropriately for previews
+        }
+    }
 
-    DisposableEffect(webView) { onDispose { webView.destroy() } }
+    // Use DisposableEffect for cleanup
+    DisposableEffect(webView) {
+        onDispose {
+            webView?.destroy()
+        }
+    }
 
-    WebViewInteractionContent(
-        config = config,
-        webView = webView,
-        coroutineScope = coroutineScope,
-        analysisCallbacks = analysisCallbacks,
-        webViewActions = webViewActions,
-        setSelectTabIndex = setSelectTabIndex
-    )
+    // Pass the remembered webView instance
+    if (webView != null) {
+        WebViewInteractionContent(
+            config = config,
+            webView = webView,
+            coroutineScope = coroutineScope,
+            analysisCallbacks = analysisCallbacks,
+            webViewActions = webViewActions,
+            setSelectTabIndex = setSelectTabIndex
+        )
+    } else if (LocalInspectionMode.current) {
+        // Show placeholder in Preview if webview couldn't be created
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+            Text("WebView Preview Placeholder")
+        }
+    }
+    // Handle cases where webview is null in a real environment if necessary
 }
 
 @Composable
@@ -177,15 +220,80 @@ private fun WebViewInteractionContent(
 ) {
     val effectiveWebViewType =
         if (BuildConfig.DEBUG_USE_TESTING_WEBVIEW) WebViewType.TestingWebView else config.webViewType
+    val isPreview = LocalInspectionMode.current // Check if in preview mode
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    // State to hold the current URL displayed in the address bar
+    var currentUrl by remember { mutableStateOf(config.portalUrl ?: "about:blank") }
 
+    // Callback to update the URL state when the page finishes loading
+    val onUrlChanged: (String) -> Unit = { newUrl ->
+        currentUrl = newUrl
+    }
 
-        Box(
+    Column(modifier = Modifier.fillMaxSize().padding(config.contentPadding)) { // Apply padding here
+
+        // --- Address Bar ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp) // Padding for the address bar
+                .clip(RoundedCornerShape(8.dp)) // Slightly rounded corners for the bar
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                .height(48.dp) // Fixed height for the address bar
+                .padding(horizontal = 4.dp), // Inner padding
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // --- WebView Type Chip ---
+            val webViewLabel = when (effectiveWebViewType) {
+                WebViewType.NormalWebView -> "Basic" // Shorter labels
+                WebViewType.CustomWebView -> "Custom"
+                WebViewType.TestingWebView -> "Testing"
+            }
+            CustomChip(
+                label = webViewLabel,
+                onClick = { /* Chip click action if needed */ },
+                isSelected = true, // Assuming it visually represents the current type
+                modifier = Modifier.padding(end = 4.dp) // Space between chip and URL
+            )
+
+            // --- URL Display ---
+            Text(
+                text = currentUrl,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .weight(1f) // Takes available space
+                    .padding(horizontal = 8.dp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            // --- Refresh Icon Button ---
+            IconButton(
+                onClick = {
+                    // Only reload if not in preview and webview exists
+                    if (!isPreview) {
+                        webView.reload()
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = stringResource(R.string.refresh_webview),
+                    tint = MaterialTheme.colorScheme.primary // Or onSurfaceVariant
+                )
+            }
+        } // End of Address Bar Row
+
+        Spacer(modifier = Modifier.height(8.dp)) // Space between address bar and webview
+
+        // --- WebView Container ---
+        Box( // This Box wraps ONLY the WebView
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(horizontal = 8.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .border(
                     2.dp,
@@ -195,105 +303,62 @@ private fun WebViewInteractionContent(
                 .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
                 .padding(1.dp)
         ) {
-            Text(
-                text = if (effectiveWebViewType == WebViewType.CustomWebView) stringResource(R.string.custom_webview)
-                else stringResource(R.string.normal_webview),
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            // use mock webView in preview function cause the real webView doesnt work
-            if (LocalInspectionMode.current) {
+            // --- WebView Content ---
+            if (isPreview) {
                 MockWebView()
             } else {
-
-                Box() {
-                    when (effectiveWebViewType) {
-                        WebViewType.NormalWebView -> NormalWebView(
-                            portalUrl = config.portalUrl,
-                            webView = webView,
-                            saveWebRequest = { request ->
-                                coroutineScope.launch {
-                                    webViewActions.saveWebResourceRequest(
-                                        request
-                                    )
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(config.contentPadding),
-                            captureAndSaveContent = { wv, content ->
-                                coroutineScope.launch {
-                                    webViewActions.saveWebpageContent(
-                                        wv,
-                                        content,
-                                        analysisCallbacks.showToast
-                                    )
-                                }
-                            },
-                            takeScreenshot = webViewActions::takeScreenshot
-                        )
-
-                        WebViewType.CustomWebView -> CustomWebView(
-                            portalUrl = config.portalUrl,
-                            webView = webView,
-                            saveWebRequest = { request ->
-                                coroutineScope.launch {
-                                    webViewActions.saveWebViewRequest(
-                                        request
-                                    )
-                                }
-                            },
-                            takeScreenshot = webViewActions::takeScreenshot,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(config.contentPadding),
-                            captureAndSaveContent = { wv, content ->
-                                coroutineScope.launch {
-                                    webViewActions.saveWebpageContent(
-                                        wv,
-                                        content,
-                                        analysisCallbacks.showToast
-                                    )
-                                }
-                            },
-                            showedHint = config.showedHint,
-                            updateShowedHint = webViewActions::updateShowedHint
-                        )
-
-                        WebViewType.TestingWebView -> TestingWebView()
-                    }
-
-                    // --- Added CustomChip ---
-                    val webViewLabel = when (effectiveWebViewType) {
-                        WebViewType.NormalWebView -> "Basic WebView (Backup)"
-                        WebViewType.CustomWebView -> "Custom WebView (Recommended)"
-                        WebViewType.TestingWebView -> "Testing WebView "
-                    }
-                    CustomChip(
-                        label = webViewLabel,
-                        onClick = {
+                when (effectiveWebViewType) {
+                    WebViewType.NormalWebView -> NormalWebView(
+                        portalUrl = config.portalUrl,
+                        webView = webView,
+                        saveWebRequest = { request ->
+                            coroutineScope.launch {
+                                webViewActions.saveWebResourceRequest(request)
+                            }
                         },
-                        isSelected = true,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd) // Position the chip at the top-right
-                            .padding(top = 8.dp, end = 8.dp) // Add padding for spacing from edges
+                        modifier = Modifier.fillMaxSize(),
+                        captureAndSaveContent = { wv, content ->
+                            coroutineScope.launch {
+                                webViewActions.saveWebpageContent(wv, content, analysisCallbacks.showToast)
+                            }
+                        },
+                        takeScreenshot = webViewActions::takeScreenshot,
+                        onUrlChanged = onUrlChanged
                     )
+
+                    WebViewType.CustomWebView -> CustomWebView(
+                        portalUrl = config.portalUrl,
+                        webView = webView,
+                        saveWebRequest = { request ->
+                            coroutineScope.launch {
+                                webViewActions.saveWebViewRequest(request)
+                            }
+                        },
+                        takeScreenshot = webViewActions::takeScreenshot,
+                        modifier = Modifier.fillMaxSize(),
+                        captureAndSaveContent = { wv, content ->
+                            coroutineScope.launch {
+                                webViewActions.saveWebpageContent(wv, content, analysisCallbacks.showToast)
+                            }
+                        },
+                        showedHint = config.showedHint,
+                        updateShowedHint = webViewActions::updateShowedHint,
+                        onUrlChanged = onUrlChanged
+                    )
+
+                    WebViewType.TestingWebView -> TestingWebView()
                 }
-
             }
-        }
+            // Removed the old Row with Chip and Refresh Icon from here
+        } // End of WebView Box wrapper
 
+        // --- Bottom Buttons ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-
             GhostButton(
                 modifier = Modifier.weight(1f),
                 onClick = { webViewActions.switchWebViewType(analysisCallbacks.showToast) },
@@ -312,18 +377,20 @@ private fun WebViewInteractionContent(
     }
 }
 
+
 /**
  * Custom WebView with request body interception.
  */
 @Composable
 private fun CustomWebView(
     portalUrl: String?,
-    webView: WebView,
+    webView: WebView, // Receive instance
     saveWebRequest: (WebViewRequest) -> Unit,
     captureAndSaveContent: (WebView, String) -> Unit,
     takeScreenshot: (WebView, String) -> Unit,
     updateShowedHint: (Boolean) -> Unit,
     showedHint: Boolean,
+    onUrlChanged: (String) -> Unit,
     modifier: Modifier
 ) {
     Box(modifier = modifier) {
@@ -333,7 +400,8 @@ private fun CustomWebView(
             saveWebRequest = saveWebRequest,
             modifier = Modifier.fillMaxSize(),
             captureAndSaveContent = captureAndSaveContent,
-            takeScreenshot = takeScreenshot
+            takeScreenshot = takeScreenshot,
+            onUrlChanged = onUrlChanged
         )
 
         HintInfoBox(
@@ -355,6 +423,7 @@ private fun NormalWebView(
     saveWebRequest: (WebResourceRequest?) -> Unit,
     captureAndSaveContent: (WebView, String) -> Unit,
     takeScreenshot: (WebView, String) -> Unit,
+    onUrlChanged: (String) -> Unit,
     modifier: Modifier
 ) {
     Box(modifier = modifier) {
@@ -372,26 +441,28 @@ private fun NormalWebView(
 
                         override fun onPageFinished(view: WebView, url: String) {
                             super.onPageFinished(view, url)
+                            onUrlChanged(url) // Update the URL state
                             takeScreenshot(view, url)
                             captureAndSaveContent(view, url)
                         }
                     }
-
-                    settings.apply {
-                        javaScriptEnabled = true
-                        loadWithOverviewMode = true
-                        domStorageEnabled = true
-                        loadsImagesAutomatically = true
-                    }
-                    setWebContentsDebuggingEnabled(true)
-                    webView
                 }
+                webView
             },
             modifier = Modifier.fillMaxSize(),
             update = { view ->
-                if (portalUrl != null) {
-                    view.loadUrl(portalUrl)
+                val currentLoadedUrl = view.url
+                // Load URL only if it's different from the currently loaded one or if it's the initial load
+                if (portalUrl != null && portalUrl != currentLoadedUrl) {
+                    // Avoid reloading unnecessarily if the update block recomposes but URL is same
+                    if (view.originalUrl != portalUrl) { // Check original URL to prevent loop on redirects sometimes
+                        view.loadUrl(portalUrl)
+                    }
+                } else if (portalUrl == null && currentLoadedUrl != null && currentLoadedUrl != "about:blank") {
+                    // Optional: Load about:blank if portalUrl becomes null and something is loaded
+                    view.loadUrl("about:blank")
                 }
+                // Reload is handled by the refresh button calling webView.reload() externally
             }
         )
     }
@@ -401,14 +472,15 @@ private fun NormalWebView(
 /**
  * WebView with custom client for request interception.
  */
-@SuppressLint("SetJavaScriptEnabled")
+@SuppressLint("SetJavaScriptEnabled") // Keep if needed
 @Composable
 private fun WebViewWithCustomClient(
     portalUrl: String?,
-    webView: WebView,
+    webView: WebView, // Receive instance
     saveWebRequest: (WebViewRequest) -> Unit,
     captureAndSaveContent: (WebView, String) -> Unit,
     takeScreenshot: (WebView, String) -> Unit,
+    onUrlChanged: (String) -> Unit,
     modifier: Modifier
 ) {
     Box(modifier = modifier) {
@@ -418,6 +490,7 @@ private fun WebViewWithCustomClient(
                     webViewClient = object : RequestInspectorWebViewClient(webView) {
                         override fun onPageFinished(view: WebView, url: String) {
                             super.onPageFinished(view, url)
+                            onUrlChanged(url) // Update the URL state
                             takeScreenshot(view, url)
                             captureAndSaveContent(view, url)
                         }
@@ -428,32 +501,34 @@ private fun WebViewWithCustomClient(
                         ): WebResourceResponse? {
                             Log.i(
                                 "RequestInspectorWebView",
-                                "Sending request from WebView: $webViewRequest"
+                                "Intercepting request: ${webViewRequest.url}"
                             )
                             saveWebRequest(webViewRequest)
-                            return null
+                            return null // Let WebView handle the request normally
                         }
                     }
-
-                    settings.apply {
-                        javaScriptEnabled = true
-                        loadWithOverviewMode = true
-                        domStorageEnabled = true
-                        loadsImagesAutomatically = true
-                    }
-                    setWebContentsDebuggingEnabled(true)
-                    webView
                 }
+                webView
             },
             modifier = Modifier.fillMaxSize(),
             update = { view ->
-                if (portalUrl != null) {
-                    view.loadUrl(portalUrl)
+                val currentLoadedUrl = view.url
+                // Load URL only if it's different from the currently loaded one or if it's the initial load
+                if (portalUrl != null && portalUrl != currentLoadedUrl) {
+                    // Avoid reloading unnecessarily if the update block recomposes but URL is same
+                    if (view.originalUrl != portalUrl) { // Check original URL to prevent loop on redirects sometimes
+                        view.loadUrl(portalUrl)
+                    }
+                } else if (portalUrl == null && currentLoadedUrl != null && currentLoadedUrl != "about:blank") {
+                    // Optional: Load about:blank if portalUrl becomes null and something is loaded
+                    view.loadUrl("about:blank")
                 }
+                // Reload is handled by the refresh button calling webView.reload() externally
             }
         )
     }
 }
+
 
 /**
  * Hint info box for user guidance.
@@ -488,62 +563,4 @@ private fun HintInfoBox(
     }
 }
 
-
-
-// --- Previews ---
-
-val mockUiDataDefault : AnalysisUiData =  AnalysisUiData(
-    portalUrl = null,
-    webViewType = WebViewType.CustomWebView,
-    showedHint = false,
-    analysisInternetStatus = AnalysisInternetStatus.INITIAL
-)
-
-val mockAnalysisCallbacks = object : AnalysisCallbacks {
-    override val showToast = { _: String, _: ToastStyle -> }
-    override val navigateToSessionList = {}
-}
-
-
-val mockWebViewActions = object : WebViewActions {
-    override suspend fun saveWebResourceRequest(request: WebResourceRequest?) {}
-    override suspend fun saveWebpageContent(
-        webView: WebView,
-        url: String,
-        showToast: (String, ToastStyle) -> Unit
-    ) {
-    }
-
-    override fun takeScreenshot(webView: WebView, url: String) {}
-    override suspend fun saveWebViewRequest(request: WebViewRequest) {}
-    override fun updateShowedHint(showed: Boolean) {}
-    override fun stopAnalysis() {}
-    override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
-    override fun forceStopAnalysis() {}}
-
-
-
-@Preview(name = "WebView Tab", showBackground = true)
-@Composable
-private fun PreviewWebViewTab() {
-    AppTheme {
-        WebViewTabComposable(
-            uiState = AnalysisUiState.Loading(R.string.checking_network_status),
-            uiData = mockUiDataDefault,
-            captureState = MainViewModel.CaptureState.IDLE,
-            statusMessage = "Idle",
-            targetPcapName = "capture.pcap",
-            analysisCallbacks = mockAnalysisCallbacks,
-            webViewActions = mockWebViewActions,
-            updateSelectedTabIndex = {},
-            getCaptivePortalAddress = {},
-            onNavigateToManualConnect = {},
-            onStartCapture = {},
-            onStatusCheck = {},
-            onNavigateToSetupPCAPDroid = {},
-            updatePcapDroidPacketCaptureStatus = {},
-            isPCAPDroidInstalled = { true }
-        )
-    }
-}
 

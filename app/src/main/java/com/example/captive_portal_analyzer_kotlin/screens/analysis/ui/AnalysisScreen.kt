@@ -360,7 +360,8 @@ fun PreferenceSetupContent(
     onStatusCheck: () -> Unit,
     getCaptivePortalAddress: () -> Unit,
     onNavigateToSetupPCAPDroid: () -> Unit,
-    updatePcapDroidPacketCaptureStatus: (PcapDroidPacketCaptureStatus) -> Unit
+    updatePcapDroidPacketCaptureStatus: (PcapDroidPacketCaptureStatus) -> Unit,
+    modifier: Modifier = Modifier
 ) {
 
     OnStartEffect {
@@ -370,9 +371,7 @@ fun PreferenceSetupContent(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // Header Section
@@ -499,7 +498,7 @@ fun PreferenceSetupContent(
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun TestingWebView() {
+fun TestingWebView(modifier: Modifier = Modifier) {
     Box {
         AndroidView(factory = { context ->
             WebView(context).apply {
@@ -524,16 +523,13 @@ fun TestingWebView() {
  */
 @Composable
 internal fun AnalysisError(
-    contentPadding: PaddingValues,
     uiState: AnalysisUiState,
     onRetry: () -> Unit,
-    analysisCallbacks: AnalysisCallbacks,
-    onNavigateToManualConnect: () -> Unit
+    onNavigateToManualConnect: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(contentPadding),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Column(

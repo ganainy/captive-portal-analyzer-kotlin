@@ -119,7 +119,7 @@ fun ClickedWebpageContentParser(formattedHtml: String) {
 
             if (LocalInspectionMode.current) {
                 // Use a mock WebView placeholder for the preview function since WebView cannot be previewed
-                MockWebView()
+                MockWebView(Modifier.fillMaxSize())
             }else {
                 //this is a webview to try to parse the html content of the clicked webpage
                 Box(

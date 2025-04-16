@@ -12,10 +12,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 
 @Composable
-fun MockWebView() {
+fun MockWebView(modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = modifier
             .background(Color.Gray)
     ) {
         Text(
@@ -30,6 +29,6 @@ fun MockWebView() {
 @Preview
 fun MockWebViewPreview() {
     AppTheme {
-        MockWebView()
+        MockWebView(Modifier.fillMaxSize())
     }
 }
