@@ -245,7 +245,7 @@ private fun SessionScreenContent(
 // endregion
 
 // region Session Detail Structure
-@OptIn(ExperimentalFoundationApi::class) // Added for stickyHeader
+@OptIn(ExperimentalFoundationApi::class) // Needed for stickyHeader
 @Composable
 fun SessionDetail(
     sessionUiData: SessionUiData,
@@ -265,157 +265,170 @@ fun SessionDetail(
     val content = sessionUiData.sessionData?.webpageContent ?: emptyList()
     val screenshots = sessionUiData.sessionData?.screenshots ?: emptyList()
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // 1. General Details - This will scroll off screen
-        item {
-            SessionGeneralDetails(sessionUiData.sessionData)
-        }
+    // Main Column for layout distribution
+    Column(modifier = Modifier.fillMaxSize()) {
 
-        // 2. Sticky Header - Contains Tabs and conditional Filters
-        stickyHeader {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shadowElevation = 4.dp // Optional elevation
-            ) {
-                Column {
-                    TabRow(selectedTabIndex = selectedTab) {
-                        Tab(
-                            selected = selectedTab == 0,
-                            onClick = { selectedTab = 0 },
-                            text = { Text("Requests (${requests.size})") }
-                        )
-                        Tab(
-                            selected = selectedTab == 1,
-                            onClick = { selectedTab = 1 },
-                            text = { Text("Content (${content.size})") }
-                        )
-                        Tab(
-                            selected = selectedTab == 2,
-                            onClick = { selectedTab = 2 },
-                            text = { Text("Images (${screenshots.size})") }
-                        )
-                    }
-                    if (selectedTab == 0) {
-                        FiltersHeader(
-                            onToggleShowBottomSheet = onToggleShowBottomSheet,
-                            // Padding adjusted to be within the Surface
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                        Divider()
-                    }
-                }
-            }
-        }
-
-        // 3. Tab Content - Placed directly within LazyColumn's scope
-        when (selectedTab) {
-            0 -> { // Requests Tab
-                if (requests.isEmpty()) {
-                    item { EmptyListUi(R.string.no_requests_found) }
-                } else {
-                    // --- Before Authentication Section ---
-                    val beforeAuthRequests = requests.filter { !it.hasFullInternetAccess }
-                    if (beforeAuthRequests.isNotEmpty()) {
-                        item { ListSectionHeader(stringResource(R.string.before_authentication)) }
-                        itemsIndexed(
-                            items = beforeAuthRequests,
-                            key = { _, item -> "before-${item.customWebViewRequestId}" } // Unique key
-                        ) { index, request ->
-                            RequestListItem(
-                                onRequestItemClick = onRequestItemClick,
-                                request = request
-                            )
-                            if (index < beforeAuthRequests.size - 1) {
-                                Divider() // Use full width divider from LazyColumn
-                            }
-                        }
-                    } else {
-                        item {
-                            ListSectionHeader(stringResource(R.string.before_authentication))
-                            Text(
-                                text = stringResource(R.string.no_requests_found),
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                        }
-                    }
-
-                    // --- After Authentication Section ---
-                    val afterAuthRequests = requests.filter { it.hasFullInternetAccess }
-                    if (afterAuthRequests.isNotEmpty()) {
-                        if (beforeAuthRequests.isNotEmpty()) {
-                            item { Spacer(Modifier.height(16.dp)) } // Space between sections
-                        }
-                        item { ListSectionHeader(stringResource(R.string.after_authentication)) }
-                        itemsIndexed(
-                            items = afterAuthRequests,
-                            key = { _, item -> "after-${item.customWebViewRequestId}" } // Unique key
-                        ) { index, request ->
-                            RequestListItem(
-                                onRequestItemClick = onRequestItemClick,
-                                request = request
-                            )
-                            if (index < afterAuthRequests.size - 1) {
-                                Divider()
-                            }
-                        }
-                    } else {
-                        if (beforeAuthRequests.isNotEmpty()) {
-                            item { Spacer(Modifier.height(16.dp)) }
-                        }
-                        item {
-                            ListSectionHeader(stringResource(R.string.after_authentication))
-                            Text(
-                                text = stringResource(R.string.no_requests_found),
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                        }
-                    }
-                }
+        // Scrollable content area using LazyColumn
+        LazyColumn(
+            modifier = Modifier.weight(1f), // Takes available space, pushing button area down
+            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp), // Keep content padding
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // 1. General Details - This will scroll off screen
+            item {
+                SessionGeneralDetails(sessionUiData.sessionData)
             }
 
-            1 -> { // Content Tab
-                if (content.isEmpty()) {
-                    item { EmptyListUi(R.string.no_webpages_found) }
-                } else {
-                    itemsIndexed(
-                        items = content,
-                        key = { _, item -> item.contentId }
-                    ) { index, item ->
-                        ContentItem(item, onContentItemClick)
-                        if (index < content.size - 1) {
+            // 2. Sticky Header - Contains Tabs and conditional Filters
+            stickyHeader {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shadowElevation = 4.dp // Optional elevation
+                ) {
+                    Column {
+                        TabRow(selectedTabIndex = selectedTab) {
+                            Tab(
+                                selected = selectedTab == 0,
+                                onClick = { selectedTab = 0 },
+                                text = { Text("Requests (${requests.size})") }
+                            )
+                            Tab(
+                                selected = selectedTab == 1,
+                                onClick = { selectedTab = 1 },
+                                text = { Text("Content (${content.size})") }
+                            )
+                            Tab(
+                                selected = selectedTab == 2,
+                                onClick = { selectedTab = 2 },
+                                text = { Text("Images (${screenshots.size})") }
+                            )
+                        }
+                        if (selectedTab == 0) {
+                            FiltersHeader(
+                                onToggleShowBottomSheet = onToggleShowBottomSheet,
+                                // Padding adjusted to be within the Surface
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
                             Divider()
                         }
                     }
                 }
             }
 
-            2 -> { // Screenshots Tab
-                item { // Place the entire ScreenshotsList composable within a single item
-                    ScreenshotsList(
-                        screenshots = screenshots,
-                        toggleScreenshotPrivacyOrToSrelated = switchScreenshotPrivacyOrToSrealted,
-                    )
+            // 3. Tab Content - Placed directly within LazyColumn's scope
+            when (selectedTab) {
+                0 -> { // Requests Tab
+                    if (requests.isEmpty()) {
+                        item { EmptyListUi(R.string.no_requests_found) }
+                    } else {
+                        // --- Before Authentication Section ---
+                        val beforeAuthRequests = requests.filter { !it.hasFullInternetAccess }
+                        if (beforeAuthRequests.isNotEmpty()) {
+                            item { ListSectionHeader(stringResource(R.string.before_authentication)) }
+                            itemsIndexed(
+                                items = beforeAuthRequests,
+                                key = { _, item -> "before-${item.customWebViewRequestId}" } // Unique key
+                            ) { index, request ->
+                                RequestListItem(
+                                    onRequestItemClick = onRequestItemClick,
+                                    request = request
+                                )
+                                if (index < beforeAuthRequests.size - 1) {
+                                    Divider() // Use full width divider from LazyColumn
+                                }
+                            }
+                        } else {
+                            item {
+                                ListSectionHeader(stringResource(R.string.before_authentication))
+                                Text(
+                                    text = stringResource(R.string.no_requests_found),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp) // Added padding
+                                )
+                            }
+                        }
+
+                        // --- After Authentication Section ---
+                        val afterAuthRequests = requests.filter { it.hasFullInternetAccess }
+                        if (afterAuthRequests.isNotEmpty()) {
+                            if (beforeAuthRequests.isNotEmpty()) {
+                                item { Spacer(Modifier.height(16.dp)) } // Space between sections
+                            }
+                            item { ListSectionHeader(stringResource(R.string.after_authentication)) }
+                            itemsIndexed(
+                                items = afterAuthRequests,
+                                key = { _, item -> "after-${item.customWebViewRequestId}" } // Unique key
+                            ) { index, request ->
+                                RequestListItem(
+                                    onRequestItemClick = onRequestItemClick,
+                                    request = request
+                                )
+                                if (index < afterAuthRequests.size - 1) {
+                                    Divider()
+                                }
+                            }
+                        } else {
+                            if (beforeAuthRequests.isNotEmpty()) {
+                                item { Spacer(Modifier.height(16.dp)) }
+                            }
+                            item {
+                                ListSectionHeader(stringResource(R.string.after_authentication))
+                                Text(
+                                    text = stringResource(R.string.no_requests_found),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp) // Added padding
+                                )
+                            }
+                        }
+                    }
+                }
+
+                1 -> { // Content Tab
+                    if (content.isEmpty()) {
+                        item { EmptyListUi(R.string.no_webpages_found) }
+                    } else {
+                        itemsIndexed(
+                            items = content,
+                            key = { _, item -> item.contentId }
+                        ) { index, item ->
+                            ContentItem(item, onContentItemClick)
+                            if (index < content.size - 1) {
+                                Divider()
+                            }
+                        }
+                    }
+                }
+
+                2 -> { // Screenshots Tab
+                    item { // Place the entire ScreenshotsList composable within a single item
+                        ScreenshotsList(
+                            screenshots = screenshots,
+                            toggleScreenshotPrivacyOrToSrelated = switchScreenshotPrivacyOrToSrealted,
+                        )
+                    }
                 }
             }
-        }
 
-        // 4. Action Buttons - At the bottom of the scrollable list
-        item {
+        } // End LazyColumn (Scrollable Content)
+
+
+        // --- Fixed Bottom Action Area ---
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             SessionActionButtons(
                 uploadState = uploadState,
                 onUploadClick = uploadSession,
                 onAnalysisClick = navigateToAutomaticAnalysis,
+                // Add padding within the Surface for the buttons
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
         }
-    }
+        // --- End Fixed Bottom Action Area ---
 
-    // Bottom Sheet remains outside the LazyColumn layout flow
+    } // End Main Column
+
+    // Bottom Sheet remains outside the main layout Column
     if (sessionUiData.showFilteringBottomSheet) {
         FilterBottomSheet(
             onDismiss = onToggleShowBottomSheet,
@@ -619,12 +632,21 @@ private fun FiltersHeader(onToggleShowBottomSheet: () -> Unit, modifier: Modifie
 
 @Composable
 private fun ListSectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        // Padding adjusted for context within LazyColumn items
-        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
-    )
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        )
+    }
 }
 
 

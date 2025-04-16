@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.BuildConfig
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
-import com.example.captive_portal_analyzer_kotlin.components.LongPressHintPopup
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
@@ -261,25 +260,13 @@ private fun WelcomeContent(
             modifier = Modifier.padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
         )
 
-        //Hint text
-        HintTextWithIcon(
-            hint = stringResource(R.string.long_press_hint),
-           rowAllignment = Alignment.Center,
-        )
-
         Spacer(modifier = Modifier.height(24.dp))
 
-        // hint on long press of the button
-        LongPressHintPopup(
-            popupHint = { Text(stringResource(R.string.yes_just_like_that)) },
-            anchor = {
-                // Start app button
-                RoundCornerButton(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    onClick = if (skipSetup) navigateToManualConnectScreen else navigateToSetupPCAPDroidScreen,
-                    buttonText = stringResource(R.string.start),
-                )
-            }
+        // Start app button
+        RoundCornerButton(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            onClick = if (skipSetup) navigateToManualConnectScreen else navigateToSetupPCAPDroidScreen,
+            buttonText = stringResource(R.string.start),
         )
 
 

@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -97,7 +98,10 @@ data class AutomaticAnalysisUiState(
     val pcapProcessingState: PcapProcessingState = PcapProcessingState.Idle, // Tracks conversion status
     val pcapJsonContent: String? = null,    // Stores the converted JSON (set on Success)
     // --- End PCAP Related State ---
-    val promptPreview: String? = null // Holds the generated prompt for preview
+
+    // ---  State for Prompt Preview ---
+    val promptPreview: String? = null, // Holds the generated prompt for preview
+    val isGeneratingPreview: Boolean = false, // to show loading indicator while generating preview
 
 ) {
     // Helper property to determine if analysis can start
@@ -121,8 +125,8 @@ data class AutomaticAnalysisUiState(
 }
 
 // --- Constants for PCAP Server ---
-private const val SERVER_UPLOAD_URL = "https://13.61.79.152:3100/upload"
-private const val SERVER_STATUS_URL_BASE = "https://13.61.79.152:3100/status/"
+private const val SERVER_UPLOAD_URL = "http://13.61.79.152:3100/upload"
+private const val SERVER_STATUS_URL_BASE = "http://13.61.79.152:3100/status/"
 private const val PCAP_POLL_INITIAL_DELAY_MS = 3000L
 private const val PCAP_POLL_INTERVAL_SECONDS = 5L
 private const val PCAP_POLL_MAX_ATTEMPTS = 30
@@ -680,126 +684,147 @@ open class AutomaticAnalysisViewModel(
         }
     }
 
+
     /**
      * Generates the full prompt string based on current selections and PCAP state,
      * updating the `promptPreview` state without calling the AI model.
+     * This function launches the generation asynchronously and updates the state upon completion.
      */
     override fun generatePromptForPreview() {
-        val currentState = _automaticAnalysisUiState.value
-        val effectiveModelName = currentState.selectedModelName
-            ?: "gemini-1.5-pro-preview-0409" // Default or last used for context
-
-        if (currentState.sessionData == null) {
+        // --- Quick initial checks on Main thread ---
+        val initialCheckState = _automaticAnalysisUiState.value
+        if (initialCheckState.sessionData == null) {
             Log.e("PromptPreview", "Cannot generate preview: Session data is null.")
+            // Update state directly with error
             _automaticAnalysisUiState.value =
-                currentState.copy(promptPreview = "[Error: Session data not loaded]")
+                initialCheckState.copy(
+                    promptPreview = "[Error: Session data not loaded]",
+                    isGeneratingPreview = false // Ensure loading stops
+                )
+            return
+        }
+        if (initialCheckState.isGeneratingPreview) {
+            Log.d("PromptPreview", "Generation already in progress, ignoring request.")
             return
         }
 
-        // Use IO dispatcher for potentially reading file content (though currently not done here)
+        // --- Minimal State Update on Main thread to start loading ---
+        // Only update the flags we need to change. Using .update ensures atomicity.
+        _automaticAnalysisUiState.update { currentState ->
+            if (currentState.isGeneratingPreview) {
+                currentState // Already generating, don't update again
+            } else {
+                currentState.copy(
+                    isGeneratingPreview = true,
+                    promptPreview = null // Clear previous preview
+                )
+            }
+        }
+        // The function now returns quickly after this state update.
+
+        // --- Launch background coroutine for the heavy work ---
         viewModelScope.launch(Dispatchers.IO) {
-            var pcapJsonForPrompt: String? = null
-            var pcapErrorForPrompt: String? = null
+            // Read the state needed for processing *inside* the background thread
+            val stateForProcessing = _automaticAnalysisUiState.value
+            // Check again for sessionData nullity in case state changed rapidly (unlikely but safe)
+            val currentSessionData = stateForProcessing.sessionData ?: run {
+                Log.e("PromptPreview", "Session data became null during background processing.")
+                withContext(Dispatchers.Main){
+                    _automaticAnalysisUiState.update { it.copy(isGeneratingPreview = false, promptPreview = "[Error: Session data lost]")}
+                }
+                return@launch
+            }
 
-            // --- Determine PCAP content for prompt based on current state ---
-            if (currentState.isPcapSelected && currentState.isPcapIncludable && currentState.pcapFilePath != null) {
-                when (val pcapState = currentState.pcapProcessingState) {
-                    is PcapProcessingState.Success -> {
-                        pcapJsonForPrompt = pcapState.jsonContent
-                    }
+            var finalPromptResult: String? = null // Initialize as nullable
+            try {
+                // Read necessary properties from stateForProcessing
+                val effectiveModelName = stateForProcessing.selectedModelName ?: "Unknown"
+                val currentPcapState = stateForProcessing.pcapProcessingState
+                val isPcapSelected = stateForProcessing.isPcapSelected
+                val isPcapIncludable = stateForProcessing.isPcapIncludable
+                val pcapFilePath = stateForProcessing.pcapFilePath
+                val currentSelectedRequestIds = stateForProcessing.selectedRequestIds
+                val currentSelectedScreenshotIds = stateForProcessing.selectedScreenshotIds
+                val currentSelectedWebpageContentIds = stateForProcessing.selectedWebpageContentIds
+                val currentInputText = stateForProcessing.inputText
 
-                    is PcapProcessingState.Error -> {
-                        pcapErrorForPrompt =
-                            "PCAP conversion failed: ${pcapState.message.take(100)}"
-                    }
+                var pcapJsonForPrompt: String? = null
+                var pcapErrorForPrompt: String? = null
 
-                    is PcapProcessingState.Idle -> {
-                        pcapErrorForPrompt = "PCAP conversion not initiated or completed."
-                    }
-
-                    else -> { // Uploading, Processing, Polling, DownloadingJson
-                        pcapErrorForPrompt =
-                            "PCAP conversion in progress (will be included if successful)."
+                // --- Determine PCAP content ---
+                if (isPcapSelected && isPcapIncludable && pcapFilePath != null) {
+                    when (currentPcapState) {
+                        is PcapProcessingState.Success -> pcapJsonForPrompt = currentPcapState.jsonContent
+                        is PcapProcessingState.Error -> pcapErrorForPrompt = "PCAP conversion failed: ${currentPcapState.message.take(100)}"
+                        is PcapProcessingState.Idle -> pcapErrorForPrompt = "PCAP conversion not initiated or completed."
+                        else -> pcapErrorForPrompt = "PCAP conversion in progress (will be included if successful)."
                     }
                 }
-            }
-            // --- End PCAP Handling ---
 
-            // Filter data based on selection
-            val selectedRequests = currentState.sessionData.requests?.filter {
-                currentState.selectedRequestIds.contains(it.customWebViewRequestId)
-            } ?: emptyList()
-
-            val selectedScreenshots = currentState.sessionData.screenshots?.filter {
-                it.isPrivacyOrTosRelated && currentState.selectedScreenshotIds.contains(
-                    it.screenshotId
-                )
-            } ?: emptyList()
-
-            val selectedWebpageContent =
-                currentState.sessionData.webpageContent?.filter {
-                    currentState.selectedWebpageContentIds.contains(it.contentId)
+                // --- Filter data ---
+                val selectedRequests = currentSessionData.requests?.filter {
+                    currentSelectedRequestIds.contains(it.customWebViewRequestId)
+                } ?: emptyList()
+                val selectedScreenshots = currentSessionData.screenshots?.filter {
+                    it.isPrivacyOrTosRelated && currentSelectedScreenshotIds.contains(it.screenshotId)
+                } ?: emptyList()
+                val selectedWebpageContent = currentSessionData.webpageContent?.filter {
+                    currentSelectedWebpageContentIds.contains(it.contentId)
                 } ?: emptyList()
 
-            // Build Prompt Dynamically (Mirroring logic in analyzeWithAi)
-            val basePrompt = currentState.inputText
-            var dynamicPromptPart =
-                "\n\n--- Analysis Context ---\nModel Used: '$effectiveModelName'"
+                // --- Build Prompt ---
+                val basePrompt = currentInputText
+                var dynamicPromptPart = "\n\n--- Analysis Context ---\nModel Used: '$effectiveModelName'"
+                // (Append requests, screenshots, content, PCAP info )
+                if (selectedRequests.isNotEmpty()) {
+                    val requestsDTOString = buildRequestsString(selectedRequests)
+                    dynamicPromptPart += "\n\n- Network Requests (${selectedRequests.size} selected, truncated if necessary):\n$requestsDTOString"
+                } else {
+                    dynamicPromptPart += "\n\n- Network Requests: None selected."
+                }
+                if (selectedScreenshots.isNotEmpty()) {
+                    dynamicPromptPart += "\n\n- Relevant Screenshots (${selectedScreenshots.size} selected): Included as images."
+                } else {
+                    dynamicPromptPart += "\n\n- Relevant Screenshots: None selected."
+                }
+                if (selectedWebpageContent.isNotEmpty()) {
+                    dynamicPromptPart += "\n\n- Webpage Content (${selectedWebpageContent.size} selected): Included separately."
+                } else {
+                    dynamicPromptPart += "\n\n- Webpage Content: None selected."
+                }
+                when {
+                    pcapJsonForPrompt != null -> {
+                        val truncatedJson = pcapJsonForPrompt.take(PCAP_JSON_MAX_LENGTH)
+                        dynamicPromptPart += "\n\n- PCAP Network Summary (JSON, truncated if necessary):\n$truncatedJson"
+                        if (truncatedJson.length < pcapJsonForPrompt.length) {
+                            dynamicPromptPart += "\n... (PCAP JSON truncated due to length limit)"
+                        }
+                    }
+                    pcapErrorForPrompt != null -> dynamicPromptPart += "\n\n- PCAP Network Summary: Not included ($pcapErrorForPrompt)"
+                    isPcapSelected -> dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (File unavailable or unexpected state)."
+                    else -> dynamicPromptPart += "\n\n- PCAP Network Summary: Not selected."
+                }
+                dynamicPromptPart += "\n--- End Analysis Context ---"
 
-            // Requests
-            if (selectedRequests.isNotEmpty()) {
-                val requestsDTOString = buildRequestsString(selectedRequests)
-                dynamicPromptPart += "\n\n- Network Requests (${selectedRequests.size} selected, truncated if necessary):\n$requestsDTOString"
-            } else {
-                dynamicPromptPart += "\n\n- Network Requests: None selected."
-            }
+                finalPromptResult = "$basePrompt $dynamicPromptPart"
 
-            // Screenshots
-            if (selectedScreenshots.isNotEmpty()) {
-                dynamicPromptPart += "\n\n- Relevant Screenshots (${selectedScreenshots.size} selected): Included as images."
-            } else {
-                dynamicPromptPart += "\n\n- Relevant Screenshots: None selected."
-            }
-
-            // Webpage Content
-            if (selectedWebpageContent.isNotEmpty()) {
-                dynamicPromptPart += "\n\n- Webpage Content (${selectedWebpageContent.size} selected): Included separately." // Simplified for preview
-            } else {
-                dynamicPromptPart += "\n\n- Webpage Content: None selected."
-            }
-
-            // PCAP JSON or Error
-            when {
-                pcapJsonForPrompt != null -> {
-                    val truncatedJson = pcapJsonForPrompt.take(PCAP_JSON_MAX_LENGTH)
-                    dynamicPromptPart += "\n\n- PCAP Network Summary (JSON, truncated if necessary):\n$truncatedJson"
-                    if (truncatedJson.length < pcapJsonForPrompt.length) {
-                        dynamicPromptPart += "\n... (PCAP JSON truncated due to length limit)"
+            } catch (e: Exception) {
+                Log.e("PromptPreview", "Error generating prompt preview", e)
+                finalPromptResult = "[Error generating prompt preview: ${e.message}]"
+            } finally {
+                // Update the state on the Main thread AFTER the IO work is done or error occurred
+                withContext(Dispatchers.Main) {
+                    // Use update to safely modify the state based on the previous value
+                    _automaticAnalysisUiState.update { latestState ->
+                        latestState.copy(
+                            promptPreview = finalPromptResult,
+                            isGeneratingPreview = false // Stop loading
+                        )
                     }
                 }
-
-                pcapErrorForPrompt != null -> {
-                    dynamicPromptPart += "\n\n- PCAP Network Summary: Not included ($pcapErrorForPrompt)"
-                }
-
-                currentState.isPcapSelected -> { // Selected but no JSON and no specific error message generated above
-                    dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (File unavailable or unexpected state)."
-                }
-
-                else -> { // PCAP was not selected
-                    dynamicPromptPart += "\n\n- PCAP Network Summary: Not selected."
-                }
-            }
-            dynamicPromptPart += "\n--- End Analysis Context ---"
-
-            val finalPrompt = "$basePrompt $dynamicPromptPart"
-            withContext(Dispatchers.Main) {
-                _automaticAnalysisUiState.value =
-                    _automaticAnalysisUiState.value.copy(promptPreview = finalPrompt)
             }
         }
     }
-
 
     /**
      * Loads the session data for the given [clickedSessionId] from the database.
@@ -1359,12 +1384,7 @@ open class AutomaticAnalysisViewModel(
  * @return the decoded Bitmap
  */
 private fun pathToBitmap(path: String): Bitmap {
-    // Consider adding error handling here (e.g., if file not found or decode fails)
-    // and maybe return a placeholder Bitmap or throw a specific exception.
-    val options = BitmapFactory.Options().apply {
-        // Example: Add subsampling if images are very large to avoid OOM errors
-        // inSampleSize = 2 // Sample every 2nd pixel
-    }
+    val options = BitmapFactory.Options()
     val bitmap = BitmapFactory.decodeFile(path, options)
     if (bitmap == null) {
         throw IOException("Failed to decode bitmap from path: $path")

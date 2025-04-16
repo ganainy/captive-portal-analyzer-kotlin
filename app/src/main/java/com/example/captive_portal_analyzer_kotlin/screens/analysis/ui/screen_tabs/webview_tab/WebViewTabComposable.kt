@@ -48,7 +48,6 @@ import com.example.captive_portal_analyzer_kotlin.components.AlertDialogState
 import com.example.captive_portal_analyzer_kotlin.components.CustomChip
 import com.example.captive_portal_analyzer_kotlin.components.GhostButton
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
-import com.example.captive_portal_analyzer_kotlin.components.LongPressHintPopup
 import com.example.captive_portal_analyzer_kotlin.components.MockWebView
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
@@ -290,15 +289,10 @@ private fun WebViewInteractionContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
-            LongPressHintPopup(
-                popupHint = { Text(stringResource(R.string.the_app_has_two_types_of_webview_supported_if_the_custom_webview_recommended_doesnt_load_the_captive_website_properly_use_it_to_switch_to_the_backup_webview)) },
-                anchor = {
-                    GhostButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = { webViewActions.switchWebViewType(analysisCallbacks.showToast) },
-                        buttonText = stringResource(R.string.switch_browser_type)
-                    )
-                }
+            GhostButton(
+                modifier = Modifier.weight(1f),
+                onClick = { webViewActions.switchWebViewType(analysisCallbacks.showToast) },
+                buttonText = stringResource(R.string.switch_browser_type)
             )
 
             RoundCornerButton(

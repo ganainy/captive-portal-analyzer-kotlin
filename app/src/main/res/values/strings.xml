@@ -371,4 +371,6 @@
 
     <string name="error_invalid_pcap_uri">Error: Invalid PCAP file location.</string>
     <string name="error_saving_pcap_to_session_no_id">Error: Session ID not found, PCAP file could not be saved.</string>
+    <string name="prompt_preview_empty_or_error">Prompt preview empty or an error occured</string>
+    <string name="generating_prompt_preview">Generating prompt preview</string>
 </resources>

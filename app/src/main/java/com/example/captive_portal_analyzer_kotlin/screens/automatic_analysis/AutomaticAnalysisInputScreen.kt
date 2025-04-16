@@ -1,3 +1,5 @@
+package com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -24,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -45,11 +48,7 @@ import com.example.captive_portal_analyzer_kotlin.components.AnimatedNoInternetB
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
-import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
-import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
-import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
 import com.example.captive_portal_analyzer_kotlin.navigation.PcapInclusionRoute
-import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.IAutomaticAnalysisViewModel
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.components.DataSelectionCategory
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.PreviewAutomaticAnalysisViewModel
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.preview_related.PreviewMainViewModel
@@ -94,180 +93,167 @@ fun AutomaticAnalysisInputScreen(
             TopAppBar(title = { Text(stringResource(R.string.automatic_analysis_input_screen_title)) })
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
-                    .verticalScroll(rememberScrollState()) // Ensure scrolling works
-            ) {
-                Spacer(Modifier.height(16.dp))
+        // Use a Box to layer the NoInternetBanner over the content + button
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues) // Apply scaffold padding here
+        ) {
+            // Main column for content distribution (scrollable part + fixed button part)
+            Column(modifier = Modifier.fillMaxSize()) {
 
-                // --- Prompt Input ---
-                OutlinedTextField(
+                // --- Scrollable Content Area ---
+                Column(
+                    modifier = Modifier
+                        .weight(1f) // Takes up available space, pushing button area down
+                        .padding(horizontal = 16.dp) // Horizontal padding for content
+                        .verticalScroll(rememberScrollState()) // Make THIS column scrollable
+                ) {
+                    Spacer(Modifier.height(16.dp))
+
+                    // --- Prompt Input ---
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = uiState.inputText,
+                        onValueChange = { viewModel.updatePromptEditText(it) },
+                        label = { Text(stringResource(R.string.custom_prompt)) },
+                        singleLine = false,
+                        maxLines = 4,
+                        enabled = !initialLoading,
+                        trailingIcon = {
+                            if (isPromptClearEnabled) {
+                                IconButton(
+                                    onClick = { viewModel.updatePromptEditText("") },
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = stringResource(R.string.clear_prompt)
+                                    )
+                                }
+                            }
+                        }
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // --- Toggle Data Selection Visibility ---
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !initialLoading && !initialError) { isDataSelectionExpanded = !isDataSelectionExpanded }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = stringResource(R.string.include_data_in_analysis),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Icon(
+                            imageVector = if (isDataSelectionExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (isDataSelectionExpanded) stringResource(R.string.collapse_data_selection) else stringResource(R.string.expand_data_selection)
+                        )
+                    }
+
+                    // --- Collapsible Data Selection Section ---
+                    AnimatedVisibility(
+                        visible = isDataSelectionExpanded && !initialLoading && !initialError,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
+                    ) {
+                        Column {
+                            // Network Requests Category
+                            DataSelectionCategory(
+                                title = stringResource(R.string.network_requests_selected, uiState.selectedRequestIds.size, uiState.totalRequestsCount),
+                                items = uiState.sessionData?.requests ?: emptyList(),
+                                selectedIds = uiState.selectedRequestIds,
+                                idProvider = { it.customWebViewRequestId },
+                                contentDescProvider = {
+                                    val urlPart = it.url?.take(60)?.let { url -> if (it.url.length > 60) "$url..." else url } ?: "N/A"
+                                    "${it.method} $urlPart"
+                                },
+                                onToggle = { viewModel.toggleRequestSelection(it) },
+                                onSetAllSelected = { viewModel.setAllRequestsSelected(it) },
+                                enabled = !initialLoading && uiState.totalRequestsCount > 0
+                            )
+                            // Screenshots Category
+                            DataSelectionCategory(
+                                title = stringResource(R.string.screenshots_selected, uiState.selectedScreenshotIds.size, uiState.totalScreenshotsCount),
+                                items = uiState.sessionData?.screenshots?.filter { it.isPrivacyOrTosRelated } ?: emptyList(),
+                                selectedIds = uiState.selectedScreenshotIds,
+                                idProvider = { it.screenshotId },
+                                contentDescProvider = { "Screenshot: ${it.path.substringAfterLast('/')}" },
+                                onToggle = { viewModel.toggleScreenshotSelection(it) },
+                                onSetAllSelected = { viewModel.setAllScreenshotsSelected(it) },
+                                enabled = !initialLoading && uiState.totalScreenshotsCount > 0
+                            )
+                            // Webpage Content Category
+                            DataSelectionCategory(
+                                title = stringResource(R.string.webpage_content_selected, uiState.selectedWebpageContentIds.size, uiState.totalWebpageContentCount),
+                                items = uiState.sessionData?.webpageContent ?: emptyList(),
+                                selectedIds = uiState.selectedWebpageContentIds,
+                                idProvider = { it.contentId },
+                                contentDescProvider = { "Content: ${it.htmlContentPath.substringAfterLast('/')}" },
+                                onToggle = { viewModel.toggleWebpageContentSelection(it) },
+                                onSetAllSelected = { viewModel.setAllWebpageContentSelected(it) },
+                                enabled = !initialLoading && uiState.totalWebpageContentCount > 0
+                            )
+                        }
+                    } // End AnimatedVisibility for Data Selection
+
+                    Spacer(Modifier.height(16.dp))
+
+                } // --- End Scrollable Content Area ---
+
+
+                // --- Fixed Bottom Action Area ---
+                Surface( // Add a surface for potential background color/elevation
                     modifier = Modifier.fillMaxWidth(),
-                    value = uiState.inputText,
-                    onValueChange = { viewModel.updatePromptEditText(it) },
-                    label = { Text(stringResource(R.string.custom_prompt)) },
-                    singleLine = false,
-                    maxLines = 4,
-                    // Disable if initially loading
-                    enabled = !initialLoading,
-                    // --- Add trailing icon ---
-                    trailingIcon = {
-                        // Show icon only if text is not empty and field is enabled
-                        if (isPromptClearEnabled) {
-                            IconButton(
-                                onClick = { viewModel.updatePromptEditText("") }, // Clear text on click
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Close,
-                                    contentDescription = stringResource(R.string.clear_prompt)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 16.dp), // Padding for the button area
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        when {
+                            initialLoading -> {
+                                LoadingIndicator(message = stringResource(R.string.loading_session_data))
+                            }
+                            initialError -> {
+                                ErrorComponent(
+                                    error = uiState.error ?: stringResource(id = R.string.unknown_error),
+                                    onRetryClick = { viewModel.loadSessionData() }
+                                )
+                            }
+                            else -> {
+                                // Proceed Button
+                                RoundCornerButton(
+                                    onClick = {
+                                        navController.navigate(PcapInclusionRoute)
+                                    },
+                                    buttonText = stringResource(R.string.proceed_to_pcap_step),
+                                    enabled = isProceedButtonEnabled,
+                                    isLoading = false,
+                                    fillWidth = true,
                                 )
                             }
                         }
                     }
-                    // --- End trailing icon ---
-                )
+                } // --- End Fixed Bottom Action Area ---
 
-                Spacer(Modifier.height(16.dp))
+            } // End Main Column for distribution
 
-                // --- Toggle Data Selection Visibility ---
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        // Allow toggling even if converting, unless it's initial load/error
-                        .clickable(enabled = !initialLoading && !initialError) { isDataSelectionExpanded = !isDataSelectionExpanded }
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = stringResource(R.string.include_data_in_analysis),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Icon(
-                        imageVector = if (isDataSelectionExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (isDataSelectionExpanded) stringResource(R.string.collapse_data_selection) else stringResource(R.string.expand_data_selection)
-                    )
-                }
-
-                // --- Collapsible Data Selection Section ---
-                AnimatedVisibility(
-                    visible = isDataSelectionExpanded && !initialLoading && !initialError, // Hide if initial loading/error
-                    enter = expandVertically(),
-                    exit = shrinkVertically()
-                ) {
-                    Column {
-                        // Network Requests Category
-                        DataSelectionCategory(
-                            title = stringResource(
-                                R.string.network_requests_selected,
-                                uiState.selectedRequestIds.size,
-                                uiState.totalRequestsCount
-                            ),
-                            items = uiState.sessionData?.requests ?: emptyList(),
-                            selectedIds = uiState.selectedRequestIds,
-                            idProvider = { request: CustomWebViewRequestEntity -> request.customWebViewRequestId },
-                            contentDescProvider = { request: CustomWebViewRequestEntity ->
-                                val urlPart = request.url?.take(60)?.let { if (request.url.length > 60) "$it..." else it } ?: "N/A"
-                                "${request.method} $urlPart"
-                            },
-                            onToggle = { viewModel.toggleRequestSelection(it) },
-                            onSetAllSelected = { viewModel.setAllRequestsSelected(it) },
-                            // Enable selection if data loaded and selectable
-                            enabled = !initialLoading && uiState.totalRequestsCount > 0
-                        )
-                        // Screenshots Category
-                        DataSelectionCategory(
-                            title = stringResource(
-                                R.string.screenshots_selected,
-                                uiState.selectedScreenshotIds.size,
-                                uiState.totalScreenshotsCount // Total is only privacy/tos related ones
-                            ),
-                            items = uiState.sessionData?.screenshots?.filter { it.isPrivacyOrTosRelated } ?: emptyList(), // Show only PrivacyOrTos relevant ones
-                            selectedIds = uiState.selectedScreenshotIds,
-                            idProvider = { screenshot: ScreenshotEntity -> screenshot.screenshotId },
-                            contentDescProvider = { screenshot: ScreenshotEntity ->
-                                "Screenshot: ${screenshot.path.substringAfterLast('/')}"
-                            },
-                            onToggle = { viewModel.toggleScreenshotSelection(it) },
-                            onSetAllSelected = { viewModel.setAllScreenshotsSelected(it) },
-                            // Enable selection if data loaded and selectable
-                            enabled = !initialLoading && uiState.totalScreenshotsCount > 0
-                        )
-                        // Webpage Content Category
-                        DataSelectionCategory(
-                            title = stringResource(
-                                R.string.webpage_content_selected,
-                                uiState.selectedWebpageContentIds.size,
-                                uiState.totalWebpageContentCount
-                            ),
-                            items = uiState.sessionData?.webpageContent ?: emptyList(),
-                            selectedIds = uiState.selectedWebpageContentIds,
-                            idProvider = { content: WebpageContentEntity -> content.contentId },
-                            contentDescProvider = { content: WebpageContentEntity ->
-                                val path = content.htmlContentPath
-                                "Content: ${path.substringAfterLast('/')}"
-                            },
-                            onToggle = { viewModel.toggleWebpageContentSelection(it) },
-                            onSetAllSelected = { viewModel.setAllWebpageContentSelected(it) },
-                            // Enable selection if data loaded and selectable
-                            enabled = !initialLoading && uiState.totalWebpageContentCount > 0
-                        )
-
-                        // --- REMOVED: PCAP File Selection ---
-
-                    }
-                } // End AnimatedVisibility for Data Selection
-
-                Spacer(Modifier.height(24.dp))
-
-                // --- Action Buttons ---
-                when {
-                    initialLoading -> {
-                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), contentAlignment = Alignment.Center){
-                            LoadingIndicator(message = stringResource(R.string.loading_session_data))
-                        }
-                    }
-                    initialError -> {
-                        ErrorComponent(
-                            error = uiState.error ?: stringResource(id = R.string.unknown_error),
-                            onRetryClick = { viewModel.loadSessionData() } // Retry loading data
-                        )
-                    }
-                    else -> {
-                        // Show Proceed button only when data is loaded successfully
-                        Column (
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ){
-                            // --- Proceed Button ---
-                            RoundCornerButton(
-                                onClick = {
-                                    // Navigate to the new PCAP inclusion screen
-                                    navController.navigate(PcapInclusionRoute)
-                                },
-                                buttonText = stringResource(R.string.proceed_to_pcap_step), // Updated button text
-                                enabled = isProceedButtonEnabled, // Use calculated enabled state
-                                isLoading = false, // This button doesn't trigger the main loading state
-                                fillWidth = true,
-                            )
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(32.dp)) // More bottom padding
-            } // End Main Column
-
-            // --- Internet Banner ---
-            AnimatedNoInternetBanner(isConnected = isConnected)
+            // --- Internet Banner (Aligns to bottom of the Box) ---
+            AnimatedNoInternetBanner(
+                isConnected = isConnected,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         } // End Box
     } // End Scaffold
 }
 
 
-//Previews - Update these, removing PCAP specific states from this screen's preview
+//Previews
 
 @Preview(name = "Input - Loaded State", showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable

@@ -68,7 +68,7 @@ For detailed information about the project files structure and architecture, see
 | **Screenshots related to Privacy policy/ToS<br/> uploaded to back end for analysis** | ![7.png](preview/screenshots/7.png) |
 ---
 
-### 🆕: Integration with [PCAPDroid](https://github.com/emanuele-f/PCAPdroid) (See branch `android-pcap-api`)
+### Integration with [PCAPDroid](https://github.com/emanuele-f/PCAPdroid) (See branch `android-pcap-api`)
 | Feature                                                                                                                 | Screenshot                                     |
 |-------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|
 | **Instructions screen to help user do the one time setup of PCAPDroid**                                                 | ![pcap-setup.gif](preview/gifs/pcap-setup.gif) |
@@ -78,13 +78,20 @@ For detailed information about the project files structure and architecture, see
 ---
 > **Note:** The starting and ending of packet capture is directly handled within the app.
 
-### 🆕: Different Gemini AI models available and Fine grained control over the files selected for the AI analysis
-| Feature                                                                               | Screenshot                            |
-|---------------------------------------------------------------------------------------|---------------------------------------|
-| **Different Gemini models available**                                                 | ![13.png](preview/screenshots/13.png) |
-| **User can select which Requests / Screenshots / HTML / JavaScript files to analyze** | ![14.png](preview/screenshots/14.png) |
-| **User can convert the .pcap capture file to JSON and include it in the analysis**    | ![15.png](preview/screenshots/15.png) |
----
+Here's a clearer and well-formatted version of your Markdown:
+
+### 🆕 New Features: More AI Models & Fine-Grained File Control
+
+You now have access to more Gemini AI models and detailed control over which files are included in the analysis. The `.pcap` file can also be converted to JSON and added to the AI prompt for better results.
+
+| Feature | Screenshot |
+|--------|------------|
+| **Choose between different Gemini models** | ![13.png](preview/screenshots/13.png) |
+| **Manually select which Requests / Screenshots / HTML / JavaScript files to include in analysis** | ![14.png](preview/screenshots/14.png) |
+| **Convert `.pcap` files to JSON using a remote server**  
+[More info here](https://github.com/ganainy/aws-server-for-pcap-to-json-conversion/tree/main) | ![15.png](preview/screenshots/15.png) |
+| **Include the converted `.pcap` JSON in the AI prompt for improved accuracy** | ![16.png](preview/screenshots/16.png) |
+| **Preview the full prompt before sending it to the AI model** | ![17.png](preview/screenshots/17.png) |
 
 ## How to Run the App
 

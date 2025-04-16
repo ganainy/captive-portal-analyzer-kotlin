@@ -1,7 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.navigation
 
 // Import NEW Screens and ViewModel Factory
-import AutomaticAnalysisInputScreen
 import NetworkSessionRepository
 import android.app.Application
 import android.content.Intent
@@ -27,6 +26,7 @@ import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.AnalysisSc
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.AnalysisScreenConfig
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.IntentLaunchConfig
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.NavigationConfig
+import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisInputScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisOutputScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisViewModel
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisViewModelFactory

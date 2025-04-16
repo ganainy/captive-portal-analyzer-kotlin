@@ -54,7 +54,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
-
+//todo make sure target apps step is not needed and remove from setup flow
 @Composable
 fun SetupPCAPDroidScreen(
     navigateToManualConnectScreen: () -> Unit,

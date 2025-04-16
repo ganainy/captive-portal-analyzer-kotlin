@@ -407,4 +407,6 @@
 
    <string name="error_invalid_pcap_uri">Fehler: Ungültiger Speicherort der PCAP-Datei.</string>
   <string name="error_saving_pcap_to_session_no_id">Fehler: Sitzungs-ID nicht gefunden, PCAP-Datei konnte nicht gespeichert werden.</string>
+  <string name="prompt_preview_empty_or_error">Eingabeaufforderungsvorschau ist leer oder ein Fehler ist aufgetreten</string>
+  <string name="generating_prompt_preview">Eingabeaufforderungsvorschau wird generiert</string>
 </resources>

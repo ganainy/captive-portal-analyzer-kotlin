@@ -180,7 +180,6 @@ fun PcapInclusionScreen(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
                             ) {
-                                viewModel.generatePromptForPreview() // Generate the preview content
                                 navController.navigate(AutomaticAnalysisPromptPreviewRoute) // Navigate to the preview screen
                             },
                     )
@@ -188,7 +187,7 @@ fun PcapInclusionScreen(
 
                     // --- End Show Full Prompt Button ---
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(32.dp))
 
                     // --- Analyze Buttons ---
                     // Button for Gemini Pro
