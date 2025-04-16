@@ -2,6 +2,7 @@
 import android.net.Uri
 import android.util.Log
 import androidx.core.net.toUri
+import androidx.room.Transaction
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
@@ -167,7 +168,7 @@ open class NetworkSessionRepository(
      * @param sessionId The ID of the session for which screenshots are to be retrieved.
      * @return A Flow emitting a list of screenshots for the specified session.
      */
-    private fun getSessionScreenshots(sessionId: String): Flow<List<ScreenshotEntity>> =
+    internal fun getSessionScreenshots(sessionId: String): Flow<List<ScreenshotEntity>> =
         screenshotDao.getSessionScreenshotsList(sessionId)
 
     // Webpage Content Operations
@@ -480,6 +481,35 @@ open class NetworkSessionRepository(
         }
     }
 
+
+    /**
+     * Deletes a session and all its related data (requests, screenshots, webpage content)
+     * from the local Room database atomically.
+     *
+     * @param networkId The networkId (used as sessionId) of the session to delete.
+     */
+    @Transaction // Ensures atomicity: all deletions succeed or none do.
+    open suspend fun deleteSessionAndRelatedData(networkId: String) {
+        Log.d("Repository", "Attempting to delete data for session ID: $networkId")
+        // 1. Delete related data first (using networkId as sessionId)
+        val deletedRequests = requestDao.deleteRequestsBySessionId(networkId)
+        Log.d("Repository", "Deleted $deletedRequests requests for session $networkId")
+
+        val deletedScreenshots = screenshotDao.deleteScreenshotsBySessionId(networkId)
+        Log.d("Repository", "Deleted $deletedScreenshots screenshots for session $networkId")
+
+        val deletedWebpages = webpageContentDao.deleteWebpageContentBySessionId(networkId)
+        Log.d("Repository", "Deleted $deletedWebpages webpage contents for session $networkId")
+
+        // 2. Delete the main session entity
+        val deletedSessions = sessionDao.deleteSessionByNetworkId(networkId)
+        Log.d("Repository", "Deleted $deletedSessions session(s) for session $networkId")
+
+        if (deletedSessions == 0) {
+            Log.w("Repository", "Session with ID $networkId was not found in the database during deletion.")
+            // Or throw an exception if this case should be treated as an error
+        }
+    }
 
 }
 

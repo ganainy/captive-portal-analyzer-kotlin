@@ -78,7 +78,7 @@
     <string name="upload_session_for_analysis">Upload Session</string>
     <string name="already_uploaded">Already uploaded</string>
     <string name="network_name">Network: %1$s</string>
-    <string name="created">created %1$s</string>
+    <string name="created">Created %1$s</string>
     <string name="requests">Requests: %1$s</string>
     <string name="webpages">Webpages: %1$s</string>
     <string name="screenshots">Screenshots: %1$s</string>
@@ -373,4 +373,12 @@
     <string name="error_saving_pcap_to_session_no_id">Error: Session ID not found, PCAP file could not be saved.</string>
     <string name="prompt_preview_empty_or_error">Prompt preview empty or an error occured</string>
     <string name="generating_prompt_preview">Generating prompt preview</string>
+
+     <string name="delete_session">Delete Session</string>
+     <string name="delete_session_confirmation_title">Delete Session?</string>
+     <string name="delete_session_confirmation_message">Are you sure you want to delete this session and all its data? This action cannot be undone.</string>
+     <string name="unknown_network">Unknown Network</string>
+     <string name="status_uploaded">Status: Uploaded</string>
+     <string name="status_local_only">Status: Local Only</string>
+     <string name="no_sessions_detected_explanation">We couldn\'t find any saved interactions with captive portals generated from the app. Try connecting to a network with a captive portal.</string>
 </resources>

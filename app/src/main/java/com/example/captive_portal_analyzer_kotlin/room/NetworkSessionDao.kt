@@ -1,5 +1,6 @@
 package com.example.captive_portal_analyzer_kotlin.room
 
+import NetworkSessionRepository
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -106,4 +107,13 @@ interface NetworkSessionDao {
      */
     @Query("SELECT * FROM network_sessions WHERE networkId = :networkId")
     fun getSessionByNetworkId(networkId: String):NetworkSessionEntity?
+
+    /**
+     * Deletes a network session based on its networkId.
+     * @param networkId The unique network ID of the session to delete.
+     * @return The number of rows deleted (should be 0 or 1).
+     */
+    @Query("DELETE FROM network_sessions WHERE networkId = :networkId")
+    suspend fun deleteSessionByNetworkId(networkId: String): Int // Returns number of deleted rows (0 or 1)
+
 }

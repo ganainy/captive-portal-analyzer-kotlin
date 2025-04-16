@@ -132,7 +132,8 @@ fun AppNavGraph(
                 repository = repository,
                 navigateToWelcome = actions.navigateToWelcomeScreen,
                 updateClickedSessionId = mainViewModel::updateClickedSessionId,
-                navigateToSessionScreen = actions.navigateToSessionScreen
+                navigateToSessionScreen = actions.navigateToSessionScreen,
+                mainViewModel = mainViewModel
             )
         }
         composable(route = Screen.Session.route) {

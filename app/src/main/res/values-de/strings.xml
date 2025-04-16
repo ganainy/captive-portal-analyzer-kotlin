@@ -78,7 +78,7 @@
     <string name="upload_session_for_analysis">Sitzung hochladen</string>
     <string name="already_uploaded">Bereits hochgeladen</string>
     <string name="network_name">Netzwerk: %1$s</string>
-    <string name="created">erstellt %1$s</string>
+    <string name="created">Erstellt %1$s</string>
     <string name="requests">Anfragen: %1$s</string>
     <string name="webpages">Webseiten: %1$s</string>
     <string name="screenshots">Screenshots: %1$s</string>
@@ -409,4 +409,13 @@
   <string name="error_saving_pcap_to_session_no_id">Fehler: Sitzungs-ID nicht gefunden, PCAP-Datei konnte nicht gespeichert werden.</string>
   <string name="prompt_preview_empty_or_error">Eingabeaufforderungsvorschau ist leer oder ein Fehler ist aufgetreten</string>
   <string name="generating_prompt_preview">Eingabeaufforderungsvorschau wird generiert</string>
+
+<string name="delete_session">Sitzung löschen</string>
+<string name="delete_session_confirmation_title">Sitzung löschen?</string>
+<string name="delete_session_confirmation_message">Möchten Sie diese Sitzung und alle ihre Daten wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+<string name="unknown_network">Unbekanntes Netzwerk</string>
+<string name="status_uploaded">Status: Hochgeladen</string>
+<string name="status_local_only">Status: Nur lokal</string>
+<string name="no_sessions_detected_explanation">Wir konnten keine gespeicherten Interaktionen mit Captive Portals aus der App finden. Versuchen Sie, sich mit einem Netzwerk mit Captive Portal zu verbinden.</string>
+
 </resources>

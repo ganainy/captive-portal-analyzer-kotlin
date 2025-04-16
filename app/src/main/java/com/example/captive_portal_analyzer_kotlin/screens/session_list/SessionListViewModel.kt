@@ -2,6 +2,7 @@ package com.example.captive_portal_analyzer_kotlin.screens.session_list
 
 import NetworkSessionRepository
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -14,9 +15,11 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEnti
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * Enum to represent the state of the session list.
@@ -104,7 +107,122 @@ class SessionListViewModel(
             }
         }
     }
+
+    /**
+     * Deletes a session and all its related data from the repository.
+     * Expected to be called after user confirmation.
+     * @param networkId The networkId (used as sessionId) of the session to delete.
+     */
+    fun deleteSession(networkId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // First, potentially delete associated files (PCAP, Screenshots, Web Content)
+                // This requires getting the full SessionData or specific file paths first
+                val sessionToDelete = repository.getSessionByNetworkId(networkId)
+                if (sessionToDelete != null) {
+                    deleteAssociatedFiles(sessionToDelete) // Call helper to delete files
+                } else {
+                    Log.w("DeleteSession", "Session $networkId not found for file deletion, proceeding with DB deletion.")
+                }
+
+                // Then, delete from the database using the repository method
+                repository.deleteSessionAndRelatedData(networkId)
+                Log.i("SessionListViewModel", "Delete operation initiated for session ID: $networkId")
+                // The list will automatically update due to the Flow collection in init block
+            } catch (e: Exception) {
+                Log.e("SessionListViewModel", "Error deleting session ID: $networkId", e)
+                // Optionally update UI state to show a deletion error, maybe via a temporary event flow or toast
+                // For now, just logging the error.
+            }
+        }
+    }
+
+    /**
+     * Helper function to delete files associated with a session.
+     * Needs access to Context for file operations.
+     */
+    private fun deleteAssociatedFiles(session: NetworkSessionEntity) {
+        val context = getApplication<Application>().applicationContext
+        Log.d("DeleteSession", "Attempting to delete associated files for session: ${session.networkId}")
+
+        // 1. Delete PCAP file
+        session.pcapFilePath?.let { path ->
+            try {
+                val file = File(path)
+                if (file.exists()) {
+                    if (file.delete()) {
+                        Log.i("DeleteSession", "Deleted PCAP file: $path")
+                    } else {
+                        Log.w("DeleteSession", "Failed to delete PCAP file: $path")
+                    }
+                } else {
+                    Log.w("DeleteSession", "PCAP file not found for deletion: $path")
+                }
+            } catch (e: Exception) {
+                Log.e("DeleteSession", "Error deleting PCAP file: $path", e)
+            }
+        } ?: Log.d("DeleteSession", "No PCAP file path found for session ${session.networkId}")
+
+        // 2. Delete Screenshot files (Requires fetching ScreenshotEntities first)
+        viewModelScope.launch(Dispatchers.IO) { // Launch separate IO scope for DB access
+            try {
+                val screenshots = repository.getSessionScreenshots(session.networkId).first() // Get list for this session
+                screenshots.forEach { screenshot ->
+                    try {
+                        val file = File(screenshot.path)
+                        if (file.exists()) {
+                            if (file.delete()) {
+                                Log.i("DeleteSession", "Deleted screenshot file: ${screenshot.path}")
+                            } else {
+                                Log.w("DeleteSession", "Failed to delete screenshot file: ${screenshot.path}")
+                            }
+                        } else {
+                            Log.w("DeleteSession", "Screenshot file not found for deletion: ${screenshot.path}")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("DeleteSession", "Error deleting screenshot file: ${screenshot.path}", e)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("DeleteSession", "Error fetching screenshots for deletion for session ${session.networkId}", e)
+            }
+
+            // 3. Delete Webpage Content files (Requires fetching WebpageContentEntities first)
+            try {
+                val webContents = repository.getSessionWebpageContent(session.networkId).first()
+                webContents.forEach { content ->
+                    // Delete HTML file
+                    try {
+                        val htmlFile = File(content.htmlContentPath)
+                        if (htmlFile.exists()) {
+                            if (htmlFile.delete()) Log.i("DeleteSession", "Deleted HTML file: ${content.htmlContentPath}")
+                            else Log.w("DeleteSession", "Failed to delete HTML file: ${content.htmlContentPath}")
+                        } else {
+                            Log.w("DeleteSession", "HTML file not found for deletion: ${content.htmlContentPath}")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("DeleteSession", "Error deleting HTML file: ${content.htmlContentPath}", e)
+                    }
+                    // Delete JS file
+                    try {
+                        val jsFile = File(content.jsContentPath)
+                        if (jsFile.exists()) {
+                            if (jsFile.delete()) Log.i("DeleteSession", "Deleted JS file: ${content.jsContentPath}")
+                            else Log.w("DeleteSession", "Failed to delete JS file: ${content.jsContentPath}")
+                        } else {
+                            Log.w("DeleteSession", "JS file not found for deletion: ${content.jsContentPath}")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("DeleteSession", "Error deleting JS file: ${content.jsContentPath}", e)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("DeleteSession", "Error fetching webpage content for deletion for session ${session.networkId}", e)
+            }
+        }
+    }
 }
+
 
 
 /**

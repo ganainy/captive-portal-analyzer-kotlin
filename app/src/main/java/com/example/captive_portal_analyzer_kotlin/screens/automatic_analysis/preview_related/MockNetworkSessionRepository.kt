@@ -94,6 +94,10 @@ fun mockNetworkSessionRepository(): NetworkSessionRepository {
         override fun getSessionByNetworkId(networkId: String): NetworkSessionEntity? {
             return fixedSession // Always return the same fixed session
         }
+
+        override suspend fun deleteSessionByNetworkId(networkId: String): Int {
+            return 1 // Assume deletion is always successful
+        }
     }
 
     // --- Mock CustomWebViewRequestDao (Fixed Data) ---
@@ -127,6 +131,10 @@ fun mockNetworkSessionRepository(): NetworkSessionRepository {
         override suspend fun getSessionRequestsCount(sessionId: String): Int {
             return fixedRequests.size // Return count of the fixed list
         }
+
+        override suspend fun deleteRequestsBySessionId(sessionId: String): Int {
+            return fixedRequests.size // Assume all requests are deleted
+        }
     }
 
     // --- Mock ScreenshotDao (Fixed Data) ---
@@ -148,6 +156,10 @@ fun mockNetworkSessionRepository(): NetworkSessionRepository {
 
         override fun getSessionScreenshotsCount(sessionId: String): Int { // Assuming Int return
             return fixedScreenshots.size // Return count of the fixed list
+        }
+
+        override suspend fun deleteScreenshotsBySessionId(sessionId: String): Int {
+            return fixedScreenshots.size // Assume all screenshots are deleted
         }
     }
 
@@ -180,6 +192,10 @@ fun mockNetworkSessionRepository(): NetworkSessionRepository {
 
         override fun getWebpageContentCountForSession(sessionId: String): Int { // Assuming Int return
             return fixedWebpageContents.size // Return count of the fixed list
+        }
+
+        override suspend fun deleteWebpageContentBySessionId(sessionId: String): Int {
+            return fixedWebpageContents.size // Assume all webpage contents are deleted
         }
     }
 

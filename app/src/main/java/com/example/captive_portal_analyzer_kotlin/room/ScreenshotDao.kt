@@ -1,7 +1,5 @@
 package com.example.captive_portal_analyzer_kotlin.room
 
-import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
-
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -9,6 +7,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -79,4 +78,14 @@ interface ScreenshotDao {
      */
     @Query("SELECT COUNT(*) from screenshots WHERE sessionId = :sessionId")
     fun getSessionScreenshotsCount(sessionId: String): Int
+
+
+    /**
+     * Deletes all screenshots associated with a given session ID.
+     * @param sessionId The ID of the session whose screenshots should be deleted.
+     * @return The number of rows deleted.
+     */
+    @Query("DELETE FROM screenshots WHERE sessionId = :sessionId")
+    suspend fun deleteScreenshotsBySessionId(sessionId: String): Int // Returns number of deleted rows
+
 }

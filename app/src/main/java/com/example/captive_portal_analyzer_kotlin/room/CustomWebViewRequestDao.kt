@@ -85,4 +85,13 @@ interface CustomWebViewRequestDao {
      */
     @Query("SELECT COUNT(*) from custom_webview_request WHERE sessionId = :sessionId")
     suspend fun getSessionRequestsCount(sessionId: String): Int
+
+    /**
+     * Deletes all requests associated with a given session ID.
+     * @param sessionId The ID of the session whose requests should be deleted.
+     * @return The number of rows deleted.
+     */
+    @Query("DELETE FROM custom_webview_request WHERE sessionId = :sessionId")
+    suspend fun deleteRequestsBySessionId(sessionId: String): Int // Returns number of deleted rows
+
 }

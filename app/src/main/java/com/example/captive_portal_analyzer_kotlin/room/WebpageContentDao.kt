@@ -70,4 +70,12 @@ interface WebpageContentDao {
      */
     @Query("SELECT COUNT(*) FROM webpage_content WHERE sessionId = :sessionId")
     abstract fun getWebpageContentCountForSession(sessionId: String): Int
+
+    /**
+     * Deletes all webpage content entries associated with a given session ID.
+     * @param sessionId The ID of the session whose webpage content should be deleted.
+     * @return The number of rows deleted.
+     */
+    @Query("DELETE FROM webpage_content WHERE sessionId = :sessionId")
+    suspend fun deleteWebpageContentBySessionId(sessionId: String): Int // Returns number of deleted rows
 }
