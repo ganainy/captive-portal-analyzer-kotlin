@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.acsbendi.requestinspectorwebview.RequestInspectorWebViewClient
@@ -51,6 +52,8 @@ import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.MockWebView
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
+import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisInternetStatus
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisUiData
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisUiState
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.WebViewType
@@ -60,6 +63,7 @@ import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.Preference
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.TestingWebView
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.WebViewActions
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.WebViewContentConfig
+import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -201,6 +205,7 @@ private fun WebViewInteractionContent(
                 color = MaterialTheme.colorScheme.primary
             )
 
+            // use mock webView in preview function cause the real webView doesnt work
             if (LocalInspectionMode.current) {
                 MockWebView()
             } else {
@@ -482,3 +487,63 @@ private fun HintInfoBox(
         )
     }
 }
+
+
+
+// --- Previews ---
+
+val mockUiDataDefault : AnalysisUiData =  AnalysisUiData(
+    portalUrl = null,
+    webViewType = WebViewType.CustomWebView,
+    showedHint = false,
+    analysisInternetStatus = AnalysisInternetStatus.INITIAL
+)
+
+val mockAnalysisCallbacks = object : AnalysisCallbacks {
+    override val showToast = { _: String, _: ToastStyle -> }
+    override val navigateToSessionList = {}
+}
+
+
+val mockWebViewActions = object : WebViewActions {
+    override suspend fun saveWebResourceRequest(request: WebResourceRequest?) {}
+    override suspend fun saveWebpageContent(
+        webView: WebView,
+        url: String,
+        showToast: (String, ToastStyle) -> Unit
+    ) {
+    }
+
+    override fun takeScreenshot(webView: WebView, url: String) {}
+    override suspend fun saveWebViewRequest(request: WebViewRequest) {}
+    override fun updateShowedHint(showed: Boolean) {}
+    override fun stopAnalysis() {}
+    override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
+    override fun forceStopAnalysis() {}}
+
+
+
+@Preview(name = "WebView Tab", showBackground = true)
+@Composable
+private fun PreviewWebViewTab() {
+    AppTheme {
+        WebViewTabComposable(
+            uiState = AnalysisUiState.Loading(R.string.checking_network_status),
+            uiData = mockUiDataDefault,
+            captureState = MainViewModel.CaptureState.IDLE,
+            statusMessage = "Idle",
+            targetPcapName = "capture.pcap",
+            analysisCallbacks = mockAnalysisCallbacks,
+            webViewActions = mockWebViewActions,
+            updateSelectedTabIndex = {},
+            getCaptivePortalAddress = {},
+            onNavigateToManualConnect = {},
+            onStartCapture = {},
+            onStatusCheck = {},
+            onNavigateToSetupPCAPDroid = {},
+            updatePcapDroidPacketCaptureStatus = {},
+            isPCAPDroidInstalled = { true }
+        )
+    }
+}
+

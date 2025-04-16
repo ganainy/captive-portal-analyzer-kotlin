@@ -220,12 +220,21 @@ private fun PacketCaptureEnabledContent(
     markAnalysisAsComplete: () -> Unit
 ) {
     Column(
-        modifier = Modifier
-            .padding(16.dp)
+        modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 16.dp)
+    ){
+
+        // Nested Column for SCROLLABLE step content
+        Column(
+            modifier = Modifier
+                .weight(1f) // Takes up available vertical space
+                .verticalScroll(rememberScrollState())
+                .padding(top = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+
 
         // Step 1: End Analysis
         if (analysisInternetStatus == AnalysisInternetStatus.FULL_INTERNET_ACCESS) {
@@ -302,8 +311,9 @@ private fun PacketCaptureEnabledContent(
                 )
             }
         }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
-        Spacer(modifier = Modifier.weight(1f))
 
         // Step 4 Content (Finish Button)
         val isFinishButtonEnabled = captureState == MainViewModel.CaptureState.FILE_READY &&
@@ -320,9 +330,6 @@ private fun PacketCaptureEnabledContent(
                 MainViewModel.CaptureState.STOPPING
             )
         )
-
-        Spacer(modifier = Modifier.height(32.dp)) // Optional bottom padding
-
     }
 }
 
@@ -802,7 +809,7 @@ private fun PacketCaptureTabPreview_CaptureCompleted() {
             webViewActions = webViewActions,
             analysisCallbacks = analysisCallbacks,
             copiedPcapFileUri = "copied_capture.pcap".toUri(),
-            targetPcapName = "capture.pcap",
+         targetPcapName = "capture.pcap",
             pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.ENABLED,
             analysisInternetStatus = AnalysisInternetStatus.FULL_INTERNET_ACCESS,
             updateSelectedTabIndex = {},

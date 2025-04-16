@@ -453,18 +453,24 @@ class AnalysisViewModel(
     ) {
         when (_uiData.value.webViewType) {
             WebViewType.CustomWebView -> _uiData.update {
-                it.copy(webViewType = WebViewType.CustomWebView)
-            }
-
-            WebViewType.NormalWebView -> _uiData.update {
                 it.copy(webViewType = WebViewType.NormalWebView)
             }
 
-            WebViewType.TestingWebView -> _uiData.update {
-                it.copy(webViewType = WebViewType.TestingWebView)
+            WebViewType.NormalWebView -> _uiData.update {
+                it.copy(webViewType = WebViewType.CustomWebView)
+            }
+
+            // this is for testing only
+            WebViewType.TestingWebView -> {
+                /*no op*/
             }
         }
-        showToast(context.getString(R.string.switched_detection_method), ToastStyle.SUCCESS)
+        val currentlyUsedWebViewType = when (_uiData.value.webViewType) {
+            WebViewType.NormalWebView -> "Normal WebView"
+            WebViewType.CustomWebView -> "Custom WebView"
+            WebViewType.TestingWebView -> "Testing WebView"
+        }
+        showToast(context.getString(R.string.switched_detection_method, currentlyUsedWebViewType), ToastStyle.SUCCESS)
     }
 
     /**

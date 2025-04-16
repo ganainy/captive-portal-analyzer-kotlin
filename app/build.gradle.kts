@@ -39,7 +39,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", false)
             buildConfigBooleanField("DEBUG_USE_TESTING_WEBVIEW", false)
             buildConfigBooleanField("DEBUG_SKIP_CHECKLIST_SCREEN", false)
             buildConfigBooleanField("DEBUG_SKIP_PCAP_SETUP_SCREEN", false)
@@ -56,7 +55,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", false)
             buildConfigBooleanField("DEBUG_USE_TESTING_WEBVIEW", false)
             buildConfigBooleanField("DEBUG_SKIP_CHECKLIST_SCREEN", false)
             buildConfigBooleanField("DEBUG_SKIP_PCAP_SETUP_SCREEN", false)
@@ -75,8 +73,7 @@ android {
             initWith(buildTypes.getByName("debug"))
 
             // Override or add specific flags
-            buildConfigBooleanField("IS_APP_IN_DEBUG_MODE", true)
-            buildConfigBooleanField("DEBUG_USE_TESTING_WEBVIEW", true)
+            buildConfigBooleanField("DEBUG_USE_TESTING_WEBVIEW", false)
             buildConfigBooleanField("DEBUG_SKIP_CHECKLIST_SCREEN", true)
             buildConfigBooleanField("DEBUG_SKIP_PCAP_SETUP_SCREEN", true)
             buildConfigBooleanField("DEBUG_ADD_MOCK_SESSION", true)

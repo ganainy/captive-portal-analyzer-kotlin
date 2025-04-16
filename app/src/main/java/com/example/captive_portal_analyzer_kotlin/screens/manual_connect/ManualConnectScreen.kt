@@ -309,6 +309,7 @@ fun PermissionRequestScreen(onRequestPermission: () -> Unit) {
         RoundCornerButton(
             onClick = onRequestPermission,
             buttonText = stringResource(R.string.grant_permissions),
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
     }
 }

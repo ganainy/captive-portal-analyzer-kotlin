@@ -61,7 +61,7 @@
     <string name="operation_successful">Operation Successful</string>
     <string name="operation_failed">Operation Failed</string>
     <string name="detected_captive_portal_url">Detected captive portal url!</string>
-    <string name="switched_detection_method">Switched detection method</string>
+    <string name="switched_detection_method">Switched WebView type to %1$s</string>
     <string name="return_original_detection_method">Return to original detection method</string>
     <string name="it_looks_like_you_still_have_no_full_internet_connection_please_complete_the_login_process_of_the_captive_portal_before_stopping_the_analysis">It looks like you have no internet connection which indicates you didn\'t yet finish captive portal register.</string>
     <string name="stop_analysis_anyway">Stop analysis anyway</string>
@@ -381,4 +381,5 @@
      <string name="status_uploaded">Status: Uploaded</string>
      <string name="status_local_only">Status: Local Only</string>
      <string name="no_sessions_detected_explanation">We couldn\'t find any saved interactions with captive portals generated from the app. Try connecting to a network with a captive portal.</string>
+    <string name="checking_network_status">Checking network status</string>
 </resources>

@@ -61,7 +61,7 @@
     <string name="operation_successful">Vorgang erfolgreich</string>
     <string name="operation_failed">Vorgang fehlgeschlagen</string>
     <string name="detected_captive_portal_url">Erkannte Captive Portal-URL!</string>
-    <string name="switched_detection_method">Erkennungsmodus gewechselt</string>
+    <string name="switched_detection_method">WebView-Typ zu %1$s gewechselt</string>
     <string name="return_original_detection_method">Zurück zum ursprünglichen Erkennungsmodus</string>
     <string name="it_looks_like_you_still_have_no_full_internet_connection_please_complete_the_login_process_of_the_captive_portal_before_stopping_the_analysis">Es sieht so aus, als hätten Sie immer noch keine vollständige Internetverbindung. Bitte schließen Sie den Anmeldevorgang des Captive Portals ab, bevor Sie die Analyse stoppen.</string>
     <string name="stop_analysis_anyway">Analyse trotzdem stoppen</string>
@@ -417,5 +417,6 @@
 <string name="status_uploaded">Status: Hochgeladen</string>
 <string name="status_local_only">Status: Nur lokal</string>
 <string name="no_sessions_detected_explanation">Wir konnten keine gespeicherten Interaktionen mit Captive Portals aus der App finden. Versuchen Sie, sich mit einem Netzwerk mit Captive Portal zu verbinden.</string>
+    <string name="checking_network_status">Checking network status</string>
 
 </resources>
