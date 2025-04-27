@@ -373,6 +373,13 @@
     <string name="error_saving_pcap_to_session_no_id">Error: Session ID not found, PCAP file could not be saved.</string>
     <string name="prompt_preview_empty_or_error">Prompt preview empty or an error occured</string>
     <string name="generating_prompt_preview">Generating prompt preview</string>
+    <string name="pcap_status_uploading">Uploading PCAP...</string>
+    <string name="pcap_status_processing_server">Processing on server...</string>
+    <string name="pcap_status_checking_attempt">Checking status (Attempt %1$d)...</string>
+    <string name="pcap_status_downloading">Downloading...</string>
+    <string name="pcap_status_success_ready">PCAP ready</string>
+    <string name="error_prefix">Error: %1$s</string>
+
 
      <string name="delete_session">Delete Session</string>
      <string name="delete_session_confirmation_title">Delete Session?</string>
@@ -387,4 +394,6 @@
     <string name="testing_webview_chip_label">Testing WebView</string>
     <string name="error_no_captive_portal_url_found">No captive portal url found</string>
     <string name="refresh_webview">Refresh WebView</string>
+    <string name="pcap_json_truncated_warning">Note: The included PCAP data summary was truncated due to its size.</string>
+
 </resources>

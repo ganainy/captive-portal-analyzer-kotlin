@@ -350,7 +350,7 @@ fun PcapInclusionScreenPreview_SuccessDark() {
             isPcapIncludable = true,
             pcapFilePath = "/fake/path.pcap",
             isPcapSelected = true,
-            pcapProcessingState = PcapProcessingState.Success("jobabc", "{}")
+            pcapProcessingState = PcapProcessingState.Success("jobabc", "{}",true)
         )
     )
     AppTheme(darkTheme = true) {

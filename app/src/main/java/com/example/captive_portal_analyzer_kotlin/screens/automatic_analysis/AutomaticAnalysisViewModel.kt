@@ -1,6 +1,7 @@
 package com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis
 
 
+// import kotlinx.coroutines.cancel // Removed unused import
 import NetworkSessionRepository
 import android.app.Application
 import android.content.Context
@@ -26,7 +27,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
-// import kotlinx.coroutines.cancel // Removed unused import
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,11 +44,13 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
+import okio.Buffer
 import java.io.File
 import java.io.IOException
+import java.nio.charset.StandardCharsets
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.min
 import kotlin.time.Duration.Companion.seconds
-
 
 data class AutomaticAnalysisUiState(
     val isLoading: Boolean = false, // Tracks overall AI analysis loading
@@ -177,7 +179,7 @@ open class AutomaticAnalysisViewModel(
         .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         // Add logging for debugging network calls
         .addInterceptor(HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = HttpLoggingInterceptor.Level.HEADERS
         })
         .build()
 
@@ -259,18 +261,18 @@ open class AutomaticAnalysisViewModel(
      * Analyzes the selected session data using AI.
      * @param modelName The name of the Gemini model to use (e.g., "gemini-2.0-flash"). Defaults to last used or state's selected model.
      */
+    /**
+     * Analyzes the selected session data using AI.
+     * Includes handling for PCAP conversion status and potential truncation.
+     * @param modelName The name of the Gemini model to use (e.g., "gemini-2.0-flash"). Defaults to last used or state's selected model.
+     */
     override fun analyzeWithAi(modelName: String?) {
         val currentState = _automaticAnalysisUiState.value
-        // Use provided model name, fallback to last used, error if none available
         val effectiveModelName = modelName ?: currentState.selectedModelName
         if (effectiveModelName == null) {
-            Log.e(
-                "AnalyzeAI",
-                "Analysis skipped: No AI model name provided or previously selected."
-            )
-            // Update state with error only if not already loading/converting
+            Log.e("AnalyzeAI", "Analysis skipped: No AI model name provided or previously selected.")
             if (!currentState.isLoading && !currentState.isPcapConverting) {
-                _automaticAnalysisUiState.value = currentState.copy(error = "No AI model selected.")
+                _automaticAnalysisUiState.update { it.copy(error = "No AI model selected.") }
             }
             return
         }
@@ -278,148 +280,118 @@ open class AutomaticAnalysisViewModel(
         if (currentState.sessionData == null) {
             Log.e("AnalyzeAI", "Analysis skipped: Session data is null.")
             if (!currentState.isLoading && !currentState.isPcapConverting) {
-                _automaticAnalysisUiState.value =
-                    currentState.copy(error = context.getString(R.string.error_session_data_not_loaded))
+                _automaticAnalysisUiState.update { it.copy(error = context.getString(R.string.error_session_data_not_loaded)) }
             }
             return
         }
 
-        // Check if PCAP is selected and still converting
+        // Check if PCAP is selected and still converting (more specific check)
         if (currentState.isPcapSelected && currentState.isPcapConverting) {
             Log.w("AnalyzeAI", "Analysis start delayed: PCAP conversion is still in progress.")
-            // Potentially show a message to the user, or just let the button remain disabled
-            // For now, we assume the UI prevents clicking 'Analyze' in this state via `canStartAnalysis`
+            // UI should prevent this via canStartAnalysis, but log defensively.
             return
         }
 
         // Prevent starting AI analysis if already loading
         if (currentState.isLoading) {
-            Log.w(
-                "AnalyzeAI",
-                "Analysis skipped: AI analysis is already in progress (isLoading=true)."
-            )
+            Log.w("AnalyzeAI", "Analysis skipped: AI analysis is already in progress (isLoading=true).")
             return
         }
 
-
-        _automaticAnalysisUiState.value = currentState.copy(
-            isLoading = true, // Set main loading flag for AI call
-            error = null,
-            outputText = null, // Clear previous output
-            selectedModelName = effectiveModelName // Store the model being used
-        )
+        _automaticAnalysisUiState.update {
+            it.copy(
+                isLoading = true, // Set main loading flag for AI call
+                error = null,
+                outputText = null, // Clear previous output
+                selectedModelName = effectiveModelName // Store the model being used
+            )
+        }
 
         viewModelScope.launch(Dispatchers.IO) {
+            var pcapErrorForPrompt: String? = null // Tracks errors specifically for the prompt message
+
             try {
-                var pcapJsonForPrompt: String? = null
-                var pcapErrorForPrompt: String? = null
+                // --- Handle PCAP Data Acquisition ---
+                // Re-read state *inside* the coroutine for latest status
+                val stateForAnalysis = _automaticAnalysisUiState.value
+                var pcapStateForAnalysis = stateForAnalysis.pcapProcessingState
 
-                // --- Handle PCAP Data Acquisition (Check status, maybe start conversion if needed and not already done/failed) ---
-                if (currentState.isPcapSelected && currentState.isPcapIncludable && currentState.pcapFilePath != null) {
-                    // Check the *current* state of PCAP processing just before analysis
-                    val pcapState =
-                        _automaticAnalysisUiState.value.pcapProcessingState // Re-read state
-
-                    when (pcapState) {
+                if (stateForAnalysis.isPcapSelected && stateForAnalysis.isPcapIncludable && stateForAnalysis.pcapFilePath != null) {
+                    // Check the current state of PCAP processing just before analysis
+                    when (pcapStateForAnalysis) {
                         is PcapProcessingState.Success -> {
-                            Log.i(
-                                "AnalyzeAI",
-                                "PCAP already converted successfully. Using cached JSON."
-                            )
-                            pcapJsonForPrompt =
-                                pcapState.jsonContent // Use existing successful result
+                            Log.i("AnalyzeAI", "PCAP already converted successfully. Using cached JSON. Truncated: ${pcapStateForAnalysis.wasTruncated}")
+                            // JSON content is handled later when building the prompt using the state.
                         }
-
                         is PcapProcessingState.Error -> {
-                            Log.w(
-                                "AnalyzeAI",
-                                "PCAP conversion previously failed. Proceeding without PCAP data. Error: ${pcapState.message}"
-                            )
-                            pcapErrorForPrompt =
-                                "PCAP conversion failed: ${pcapState.message.take(100)}"
+                            Log.w("AnalyzeAI", "PCAP conversion previously failed. Proceeding without PCAP data. Error: ${pcapStateForAnalysis.message}")
+                            pcapErrorForPrompt = "PCAP conversion failed: ${pcapStateForAnalysis.message.take(100)}"
                         }
-
                         is PcapProcessingState.Idle -> {
-                            // PCAP was selected, but conversion wasn't triggered or completed yet.
-                            // This could happen if user selected PCAP then immediately clicked Analyze.
-                            // Trigger conversion *now* and wait for it.
-                            Log.i(
-                                "AnalyzeAI",
-                                "PCAP selected but conversion not started/completed. Starting conversion now..."
-                            )
+                            // PCAP was selected, but conversion wasn't triggered or completed yet. Trigger it now.
+                            Log.i("AnalyzeAI", "PCAP selected but conversion not started/completed. Starting conversion now...")
                             try {
                                 // Call the suspend function that handles upload, polling, download
-                                val convertedJson =
-                                    convertPcapToJsonAndWait(currentState.pcapFilePath)
-                                pcapJsonForPrompt = convertedJson // Store the successful result
-                                Log.i("AnalyzeAI", "PCAP conversion successful.")
+                                // convertPcapToJsonAndWait will update the state internally
+                                val convertedJson = convertPcapToJsonAndWait(stateForAnalysis.pcapFilePath)
+                                Log.i("AnalyzeAI", "PCAP conversion successful during analysis trigger.")
+                                // Re-read the state after successful conversion
+                                pcapStateForAnalysis = _automaticAnalysisUiState.value.pcapProcessingState
+                                if (pcapStateForAnalysis !is PcapProcessingState.Success) {
+                                    Log.w("AnalyzeAI", "PCAP conversion reported success, but state is not Success ($pcapStateForAnalysis). Proceeding without PCAP.")
+                                    pcapErrorForPrompt = "PCAP conversion finished with unexpected state."
+                                }
                             } catch (pcapException: Exception) {
                                 if (pcapException is CancellationException) {
-                                    Log.i(
-                                        "AnalyzeAI",
-                                        "PCAP conversion was cancelled during analysis trigger."
-                                    )
-                                    // Since AI call is already started (isLoading=true), we need to handle cancellation
+                                    Log.i("AnalyzeAI", "PCAP conversion was cancelled during analysis trigger.")
                                     withContext(Dispatchers.Main + NonCancellable) {
-                                        _automaticAnalysisUiState.value =
-                                            _automaticAnalysisUiState.value.copy(
-                                                isLoading = false,
-                                                error = "PCAP conversion cancelled."
-                                            ) // Clear AI loading flag and show error
+                                        _automaticAnalysisUiState.update { it.copy(isLoading = false, error = "PCAP conversion cancelled.") }
                                     }
-                                    throw pcapException // Re-throw to stop the outer launch block
+                                    throw pcapException // Stop the outer launch block
                                 }
-                                Log.e(
-                                    "AnalyzeAI",
-                                    "PCAP conversion failed during analysis trigger.",
-                                    pcapException
-                                )
-                                pcapErrorForPrompt =
-                                    "PCAP conversion failed: ${pcapException.message?.take(100)}" // Store error for prompt
+                                Log.e("AnalyzeAI", "PCAP conversion failed during analysis trigger.", pcapException)
+                                pcapErrorForPrompt = "PCAP conversion failed: ${pcapException.message?.take(100)}"
                                 // State should be updated to Error inside convertPcapToJsonAndWait's catch block
+                                pcapStateForAnalysis = _automaticAnalysisUiState.value.pcapProcessingState // Update local state var
                             }
                         }
                         // If PCAP is currently converting (Uploading, Processing, etc.)
-                        // This case should ideally be prevented by the initial check outside the launch block.
-                        // Handle defensively. We decided to *wait* if conversion is ongoing.
-                        // But if the check failed somehow, log an error and proceed without PCAP.
+                        // This case should ideally be prevented by the initial checks. Handle defensively.
                         else -> { // is PcapProcessingState.Uploading, Processing, Polling, DownloadingJson
-                            Log.e(
-                                "AnalyzeAI",
-                                "PCAP is selected but unexpectedly still converting at analysis start time. State: $pcapState. Proceeding without PCAP data."
-                            )
-                            pcapErrorForPrompt =
-                                "PCAP data skipped (unexpected state: ${pcapState::class.simpleName})."
+                            Log.e("AnalyzeAI", "PCAP is selected but unexpectedly still converting at analysis start time. State: $pcapStateForAnalysis. Proceeding without PCAP data.")
+                            pcapErrorForPrompt = "PCAP data skipped (conversion in progress)."
                         }
                     }
                 }
                 // --- End PCAP Handling ---
 
                 // --- Proceed with building prompt and calling AI ---
-
-                // Re-read state in case PCAP conversion updated it
+                // Re-read state again after potential PCAP conversion
                 val currentStateAfterPcap = _automaticAnalysisUiState.value
+                pcapStateForAnalysis = currentStateAfterPcap.pcapProcessingState // Ensure we use the latest state
 
-                // Filter data based on selection (use currentStateAfterPcap for consistency)
-                val selectedRequests = currentStateAfterPcap.sessionData?.requests?.filter {
+                // Ensure sessionData isn't null after potential delays
+                val sessionDataForPrompt = currentStateAfterPcap.sessionData ?: run {
+                    Log.e("AnalyzeAI", "Session data became null during PCAP processing.")
+                    throw IllegalStateException("Session data lost during analysis preparation.")
+                }
+
+                // Filter data based on selection
+                val selectedRequests = sessionDataForPrompt.requests?.filter {
                     currentStateAfterPcap.selectedRequestIds.contains(it.customWebViewRequestId)
                 } ?: emptyList()
 
-                val selectedScreenshots = currentStateAfterPcap.sessionData?.screenshots?.filter {
-                    it.isPrivacyOrTosRelated && currentStateAfterPcap.selectedScreenshotIds.contains(
-                        it.screenshotId
-                    )
+                val selectedScreenshots = sessionDataForPrompt.screenshots?.filter {
+                    it.isPrivacyOrTosRelated && currentStateAfterPcap.selectedScreenshotIds.contains(it.screenshotId)
                 } ?: emptyList()
 
-                val selectedWebpageContent =
-                    currentStateAfterPcap.sessionData?.webpageContent?.filter {
-                        currentStateAfterPcap.selectedWebpageContentIds.contains(it.contentId)
-                    } ?: emptyList()
+                val selectedWebpageContent = sessionDataForPrompt.webpageContent?.filter {
+                    currentStateAfterPcap.selectedWebpageContentIds.contains(it.contentId)
+                } ?: emptyList()
 
                 // Build Prompt Dynamically
                 val basePrompt = currentStateAfterPcap.inputText
-                var dynamicPromptPart =
-                    "\n\n--- Analysis Context ---\nModel Used: '$effectiveModelName'"
+                var dynamicPromptPart = "\n\n--- Analysis Context ---\nModel Used: '$effectiveModelName'"
 
                 // Requests
                 if (selectedRequests.isNotEmpty()) {
@@ -438,43 +410,52 @@ open class AutomaticAnalysisViewModel(
 
                 // Webpage Content
                 if (selectedWebpageContent.isNotEmpty()) {
-                    // Consider adding snippets or summary if feasible
-                    dynamicPromptPart += "\n\n- Webpage Content (${selectedWebpageContent.size} selected): Content provided separately (if applicable)."
+                    dynamicPromptPart += "\n\n- Webpage Content (${selectedWebpageContent.size} selected): Content provided separately (if applicable)." // Adjust wording as needed
                 } else {
                     dynamicPromptPart += "\n\n- Webpage Content: None selected."
                 }
 
-                // --- Include PCAP JSON or Error in Prompt ---
+                // --- Include PCAP JSON or Error/Status in Prompt ---
                 when {
-                    pcapJsonForPrompt != null -> {
-                        val truncatedJson = pcapJsonForPrompt.take(PCAP_JSON_MAX_LENGTH)
-                        dynamicPromptPart += "\n\n- PCAP Network Summary (JSON, truncated if necessary):\n$truncatedJson"
-                        if (truncatedJson.length < pcapJsonForPrompt.length) {
+                    // Case 1: Success state - check the truncation flag
+                    pcapStateForAnalysis is PcapProcessingState.Success -> {
+                        dynamicPromptPart += "\n\n- PCAP Network Summary (JSON):\n${pcapStateForAnalysis.jsonContent}"
+                        // Append truncation note if the flag is true
+                        if (pcapStateForAnalysis.wasTruncated) {
                             dynamicPromptPart += "\n... (PCAP JSON truncated due to length limit)"
                         }
                     }
 
+                    // Case 2: Use error captured earlier OR check Error state directly
                     pcapErrorForPrompt != null -> {
                         dynamicPromptPart += "\n\n- PCAP Network Summary: Not included ($pcapErrorForPrompt)"
                     }
-                    // Explicitly check if PCAP was selected but not included for other reasons
-                    currentStateAfterPcap.isPcapSelected && pcapJsonForPrompt == null && pcapErrorForPrompt == null -> {
-                        if (!currentStateAfterPcap.isPcapIncludable || currentStateAfterPcap.pcapFilePath == null) {
-                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (File not available for this session)."
-                        } else if (currentStateAfterPcap.pcapProcessingState is PcapProcessingState.Idle) {
-                            // This case implies conversion wasn't started/completed successfully before this point
-                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (Conversion did not complete successfully)."
-                        } else {
-                            // Should not happen if logic is correct, but catch potential edge cases
-                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (Unknown reason, state: ${currentStateAfterPcap.pcapProcessingState::class.simpleName})."
-                            Log.w(
-                                "AnalyzeAI",
-                                "PCAP selected but neither JSON nor error available. Path: ${currentStateAfterPcap.pcapFilePath}, State: ${currentStateAfterPcap.pcapProcessingState}"
-                            )
+                    pcapStateForAnalysis is PcapProcessingState.Error -> {
+                        // Should be covered by pcapErrorForPrompt, but double-check
+                        if (pcapErrorForPrompt == null) { // If error happened before analysis started
+                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (PCAP conversion failed: ${pcapStateForAnalysis.message.take(100)})"
                         }
                     }
 
-                    else -> { // PCAP was not selected by the user
+
+                    // Case 3: PCAP selected but not Success/Error (File unavailable, Idle, In Progress)
+                    currentStateAfterPcap.isPcapSelected -> {
+                        if (!currentStateAfterPcap.isPcapIncludable || currentStateAfterPcap.pcapFilePath == null) {
+                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (File not available for this session)."
+                        } else if (pcapStateForAnalysis is PcapProcessingState.Idle) {
+                            // This means conversion was triggered but failed or was cancelled without setting Error state properly.
+                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (Conversion did not complete successfully)."
+                        } else if (currentStateAfterPcap.isPcapConverting) { // Check the helper property
+                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (Conversion still in progress)."
+                        } else {
+                            // Fallback for unexpected states
+                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (Unexpected state: ${pcapStateForAnalysis::class.simpleName})."
+                            Log.w("AnalyzeAI", "PCAP selected but final state wasn't Success/Error/Idle/Converting. State: $pcapStateForAnalysis")
+                        }
+                    }
+
+                    // Case 4: PCAP was not selected by the user
+                    else -> {
                         dynamicPromptPart += "\n\n- PCAP Network Summary: Not selected."
                     }
                 }
@@ -482,14 +463,10 @@ open class AutomaticAnalysisViewModel(
                 // --- End Include PCAP JSON ---
 
                 val finalPrompt = "$basePrompt $dynamicPromptPart"
-                Log.d(
-                    "AnalyzeAI",
-                    "Final prompt being sent to model $effectiveModelName:\n$finalPrompt"
-                ) // Log prompt for debugging
+                Log.d("AnalyzeAI", "Final prompt being sent to model $effectiveModelName:\n$finalPrompt") // Log prompt for debugging
 
                 // Build Content for Gemini
                 val inputContent = content {
-                    // Add selected screenshots as images
                     if (selectedScreenshots.isNotEmpty()) {
                         selectedScreenshots.forEach { screenshot ->
                             try {
@@ -497,108 +474,90 @@ open class AutomaticAnalysisViewModel(
                                 image(bitmap)
                                 Log.d("AnalyzeAI", "Added image: ${screenshot.path}")
                             } catch (e: Exception) {
-                                Log.e(
-                                    "AnalyzeAI",
-                                    "Failed to load or add image to prompt: ${screenshot.path}",
-                                    e
-                                )
-                                // Optionally add text indicating image load failure to the prompt itself
+                                Log.e("AnalyzeAI", "Failed to load or add image to prompt: ${screenshot.path}", e)
                                 text("\n[System Note: Failed to load image at ${screenshot.path}]")
                             }
                         }
                     }
-
-                    // Add the main text prompt
                     text(finalPrompt)
                 }
 
-                // --- Instantiate the model dynamically ---
-                val config = generationConfig { temperature = 0.7f } // Example config
+                // Instantiate the model dynamically
+                val config = generationConfig { temperature = 0.7f }
                 val currentGenerativeModel = GenerativeModel(
                     modelName = effectiveModelName,
-                    apiKey = BuildConfig.API_KEY_RELEASE,
+                    apiKey = BuildConfig.API_KEY_RELEASE, // Use correct API key build config
                     generationConfig = config
                 )
                 Log.i("AnalyzeAI", "Calling Gemini model '$effectiveModelName'...")
 
-                // --- Generate Content Stream ---
+                // Generate Content Stream
                 var outputContent = ""
                 currentGenerativeModel.generateContentStream(inputContent)
                     .collect { response ->
                         response.text?.let { textChunk ->
                             outputContent += textChunk
-                            // Update output text incrementally on the Main thread while streaming
+                            // Update output text incrementally on the Main thread
                             withContext(Dispatchers.Main) {
-                                _automaticAnalysisUiState.value =
-                                    _automaticAnalysisUiState.value.copy(
-                                        outputText = outputContent // Update streamed output
-                                    )
+                                // Use update to avoid race conditions if updates are rapid
+                                _automaticAnalysisUiState.update { it.copy(outputText = outputContent) }
                             }
                         }
-                        // Optional: Log prompt feedback or safety ratings if needed
                         Log.d("AnalyzeAI", "Prompt Feedback: ${response.promptFeedback}")
-                        Log.d(
-                            "AnalyzeAI",
-                            "Finish Reason: ${response.candidates.firstOrNull()?.finishReason}"
-                        )
+                        Log.d("AnalyzeAI", "Finish Reason: ${response.candidates.firstOrNull()?.finishReason}")
                     }
-                Log.i(
-                    "AnalyzeAI",
-                    "Gemini streaming finished successfully for model '$effectiveModelName'."
-                )
+                Log.i("AnalyzeAI", "Gemini streaming finished successfully for model '$effectiveModelName'.")
 
-                // --- Final State Update after successful AI call ---
+                // Final State Update after successful AI call
                 withContext(Dispatchers.Main) {
-                    _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
-                        isLoading = false, // AI analysis part is done
-                        outputText = outputContent // Ensure final complete text is set
-                    )
+                    _automaticAnalysisUiState.update { it.copy(isLoading = false, outputText = outputContent) }
                 }
 
             } catch (e: Exception) {
                 if (e is CancellationException) {
                     Log.i("AnalyzeAI", "AI Analysis or preceding PCAP conversion was cancelled.")
-                    // Reset loading state and potentially clear partial output only if cancelled here
-                    withContext(Dispatchers.Main + NonCancellable) { // Ensure state reset happens
-                        // Check if still loading *and* this cancellation wasn't handled earlier (e.g., PCAP cancel)
-                        if (_automaticAnalysisUiState.value.isLoading) {
-                            _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
+                    // Reset loading state only if it's still true
+                    withContext(Dispatchers.Main + NonCancellable) {
+                        _automaticAnalysisUiState.update {
+                            if (it.isLoading) {
+                                it.copy(
+                                    isLoading = false,
+                                    error = it.error ?: "Analysis cancelled.", // Keep existing error if set (e.g., from PCAP cancel)
+                                    outputText = null // Clear partial output
+                                )
+                            } else {
+                                it // No change needed if not loading
+                            }
+                        }
+                    }
+                } else {
+                    Log.e("AnalyzeAI", "Error during AI analysis phase with model $effectiveModelName", e)
+                    withContext(Dispatchers.Main + NonCancellable) {
+                        _automaticAnalysisUiState.update {
+                            it.copy(
                                 isLoading = false,
-                                error = _automaticAnalysisUiState.value.error
-                                    ?: "Analysis cancelled.", // Keep existing error if set
-                                outputText = null // Clear partial output
+                                error = "AI Analysis failed: ${e.localizedMessage ?: context.getString(R.string.unknown_error)}"
                             )
                         }
                     }
-                    // Don't re-throw cancellation here if it was handled, otherwise it might crash
-                    // If we want the calling coroutine to know about cancellation, re-throw might be needed,
-                    // but for UI updates, handling it here is usually sufficient.
-                } else {
-                    // Catch errors from AI call or prompt building
-                    Log.e(
-                        "AnalyzeAI",
-                        "Error during AI analysis phase with model $effectiveModelName",
-                        e
-                    )
-                    withContext(Dispatchers.Main + NonCancellable) { // Ensure state update happens
-                        _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
-                            isLoading = false, // Stop loading indicator
-                            error = "AI Analysis failed: ${e.localizedMessage ?: context.getString(R.string.unknown_error)}"
-                        )
-                    }
                 }
             } finally {
-                // Ensure loading is always reset, even if unexpected exceptions occur or cancellation happened
+                // Ensure loading is always reset, defensively
                 withContext(Dispatchers.Main + NonCancellable) {
-                    if (_automaticAnalysisUiState.value.isLoading) {
-                        _automaticAnalysisUiState.value =
-                            _automaticAnalysisUiState.value.copy(isLoading = false)
-                        Log.d("AnalyzeAI", "Ensured isLoading is false in finally block.")
+                    _automaticAnalysisUiState.update {
+                        if (it.isLoading) {
+                            Log.d("AnalyzeAI", "Ensured isLoading is false in finally block.")
+                            it.copy(isLoading = false)
+                        } else {
+                            it
+                        }
                     }
                 }
             }
         } // End viewModelScope.launch
     }
+
+
 
 
     // --- Toggle PCAP Selection ---
@@ -688,19 +647,18 @@ open class AutomaticAnalysisViewModel(
     /**
      * Generates the full prompt string based on current selections and PCAP state,
      * updating the `promptPreview` state without calling the AI model.
-     * This function launches the generation asynchronously and updates the state upon completion.
+     * Handles PCAP status including truncation.
      */
     override fun generatePromptForPreview() {
-        // --- Quick initial checks on Main thread ---
         val initialCheckState = _automaticAnalysisUiState.value
         if (initialCheckState.sessionData == null) {
             Log.e("PromptPreview", "Cannot generate preview: Session data is null.")
-            // Update state directly with error
-            _automaticAnalysisUiState.value =
-                initialCheckState.copy(
+            _automaticAnalysisUiState.update {
+                it.copy(
                     promptPreview = "[Error: Session data not loaded]",
-                    isGeneratingPreview = false // Ensure loading stops
+                    isGeneratingPreview = false
                 )
+            }
             return
         }
         if (initialCheckState.isGeneratingPreview) {
@@ -708,29 +666,25 @@ open class AutomaticAnalysisViewModel(
             return
         }
 
-        // --- Minimal State Update on Main thread to start loading ---
-        // Only update the flags we need to change. Using .update ensures atomicity.
-        _automaticAnalysisUiState.update { currentState ->
-            if (currentState.isGeneratingPreview) {
-                currentState // Already generating, don't update again
-            } else {
-                currentState.copy(
-                    isGeneratingPreview = true,
-                    promptPreview = null // Clear previous preview
-                )
-            }
+        // Start loading indicator
+        _automaticAnalysisUiState.update {
+            it.copy(
+                isGeneratingPreview = true,
+                promptPreview = null // Clear previous preview
+            )
         }
-        // The function now returns quickly after this state update.
 
-        // --- Launch background coroutine for the heavy work ---
+        // Launch background coroutine for prompt generation
         viewModelScope.launch(Dispatchers.IO) {
             // Read the state needed for processing *inside* the background thread
             val stateForProcessing = _automaticAnalysisUiState.value
-            // Check again for sessionData nullity in case state changed rapidly (unlikely but safe)
+            // Check again for sessionData nullity
             val currentSessionData = stateForProcessing.sessionData ?: run {
                 Log.e("PromptPreview", "Session data became null during background processing.")
                 withContext(Dispatchers.Main){
-                    _automaticAnalysisUiState.update { it.copy(isGeneratingPreview = false, promptPreview = "[Error: Session data lost]")}
+                    _automaticAnalysisUiState.update {
+                        it.copy(isGeneratingPreview = false, promptPreview = "[Error: Session data lost]")
+                    }
                 }
                 return@launch
             }
@@ -738,7 +692,7 @@ open class AutomaticAnalysisViewModel(
             var finalPromptResult: String? = null // Initialize as nullable
             try {
                 // Read necessary properties from stateForProcessing
-                val effectiveModelName = stateForProcessing.selectedModelName ?: "Unknown"
+                val effectiveModelName = stateForProcessing.selectedModelName ?: "Unknown Model" // Provide default
                 val currentPcapState = stateForProcessing.pcapProcessingState
                 val isPcapSelected = stateForProcessing.isPcapSelected
                 val isPcapIncludable = stateForProcessing.isPcapIncludable
@@ -748,18 +702,6 @@ open class AutomaticAnalysisViewModel(
                 val currentSelectedWebpageContentIds = stateForProcessing.selectedWebpageContentIds
                 val currentInputText = stateForProcessing.inputText
 
-                var pcapJsonForPrompt: String? = null
-                var pcapErrorForPrompt: String? = null
-
-                // --- Determine PCAP content ---
-                if (isPcapSelected && isPcapIncludable && pcapFilePath != null) {
-                    when (currentPcapState) {
-                        is PcapProcessingState.Success -> pcapJsonForPrompt = currentPcapState.jsonContent
-                        is PcapProcessingState.Error -> pcapErrorForPrompt = "PCAP conversion failed: ${currentPcapState.message.take(100)}"
-                        is PcapProcessingState.Idle -> pcapErrorForPrompt = "PCAP conversion not initiated or completed."
-                        else -> pcapErrorForPrompt = "PCAP conversion in progress (will be included if successful)."
-                    }
-                }
 
                 // --- Filter data ---
                 val selectedRequests = currentSessionData.requests?.filter {
@@ -775,34 +717,54 @@ open class AutomaticAnalysisViewModel(
                 // --- Build Prompt ---
                 val basePrompt = currentInputText
                 var dynamicPromptPart = "\n\n--- Analysis Context ---\nModel Used: '$effectiveModelName'"
-                // (Append requests, screenshots, content, PCAP info )
+
+                // Requests
                 if (selectedRequests.isNotEmpty()) {
                     val requestsDTOString = buildRequestsString(selectedRequests)
                     dynamicPromptPart += "\n\n- Network Requests (${selectedRequests.size} selected, truncated if necessary):\n$requestsDTOString"
                 } else {
                     dynamicPromptPart += "\n\n- Network Requests: None selected."
                 }
+                // Screenshots
                 if (selectedScreenshots.isNotEmpty()) {
                     dynamicPromptPart += "\n\n- Relevant Screenshots (${selectedScreenshots.size} selected): Included as images."
                 } else {
                     dynamicPromptPart += "\n\n- Relevant Screenshots: None selected."
                 }
+                // Webpage Content
                 if (selectedWebpageContent.isNotEmpty()) {
-                    dynamicPromptPart += "\n\n- Webpage Content (${selectedWebpageContent.size} selected): Included separately."
+                    dynamicPromptPart += "\n\n- Webpage Content (${selectedWebpageContent.size} selected): Included separately." // Adjust wording if needed
                 } else {
                     dynamicPromptPart += "\n\n- Webpage Content: None selected."
                 }
+
+                // --- Handle PCAP inclusion for Preview ---
                 when {
-                    pcapJsonForPrompt != null -> {
-                        val truncatedJson = pcapJsonForPrompt.take(PCAP_JSON_MAX_LENGTH)
-                        dynamicPromptPart += "\n\n- PCAP Network Summary (JSON, truncated if necessary):\n$truncatedJson"
-                        if (truncatedJson.length < pcapJsonForPrompt.length) {
+                    // Case 1: Success state - check the truncation flag
+                    currentPcapState is PcapProcessingState.Success -> {
+                        dynamicPromptPart += "\n\n- PCAP Network Summary (JSON):\n${currentPcapState.jsonContent}"
+                        if (currentPcapState.wasTruncated) {
                             dynamicPromptPart += "\n... (PCAP JSON truncated due to length limit)"
                         }
                     }
-                    pcapErrorForPrompt != null -> dynamicPromptPart += "\n\n- PCAP Network Summary: Not included ($pcapErrorForPrompt)"
-                    isPcapSelected -> dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (File unavailable or unexpected state)."
-                    else -> dynamicPromptPart += "\n\n- PCAP Network Summary: Not selected."
+                    // Case 2: Error state
+                    currentPcapState is PcapProcessingState.Error -> {
+                        dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (PCAP conversion failed: ${currentPcapState.message.take(100)})"
+                    }
+                    // Case 3: PCAP selected but not Success/Error
+                    isPcapSelected -> {
+                        if (!isPcapIncludable || pcapFilePath == null) {
+                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (File not available)."
+                        } else if (currentPcapState is PcapProcessingState.Idle) {
+                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (Conversion not completed)."
+                        } else { // Uploading, Processing, Polling, Downloading
+                            dynamicPromptPart += "\n\n- PCAP Network Summary: Not included (Conversion in progress - will be included in final analysis if successful)."
+                        }
+                    }
+                    // Case 4: PCAP not selected
+                    else -> {
+                        dynamicPromptPart += "\n\n- PCAP Network Summary: Not selected."
+                    }
                 }
                 dynamicPromptPart += "\n--- End Analysis Context ---"
 
@@ -814,7 +776,7 @@ open class AutomaticAnalysisViewModel(
             } finally {
                 // Update the state on the Main thread AFTER the IO work is done or error occurred
                 withContext(Dispatchers.Main) {
-                    // Use update to safely modify the state based on the previous value
+                    // Use update to safely modify the state based on the latest value
                     _automaticAnalysisUiState.update { latestState ->
                         latestState.copy(
                             promptPreview = finalPromptResult,
@@ -823,7 +785,7 @@ open class AutomaticAnalysisViewModel(
                     }
                 }
             }
-        }
+        } // End viewModelScope.launch
     }
 
     /**
@@ -1151,15 +1113,15 @@ open class AutomaticAnalysisViewModel(
                                             ) else return@checkStatus
 
                                             try {
-                                                val jsonContent =
-                                                    downloadJsonResult(url) // Suspend download
+                                                val (jsonContent, truncated) = downloadJsonResult(url)
 
                                                 // Update state only if job is still active
                                                 if (isActive) {
                                                     updatePcapState(
                                                         PcapProcessingState.Success(
                                                             jobId,
-                                                            jsonContent
+                                                            jsonContent,
+                                                            truncated
                                                         )
                                                     )
                                                     deferredResult.complete(jsonContent) // Success!
@@ -1291,40 +1253,92 @@ open class AutomaticAnalysisViewModel(
             return@withContext deferredResult.await()
         }
 
-    // --- Download JSON Function (Suspendable, returns String) ---
-    private suspend fun downloadJsonResult(url: String): String = withContext(Dispatchers.IO) {
+
+
+    // --- Download JSON Function (Suspendable, returns String and truncation status) ---
+    private suspend fun downloadJsonResult(url: String): Pair<String, Boolean> = withContext(Dispatchers.IO) {
         Log.d("PCAP_DOWNLOAD", "Downloading JSON from: $url")
         val request = Request.Builder().url(url).get().build()
+        var wasTruncated = false // Flag to track truncation
+
         pcapHttpClient.newCall(request).execute().use { response ->
-            val responseBodyString = response.body?.string() // Read once
             if (!response.isSuccessful) {
+                val errorBody = try { response.body?.string()?.take(500) } catch (e: Exception) { "[Failed to read error body]" }
                 Log.e(
                     "PCAP_DOWNLOAD",
-                    "Download failed: ${response.code} ${response.message}. Body: ${
-                        responseBodyString?.take(200)
-                    }"
+                    "Download failed: ${response.code} ${response.message}. Body: $errorBody"
                 )
                 throw IOException("Download failed: ${response.code} ${response.message}")
             }
-            responseBodyString ?: throw IOException("Downloaded JSON content was null.")
+
+            val body = response.body ?: throw IOException("Downloaded JSON content body was null.")
+            val source = body.source()
+            val buffer = Buffer() // okio.Buffer
+            var totalBytesRead = 0L
+            val bufferSegmentSize = 8192L // Okio's default segment size
+
+            try {
+                while (totalBytesRead < PCAP_JSON_MAX_LENGTH) {
+                    val bytesToRead = min(bufferSegmentSize, PCAP_JSON_MAX_LENGTH - totalBytesRead)
+                    // Check if source is exhausted *before* attempting to read
+                    if (source.exhausted()) {
+                        break // Nothing more to read
+                    }
+                    val bytesRead = source.read(buffer, bytesToRead)
+                    if (bytesRead == -1L) {
+                        break // End of stream reached definitively
+                    }
+                    totalBytesRead += bytesRead
+                }
+
+                // After reading up to the limit, check if there's still more data in the source
+                if (!source.exhausted()) {
+                    wasTruncated = true
+                    Log.w("PCAP_DOWNLOAD", "JSON content will be truncated to $PCAP_JSON_MAX_LENGTH bytes.")
+                    // We don't need to read the rest, just know it exists.
+                }
+
+            } catch (e: IOException) {
+                Log.e("PCAP_DOWNLOAD", "Error reading response stream", e)
+                throw IOException("Error reading download stream: ${e.message}", e)
+            }
+            // No finally needed for source.close() as response.use handles it.
+
+            // Use StandardCharsets for clarity and robustness
+            val jsonString = buffer.readString(StandardCharsets.UTF_8)
+
+            if (jsonString.isEmpty() && totalBytesRead == 0L && body.contentLength() != 0L) {
+                // Check if known length wasn't 0 but we read nothing (potentially error or empty file)
+                Log.w("PCAP_DOWNLOAD", "Downloaded JSON content is empty, but Content-Length was ${body.contentLength()}.")
+                // Decide if this should be an error or allowed empty string
+                // throw IOException("Downloaded JSON content was empty despite non-zero content length.")
+            } else {
+                Log.d("PCAP_DOWNLOAD", "Successfully read ${jsonString.length} chars / $totalBytesRead bytes. Truncated: $wasTruncated")
+            }
+
+            // Return the string and the truncation status
+            return@withContext Pair(jsonString, wasTruncated)
         }
     }
 
     // ---  Helper to update PCAP state on Main thread ---
     private suspend fun updatePcapState(newState: PcapProcessingState) {
-        // Update state only if the corresponding job hasn't been cancelled externally
-        // This prevents state updates from completed jobs after cancellation
-        if (pcapConversionJob?.isActive == true || newState is PcapProcessingState.Idle || newState is PcapProcessingState.Error) {
+        // Check if the job is active (or if it's a final state like Idle/Error)
+        if (pcapConversionJob?.isActive == true || newState is PcapProcessingState.Idle || newState is PcapProcessingState.Error || newState is PcapProcessingState.Success) {
             withContext(Dispatchers.Main) {
-                // Store JSON content separately when state is Success
-                val jsonContent =
-                    if (newState is PcapProcessingState.Success) newState.jsonContent else _automaticAnalysisUiState.value.pcapJsonContent
+                // Determine the JSON content to store in the UI state's separate field
+                val jsonContentForUiState = when (newState) {
+                    is PcapProcessingState.Success -> newState.jsonContent // Get content from new Success state
+                    is PcapProcessingState.Error, is PcapProcessingState.Idle -> null // Clear on Error or Idle
+                    else -> _automaticAnalysisUiState.value.pcapJsonContent // Keep existing otherwise
+                }
 
-                // Only update if the state is actually changing, or if it's an error/success overwrite
-                if (_automaticAnalysisUiState.value.pcapProcessingState != newState || newState is PcapProcessingState.Success || newState is PcapProcessingState.Error) {
-                    _automaticAnalysisUiState.value = _automaticAnalysisUiState.value.copy(
-                        pcapProcessingState = newState,
-                        pcapJsonContent = jsonContent // Keep existing JSON unless overwritten by new Success
+                // Check if the state or the relevant content has actually changed
+                val currentState = _automaticAnalysisUiState.value
+                if (currentState.pcapProcessingState != newState || currentState.pcapJsonContent != jsonContentForUiState) {
+                    _automaticAnalysisUiState.value = currentState.copy(
+                        pcapProcessingState = newState, // Store the full state including the truncation flag if Success
+                        pcapJsonContent = jsonContentForUiState // Update the separate content field
                     )
                     Log.d("PcapStateUpdate", "Updated PCAP state to: $newState")
                 }
