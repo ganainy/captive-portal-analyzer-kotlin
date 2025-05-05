@@ -371,9 +371,6 @@
 
     <string name="error_invalid_pcap_uri">Error: Invalid PCAP file location.</string>
     <string name="error_saving_pcap_to_session_no_id">Error: Session ID not found, PCAP file could not be saved.</string>
-    <string name="prompt_preview_empty_or_error">Prompt preview empty or an error occured</string>
-    <string name="generating_prompt_preview">Generating prompt preview</string>
-
 
 
      <string name="delete_session">Delete Session</string>
@@ -398,6 +395,23 @@
     <string name="pcap_status_downloading">Downloading...</string>
     <string name="pcap_status_success_ready">PCAP ready</string>
     <string name="error_prefix">Error: %1$s</string>
+
+    <string name="prompt_preview_empty_or_error">Prompt preview empty or an error occured</string>
+    <string name="generating_prompt_preview">Generating prompt preview</string>
     <string name="error_updating_local_session_after_upload">Error updating local session after upload</string>
+    <string name="network_requests_label">Network Requests</string>
+    <string name="screenshots_label">Screenshots</string>
+    <string name="webpage_content_label">Web Content</string>
+    <string name="pcap_network_summary_label">PCAP File</string>
+    <string name="included_count">Included (%d)</string>
+    <string name="not_included">Not selected</string>
+    <string name="pcap_converting">Selected (Converting...)</string>
+    <string name="included_ready">Included (Ready)</string>
+    <string name="pcap_truncated_note">, truncated</string>
+    <string name="pcap_conversion_failed">Selected (Failed)</string>
+    <string name="selected_not_converted">Selected (Not converted)</string>
+    <string name="pcap_unknown_status">Selected (Unknown status)</string>
+    <string name="not_selected">No PCAP file is selected</string>
+    <string name="scroll_to_top">Scroll to top</string>
 
 </resources>
