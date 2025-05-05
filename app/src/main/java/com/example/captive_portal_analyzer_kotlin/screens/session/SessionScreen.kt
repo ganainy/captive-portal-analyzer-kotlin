@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -38,11 +39,15 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -66,6 +71,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -99,6 +105,7 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.RequestMethod
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.dataclasses.WebpageContentEntity
+import com.example.captive_portal_analyzer_kotlin.repository.MessageType
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.AppUtils.Companion.formatDate
 
@@ -124,6 +131,7 @@ fun SessionScreen(
     val sessionUiData by sessionViewModel.sessionUiData.collectAsState()
     val sessionState by sessionViewModel.sessionState.collectAsState()
     val isConnected by mainViewModel.isConnected.collectAsState()
+    val uploadHistory by sessionViewModel.uploadHistory.collectAsState()
 
     val showToast = { message: String, style: ToastStyle ->
         mainViewModel.showToast(
@@ -146,7 +154,8 @@ fun SessionScreen(
         modifySelectedMethods = sessionViewModel::modifySelectedMethods,
         resetFilters = sessionViewModel::resetFilters,
         updateClickedContent = mainViewModel::updateClickedContent,
-        updateClickedRequest = mainViewModel::updateClickedRequest
+        updateClickedRequest = mainViewModel::updateClickedRequest,
+        uploadHistory = uploadHistory,
     )
 
 }
@@ -160,44 +169,49 @@ private fun SessionScreenContent(
     navigateToAutomaticAnalysis: () -> Unit,
     navigateToWebpageContentScreen: () -> Unit,
     navigateToRequestDetailsScreen: () -> Unit,
-    uploadSession: (SessionData?, (String, ToastStyle) -> Unit) -> Unit,
+    uploadSession: (SessionData, (String, ToastStyle) -> Unit) -> Unit,
     toggleScreenshotPrivacyOrToSrelated: (ScreenshotEntity) -> Unit,
     toggleShowBottomSheet: () -> Unit,
     toggleIsBodyEmpty: () -> Unit,
     modifySelectedMethods: (RequestMethod) -> Unit,
     resetFilters: () -> Unit,
     updateClickedContent: (WebpageContentEntity) -> Unit,
-    updateClickedRequest: (CustomWebViewRequestEntity) -> Unit
+    updateClickedRequest: (CustomWebViewRequestEntity) -> Unit,
+    uploadHistory: List<Pair<String, MessageType>>
 ) {
     Scaffold { paddingValues ->
         Box(Modifier.padding(paddingValues)) {
             when (sessionState) {
-                SessionState.Uploading -> {
-                    LoadingIndicator(message = stringResource(R.string.uploading_information_to_be_analyzed))
+                is SessionState.Uploading -> {
+                    SessionUploadHistoryLog(uploadHistory)
                 }
+
                 SessionState.Loading -> {
                     LoadingIndicator(message = stringResource(R.string.loading_session))
                 }
+
                 is SessionState.ErrorUploading -> {
-                    val errorMessage = (sessionState as SessionState.ErrorUploading).message
+                    val errorMessage = sessionState.message
                     ErrorComponent(
                         error = errorMessage,
                         onRetryClick = {
                             uploadSession(
-                                sessionUiData.sessionData,
+                                sessionUiData.sessionData!!,
                                 showToast,
                             )
                         }
                     )
                 }
+
                 is SessionState.ErrorLoading -> {
-                    val errorMessage = (sessionState as SessionState.ErrorLoading).message
+                    val errorMessage = sessionState.message
                     ErrorComponent(
                         error = errorMessage,
                     )
                 }
+
                 else -> {
-                    if (sessionState is SessionState.AlreadyUploaded || sessionState is SessionState.Success || sessionState is SessionState.NeverUploaded) {
+                    if (sessionState is SessionState.AlreadyUploaded || sessionState is SessionState.Success || sessionState is SessionState.NeverUploaded || sessionState is SessionState.ReUploading) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -206,7 +220,7 @@ private fun SessionScreenContent(
                                 sessionUiData = sessionUiData,
                                 uploadSession = {
                                     uploadSession(
-                                        sessionUiData.sessionData,
+                                        sessionUiData.sessionData!!,
                                         showToast,
                                     )
                                 },
@@ -242,6 +256,126 @@ private fun SessionScreenContent(
         }
     }
 }
+
+
+/**
+ * A composable to display the historical log of upload steps.
+ *
+ * @param uploadHistory The list of pairs containing messages and their corresponding MessageType.
+ */
+@Composable
+fun SessionUploadHistoryLog(
+    uploadHistory: List<Pair<String, MessageType>>,
+) {
+    // Helper function to get icon and color based on MessageType and item state
+    @Composable
+    fun getIconAndColorForType(
+        type: MessageType,
+        isLastEntry: Boolean
+    ): Pair<ImageVector, Color> {
+     return when (type) {
+         MessageType.INFO -> Pair(Icons.Default.Info, MaterialTheme.colorScheme.onSurface.copy(alpha = if (isLastEntry) 1f else 0.6f))
+         MessageType.SUCCESS -> Pair(Icons.Default.CheckCircle, Color(0xFF4CAF50).copy(alpha = if (isLastEntry) 1f else 0.6f)) // Green
+         MessageType.WARNING -> Pair(Icons.Default.Warning, MaterialTheme.colorScheme.tertiary.copy(alpha = if (isLastEntry) 1f else 0.6f)) // Warning color
+         MessageType.ERROR -> Pair(Icons.Default.Warning, MaterialTheme.colorScheme.error.copy(alpha = if (isLastEntry) 1f else 0.6f)) // Error color
+     }
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(0.95f) // Take most of the width
+            .wrapContentHeight()
+            .padding(16.dp), // Padding around the card
+        shape = MaterialTheme.shapes.medium, // Rounded corners
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp) // Add some shadow
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(20.dp) // Inner padding for the content
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp) // Spacing between sections
+        ) {
+
+         Row(verticalAlignment = Alignment.CenterVertically) {
+             CircularProgressIndicator(Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary)
+             Spacer(modifier = Modifier.width(8.dp))
+             Text(
+                 text = "Uploading...",
+                 style = MaterialTheme.typography.bodyMedium,
+                 color = MaterialTheme.colorScheme.onSurface
+             )
+         }
+
+            // The log messages list or placeholder/loading
+            if (uploadHistory.isEmpty() ) {
+                // Show a placeholder message when the log is empty and not loading
+                Text(
+                    text = "Waiting to start upload...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 300.dp), // Allow more height if needed, but still scrollable
+                    verticalArrangement = Arrangement.spacedBy(10.dp) // Spacing between log items
+                ) {
+                    itemsIndexed(uploadHistory) { index, (message, type) ->
+                        val isLastEntry = index == uploadHistory.size - 1
+                        val (icon, color) = getIconAndColorForType(type, isLastEntry)
+                        val alpha = if (isLastEntry ) 1f else 0.6f // Fade out previous items slightly, keep last one prominent if loading
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp) // Space between icon and text
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = type.name, // Accessibility
+                                tint = color,
+                                modifier = Modifier.size(20.dp) // Icon size
+                            )
+                            Text(
+                                text = message,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = color.copy(alpha = alpha), // Apply alpha to text as well
+                                modifier = Modifier.weight(1f) // Allow text to take available space
+                            )
+                        }
+                    }
+
+
+                    // Also show spinner if history is empty but isLoading is true
+                    if ( uploadHistory.isEmpty()) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+}
+
+
 // endregion
 
 // region Session Detail Structure
@@ -271,7 +405,10 @@ fun SessionDetail(
         // Scrollable content area using LazyColumn
         LazyColumn(
             modifier = Modifier.weight(1f), // Takes available space, pushing button area down
-            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp), // Keep content padding
+            contentPadding = PaddingValues(
+                horizontal = 4.dp,
+                vertical = 4.dp
+            ), // Keep content padding
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 1. General Details - This will scroll off screen
@@ -343,7 +480,10 @@ fun SessionDetail(
                                 Text(
                                     text = stringResource(R.string.no_requests_found),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp) // Added padding
+                                    modifier = Modifier.padding(
+                                        vertical = 8.dp,
+                                        horizontal = 12.dp
+                                    ) // Added padding
                                 )
                             }
                         }
@@ -376,7 +516,10 @@ fun SessionDetail(
                                 Text(
                                     text = stringResource(R.string.no_requests_found),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp) // Added padding
+                                    modifier = Modifier.padding(
+                                        vertical = 8.dp,
+                                        horizontal = 12.dp
+                                    ) // Added padding
                                 )
                             }
                         }
@@ -592,9 +735,21 @@ private fun SessionActionButtons(
                         fillWidth = false,
                     )
                 }
-                else -> {
-                    // No button shown for other states for now
+
+                // for testing only
+                SessionState.ReUploading -> {
+                    RoundCornerButton(
+                        onClick = onUploadClick,
+                        buttonText = "Allow reupload for testing",
+                        enabled = true,
+                        fillWidth = false,
+                    )
                 }
+
+                is SessionState.ErrorLoading -> {}
+                is SessionState.ErrorUploading -> {}
+                is SessionState.Uploading -> {}
+                is SessionState.Loading -> {}
             }
 
             GhostButton(
@@ -1031,6 +1186,68 @@ private fun EmptyListUi(@StringRes stringRes: Int) {
 
 // region Preview Functions
 
+// --- Preview Composable ---
+/**
+ * Preview for SessionUploadHistoryLog composable with mock data.
+ */
+@Composable
+@Preview(
+    showBackground = true,
+    device = "spec:width=411dp,height=891dp",
+    name = "Phone Light - SessionUploadHistoryLog"
+)
+fun PreviewSessionUploadHistoryLog() {
+    val history = listOf(
+        "Initializing upload..." to MessageType.INFO,
+        "Connecting to server..." to MessageType.INFO,
+        "Uploading file chunk 1/10..." to MessageType.INFO,
+        "Uploading file chunk 2/10..." to MessageType.INFO,
+        "Server received chunk 2..." to MessageType.SUCCESS,
+        "Uploading file chunk 3/10..." to MessageType.INFO // This will be the last one shown with spinner if isLoading is true
+    )
+
+    val historyCompleted = listOf(
+        "Initializing upload..." to MessageType.INFO,
+        "Connecting to server..." to MessageType.INFO,
+        "Uploading file chunk 10/10..." to MessageType.INFO,
+        "Upload finished successfully." to MessageType.SUCCESS
+    )
+
+    val historyError = listOf(
+        "Initializing upload..." to MessageType.INFO,
+        "Connecting to server..." to MessageType.INFO,
+        "Uploading file chunk 1/10..." to MessageType.INFO,
+        "Connection lost." to MessageType.ERROR
+    )
+
+    MaterialTheme {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Text("Uploading State", style = MaterialTheme.typography.titleLarge)
+            SessionUploadHistoryLog(uploadHistory = history,)
+
+            Divider()
+
+            Text("Completed State", style = MaterialTheme.typography.titleLarge)
+            SessionUploadHistoryLog(uploadHistory = historyCompleted, ) // isLoading false when finished
+
+            Divider()
+
+            Text("Error State", style = MaterialTheme.typography.titleLarge)
+            SessionUploadHistoryLog(uploadHistory = historyError) // isLoading false when finished
+
+            Divider()
+
+            Text("Empty/Waiting State (not loading)", style = MaterialTheme.typography.titleLarge)
+            SessionUploadHistoryLog(uploadHistory = emptyList(),)
+
+            Divider()
+
+            Text("Loading with Empty History", style = MaterialTheme.typography.titleLarge)
+            SessionUploadHistoryLog(uploadHistory = emptyList(),) // Example: waiting for first log entry
+        }
+    }
+}
+
 // Helper function for mock data generation
 private fun createMockSessionData(requests: List<CustomWebViewRequestEntity>): SessionData {
     return SessionData(
@@ -1190,7 +1407,12 @@ fun SessionScreenContentPreview_Requests() {
                 modifySelectedMethods = {},
                 resetFilters = {},
                 updateClickedContent = {},
-                updateClickedRequest = {}
+                updateClickedRequest = {},
+                uploadHistory = listOf(
+                    "Upload started" to MessageType.INFO,
+                    "Processing data" to MessageType.INFO,
+                    "Uploading files" to MessageType.INFO
+                )
             )
         }
     }
@@ -1231,7 +1453,12 @@ fun SessionScreenContentPreview_NoRequests() {
                 modifySelectedMethods = {},
                 resetFilters = {},
                 updateClickedContent = {},
-                updateClickedRequest = {}
+                updateClickedRequest = {},
+                uploadHistory = listOf(
+                    "Upload started" to MessageType.INFO,
+                    "Processing data" to MessageType.INFO,
+                    "Uploading files" to MessageType.INFO
+                )
             )
         }
     }
@@ -1254,17 +1481,19 @@ fun RequestListItemPreview() {
     AppTheme {
         Surface {
             // Wrap in LazyColumn for realistic context if needed, or just Column
-            LazyColumn(contentPadding = PaddingValues(horizontal=16.dp)){
+            LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp)) {
                 item { RequestListItem(onRequestItemClick = {}, request = request) }
                 item { Divider() }
-                item { RequestListItem(
-                    onRequestItemClick = {},
-                    request = request.copy(
-                        customWebViewRequestId = 2,
-                        method = RequestMethod.GET,
-                        url = "http://short.url"
+                item {
+                    RequestListItem(
+                        onRequestItemClick = {},
+                        request = request.copy(
+                            customWebViewRequestId = 2,
+                            method = RequestMethod.GET,
+                            url = "http://short.url"
+                        )
                     )
-                ) }
+                }
             }
         }
     }
@@ -1276,7 +1505,9 @@ fun ImageItemPreview() {
     AppTheme {
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(16.dp).height(150.dp) // Added height for preview
+            modifier = Modifier
+                .padding(16.dp)
+                .height(150.dp) // Added height for preview
         ) {
             ImageItem(
                 imagePath = "mock",

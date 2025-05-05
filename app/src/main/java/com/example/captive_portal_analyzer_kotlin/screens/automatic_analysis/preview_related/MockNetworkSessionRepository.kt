@@ -23,7 +23,7 @@ class MockNetworkSessionRepository(
     requestDao: CustomWebViewRequestDao,
     screenshotDao: ScreenshotDao,
     webpageContentDao: WebpageContentDao
-) : NetworkSessionRepository(sessionDao, requestDao, screenshotDao, webpageContentDao) {
+) : NetworkSessionRepository(sessionDao, requestDao, screenshotDao, webpageContentDao, null) {
     // No overrides needed here for this simple mock approach
 }
 

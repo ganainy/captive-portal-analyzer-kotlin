@@ -47,6 +47,7 @@ android {
             //dont forget to copy big_pcap.pcap to the path /data/data/com.example.captive_portal_analyzer_kotlin/files/
             buildConfigStringField("DEBUG_LARGE_PCAP_FILE_PATH",
                 "/data/data/com.example.captive_portal_analyzer_kotlin/files/big_pcap.pcap")
+            buildConfigBooleanField("ALLOW_UPLOAD_IF_ALREADY_UPLOADED", false)
         }
 
         getByName("release") {
@@ -63,6 +64,7 @@ android {
             //dont forget to copy big_pcap.pcap to the path /data/data/com.example.captive_portal_analyzer_kotlin/files/
             buildConfigStringField("DEBUG_LARGE_PCAP_FILE_PATH",
                 "/data/data/com.example.captive_portal_analyzer_kotlin/files/big_pcap.pcap")
+            buildConfigBooleanField("ALLOW_UPLOAD_IF_ALREADY_UPLOADED", false)
 
             signingConfig = signingConfigs.getByName("debug")
         }
@@ -81,6 +83,7 @@ android {
             //dont forget to copy big_pcap.pcap to the path /data/data/com.example.captive_portal_analyzer_kotlin/files/
             buildConfigStringField("DEBUG_LARGE_PCAP_FILE_PATH",
                 "/data/data/com.example.captive_portal_analyzer_kotlin/files/big_pcap.pcap")
+            buildConfigBooleanField("ALLOW_UPLOAD_IF_ALREADY_UPLOADED", true)
         }
     }
 

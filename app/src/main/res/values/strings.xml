@@ -124,7 +124,7 @@
     <string name="automatic_analysis_result_screen_title">Analysis Result</string>
     <string name="automatic_analysis_button">Analyze with AI</string>
     <string name="long_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</string>
-    <string name="uploading_information_to_be_analyzed">Uploading information to be reviewed</string>
+    <string name="upload_state">Uploading: %1$s</string>
     <string name="ai_hint_1">- The collected data is too large to be sent to the AI model in its entirety, so only selected and filtered portions are transmitted.</string>
     <string name="ai_hint_2">- This provides a preliminary overview of the captive network, comprehensive analysis will be conducted by our researchers once you upload the session data for review.</string>
     <string name="here_is_the_result">Here is what AI found about the network:</string>
@@ -398,5 +398,6 @@
     <string name="pcap_status_downloading">Downloading...</string>
     <string name="pcap_status_success_ready">PCAP ready</string>
     <string name="error_prefix">Error: %1$s</string>
+    <string name="error_updating_local_session_after_upload">Error updating local session after upload</string>
 
 </resources>

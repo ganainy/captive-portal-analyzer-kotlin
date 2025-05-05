@@ -30,11 +30,15 @@ import androidx.navigation.compose.rememberNavController
 import com.example.captive_portal_analyzer_kotlin.datastore.settingsDataStore
 import com.example.captive_portal_analyzer_kotlin.navigation.AppNavGraph
 import com.example.captive_portal_analyzer_kotlin.navigation.AppScaffold
+import com.example.captive_portal_analyzer_kotlin.repository.SessionUploader
 import com.example.captive_portal_analyzer_kotlin.room.AppDatabase
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkConnectivityObserver
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
+import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
+import com.google.firebase.firestore.firestore
+import com.google.firebase.storage.storage
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -73,9 +77,16 @@ class MainActivity : ComponentActivity() {
             sessionDao = database.networkSessionDao(),
             requestDao = database.customWebViewRequestDao(),
             screenshotDao = database.screenshotDao(),
-            webpageContentDao = database.webpageContentDao()
+            webpageContentDao = database.webpageContentDao(),
+            sessionUploader = SessionUploader(
+                sessionDao = database.networkSessionDao(),
+                requestDao = database.customWebViewRequestDao(),
+                screenshotDao = database.screenshotDao(),
+                webpageContentDao = database.webpageContentDao(),
+                storage = Firebase.storage,
+                firestore = Firebase.firestore,
+            ),
         )
-
 
         // Start monitoring network changes
         sessionManager = NetworkSessionManager(this, repository)

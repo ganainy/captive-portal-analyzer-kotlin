@@ -125,7 +125,7 @@
     <string name="automatic_analysis_button">Mit KI analysieren</string>
     <string name="long_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</string>
     <string name="short_lorem_ipsum">Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</string>
-    <string name="uploading_information_to_be_analyzed">Hochladen von Informationen zur Analyse</string>
+    <string name="upload_state">Hochladen von Informationen zur Analyse</string>
     <string name="ai_hint_1">- Die gesammelten Daten sind zu groß, um sie in ihrer Gesamtheit an das KI-Modell zu senden. Daher werden nur ausgewählte und gefilterte Teile übertragen.</string>
     <string name="ai_hint_2">- Dies bietet eine erste Übersicht über das Captive Netzwerk. Eine umfassende Analyse wird von unseren Forschern durchgeführt, sobald Sie die Sitzungsdaten zur Überprüfung hochladen.</string>
     <string name="here_is_the_result">Hier ist, was die KI über das Netzwerk herausgefunden hat:</string>

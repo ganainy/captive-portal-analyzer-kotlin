@@ -2,19 +2,24 @@ package com.example.captive_portal_analyzer_kotlin.screens.session
 
 import NetworkSessionRepository
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.captive_portal_analyzer_kotlin.BuildConfig
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
 import com.example.captive_portal_analyzer_kotlin.dataclasses.CustomWebViewRequestEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.RequestMethod
 import com.example.captive_portal_analyzer_kotlin.dataclasses.ScreenshotEntity
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
+import com.example.captive_portal_analyzer_kotlin.repository.MessageType
+import com.example.captive_portal_analyzer_kotlin.repository.UploadStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -39,12 +44,17 @@ sealed class SessionState {
     /**
      * Indicates that the session is currently being uploaded to the remote server (firebase).
      */
-    object Uploading : SessionState()
+    data class Uploading(val message: String) : SessionState()
 
     /**
      * Indicates that the session was previously already uploaded by user to the remote server (firebase).
      */
     object AlreadyUploaded : SessionState()
+
+    /**
+     * for testing purposes only to allow uploading the session again which should not be allowed
+     */
+    object ReUploading : SessionState()
 
     /**
      * Indicates that the session was successfully uploaded to the remote server (firebase).
@@ -100,6 +110,11 @@ class SessionViewModel(
     private val _sessionUiData = MutableStateFlow(SessionUiData())
     val sessionUiData = _sessionUiData.asStateFlow()
 
+
+    //  StateFlow to hold the history of upload messages
+    private val _uploadHistory = MutableStateFlow<List<Pair<String, MessageType>>>(emptyList())
+    val uploadHistory: StateFlow<List<Pair<String, MessageType>>> = _uploadHistory
+
     /**
      * This function is called when the ViewModel is constructed.
      */
@@ -108,6 +123,11 @@ class SessionViewModel(
         viewModelScope.launch {
             applyFilters()
         }
+    }
+
+    // Method to clear history if needed before a new upload
+    fun clearUploadHistory() {
+        _uploadHistory.value = emptyList()
     }
 
     /**
@@ -196,7 +216,10 @@ class SessionViewModel(
                         }
                         // Set the initial state of the uploadState StateFlow
                         // based on whether the session is already uploaded or not
-                        if (sessionData.session.isUploadedToRemoteServer) {
+                        if (BuildConfig.ALLOW_UPLOAD_IF_ALREADY_UPLOADED) {
+                            _sessionState.value =
+                                SessionState.ReUploading //this is for testing only
+                        } else if (sessionData.session.isUploadedToRemoteServer) {
                             _sessionState.value = SessionState.AlreadyUploaded
                         } else {
                             _sessionState.value = SessionState.NeverUploaded
@@ -237,60 +260,150 @@ class SessionViewModel(
      * @param showToast a function used to display a toast message if an error occurs during upload
      */
     fun uploadSession(
-        sessionData: SessionData?,
+        sessionData: SessionData,
         showToast: (message: String, style: ToastStyle) -> Unit,
     ) {
-        viewModelScope.launch(Dispatchers.IO) {
 
-            if (sessionData == null) {
-                _sessionState.value = SessionState.ErrorUploading(
-                    getApplication<Application>().getString(
-                        R.string.error_uploading_session
-                    )
-                )
-                return@launch
-            }
+        //  clear history before starting a new upload
+        clearUploadHistory()
 
-            _sessionState.value = SessionState.Uploading
 
-            repository.uploadSessionData(sessionData.session.networkId)
-                .onSuccess {
-                    try {
-                        repository.updateSession(
-                            sessionData.session.copy(
-                                isUploadedToRemoteServer = true
+        viewModelScope.launch {
+            val sessionId = sessionData.session.networkId
+
+            repository.uploadSessionData(sessionId)
+                .collect { status ->
+                    // Handle the different states emitted by the Flow
+                    when (status) {
+                        is UploadStatus.Progress -> {
+                            // Append the new message to the history list
+                            val newHistory = _uploadHistory.value.toMutableList().apply {
+                                add(Pair(status.message, status.messageType))
+                            }
+                            _uploadHistory.value = newHistory
+
+                            // Update the main session state to indicate uploading status, maybe showing the *last* message or a general "Uploading..."
+                            _sessionState.value =
+                                SessionState.Uploading(status.message) // Or a generic message
+                        }
+
+                        is UploadStatus.Complete -> {
+                            // Append a final completion message to the history
+                            val newHistory = _uploadHistory.value.toMutableList().apply {
+                                add(
+                                    Pair(
+                                        "✅ Upload process completed successfully!",
+                                        MessageType.SUCCESS
+                                    )
+                                )
+                            }
+                            _uploadHistory.value = newHistory
+
+                            Log.d("UploadViewModel", "Upload Complete!")
+
+                            // Now perform the local database update and show success message
+                            try {
+                                repository.updateSession(
+                                    sessionData.session.copy(
+                                        isUploadedToRemoteServer = true
+                                    )
+                                )
+                                // Set final success state and show toast
+                                _sessionState.value = SessionState.Success
+                                withContext(Dispatchers.Main) {
+                                    showToast(
+                                        getApplication<Application>().getString(R.string.thanks_for_uploading_the_data_for_further_manual_review),
+                                        ToastStyle.SUCCESS
+                                    )
+                                }
+
+                            } catch (e: Exception) {
+                                Log.e(
+                                    "UploadViewModel",
+                                    "Failed to update local session after remote upload success",
+                                    e
+                                )
+                                val errorMessage =
+                                    getApplication<Application>().getString(R.string.error_updating_local_session_after_upload)
+                                _sessionState.value = SessionState.ErrorUploading(errorMessage)
+
+                                // Also add this error to the history
+                                val historyWithError = _uploadHistory.value.toMutableList().apply {
+                                    add(
+                                        Pair(
+                                            "Failed to update local record after upload: ${e.localizedMessage}",
+                                            MessageType.ERROR
+                                        )
+                                    )
+
+                                }
+                                _uploadHistory.value = historyWithError
+
+                                withContext(Dispatchers.Main) {
+                                    showToast(errorMessage, ToastStyle.ERROR)
+                                }
+                            }
+                        }
+
+                        is UploadStatus.Failed -> {
+                            // Append a failure message to the history
+                            val newHistory = _uploadHistory.value.toMutableList().apply {
+                                add(
+                                    Pair(
+                                        "Upload process failed: ${status.message}",
+                                        MessageType.ERROR
+                                    )
+                                )
+                            }
+                            _uploadHistory.value = newHistory
+
+                            Log.e(
+                                "UploadViewModel",
+                                "Upload Failed: ${status.message}",
+                                status.exception
                             )
-                        )
-                        _sessionState.value = SessionState.Success
-                        showToast(
-                            (getApplication<Application>().getString(R.string.thanks_for_uploading_the_data_for_further_manual_review)),
-                            ToastStyle.SUCCESS
-                        )
-                    } catch (e: Exception) {
-                        _sessionState.value = SessionState.ErrorUploading(
-                            e.localizedMessage
-                                ?: getApplication<Application>().getString(R.string.error_uploading_session)
-                        )
-                        repository.updateSession(
-                            sessionData.session.copy(
-                                isUploadedToRemoteServer = false
-                            )
-                        )
-                        return@launch
-                    }
-                }
-                .onFailure { apiResponse ->
-                    _sessionState.value = SessionState.ErrorUploading(
-                        apiResponse.localizedMessage
-                            ?: getApplication<Application>().getString(R.string.error_uploading_session)
-                    )
-                    withContext(Dispatchers.Main) {
-                        repository.updateSession(
-                            sessionData.session.copy(
-                                isUploadedToRemoteServer = false
-                            )
-                        )
-                        apiResponse.message?.let { showToast(it, ToastStyle.ERROR) }
+
+                            // Set error state
+                            _sessionState.value = SessionState.ErrorUploading(status.message)
+
+                            // Ensure local session is marked as not uploaded (or remains so)
+                            try {
+                                repository.updateSession(
+                                    sessionData.session.copy(
+                                        isUploadedToRemoteServer = false
+                                    )
+                                )
+                                Log.d("UploadViewModel", "Local session marked as not uploaded.")
+                                val historyWithLocalUpdate =
+                                    _uploadHistory.value.toMutableList().apply {
+                                        add(Pair("Updated local session status.", MessageType.INFO))
+                                    }
+                                _uploadHistory.value = historyWithLocalUpdate
+
+                            } catch (e: Exception) {
+                                Log.e(
+                                    "UploadViewModel",
+                                    "Failed to update local session to false after upload failure",
+                                    e
+                                )
+                                val historyWithLocalUpdateFail =
+                                    _uploadHistory.value.toMutableList().apply {
+                                        add(
+                                            Pair(
+                                                "Failed to update local session status: ${e.localizedMessage}",
+                                                MessageType.WARNING
+                                            )
+                                        )
+
+                                    }
+                                _uploadHistory.value = historyWithLocalUpdateFail
+                            }
+
+                            // Show error toast using the message from the status
+                            withContext(Dispatchers.Main) {
+                                showToast(status.message, ToastStyle.ERROR)
+                            }
+                        }
                     }
                 }
         }
