@@ -2,7 +2,9 @@ package com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.screen_ta
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.net.http.SslError
 import android.util.Log
+import android.webkit.SslErrorHandler
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -21,14 +23,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,8 +71,6 @@ import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.MockWebView
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
-import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisInternetStatus
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisUiData
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisUiState
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.WebViewType
@@ -71,9 +80,27 @@ import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.Preference
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.TestingWebView
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.WebViewActions
 import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.WebViewContentConfig
-import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
+import kotlinx.coroutines.launch
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+
 
 @Composable
 internal fun WebViewTabComposable(
@@ -209,6 +236,145 @@ internal fun CaptivePortalWebsiteContent(
     // Handle cases where webview is null in a real environment if necessary
 }
 
+
+// --- Placeholder/Mock Classes (Replace with your actual implementations) ---
+
+// Assuming these types/interfaces/data classes exist in your project
+data class WebViewContentConfig(
+    val portalUrl: String?,
+    val contentPadding: PaddingValues = PaddingValues(0.dp),
+    val showUrlBar: Boolean = true, // Add this config if you want to hide the bar
+    val showedHint: Boolean = false
+)
+
+enum class WebViewType {
+    NormalWebView, CustomWebView, TestingWebView
+}
+
+interface AnalysisCallbacks {
+    fun showToast(message: String)
+}
+
+interface WebViewActions {
+    fun saveWebResourceRequest(request: WebResourceRequest)
+    fun saveWebViewRequest(request: WebResourceRequest) // Assuming this is different or specific to CustomWebView
+    fun saveWebpageContent(webView: WebView, content: String?, showToast: (String) -> Unit)
+    fun takeScreenshot(webView: WebView): Bitmap?
+    fun switchWebViewType(showToast: (String) -> Unit)
+    fun updateShowedHint(showed: Boolean)
+}
+
+// Mock BuildConfig for preview
+object BuildConfig {
+    const val DEBUG_USE_TESTING_WEBVIEW = false
+}
+
+// Mock Composables for preview and non-preview
+@Composable fun CustomChip(label: String, onClick: () -> Unit, isSelected: Boolean, modifier: Modifier) {
+    // Basic Chip representation
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(4.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        onClick = onClick // Assuming onClick is handled by Surface
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
+
+@Composable fun MockWebView(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .background(Color.LightGray.copy(alpha = 0.3f))
+            .fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("Mock WebView Content", style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable fun NormalWebView(
+    portalUrl: String?,
+    webView: WebView,
+    saveWebRequest: (WebResourceRequest) -> Unit,
+    modifier: Modifier = Modifier,
+    captureAndSaveContent: (WebView, String?) -> Unit,
+    takeScreenshot: (WebView) -> Bitmap?,
+    onUrlChanged: (String) -> Unit // Added URL change callback
+) {
+    // Your actual WebView implementation logic
+    // This mock version doesn't actually load URLs or report changes
+    MockWebView(modifier)
+    // In a real implementation, your WebViewClient should call onUrlChanged
+    // For example, in onPageFinished: onUrlChanged(webView.url ?: "about:blank")
+}
+
+@Composable fun CustomWebView(
+    portalUrl: String?,
+    webView: WebView,
+    saveWebRequest: (WebResourceRequest) -> Unit,
+    takeScreenshot: (WebView) -> Bitmap?,
+    modifier: Modifier = Modifier,
+    captureAndSaveContent: (WebView, String?) -> Unit,
+    showedHint: Boolean,
+    updateShowedHint: (Boolean) -> Unit,
+    onUrlChanged: (String) -> Unit // Added URL change callback
+) {
+    // Your actual Custom WebView implementation logic
+    MockWebView(modifier)
+    // In a real implementation, your WebViewClient should call onUrlChanged
+    // For example, in onPageFinished: onUrlChanged(webView.url ?: "about:blank")
+}
+
+@Composable fun TestingWebView(modifier: Modifier = Modifier) {
+    // Your actual Testing WebView implementation logic
+    MockWebView(modifier)
+    // This mock version doesn't actually load URLs or report changes
+}
+
+@Composable fun GhostButton(onClick: () -> Unit, buttonText: String, modifier: Modifier = Modifier) {
+    OutlinedButton(onClick = onClick, modifier = modifier) {
+        Text(buttonText)
+    }
+}
+
+@Composable fun RoundCornerButton(onClick: () -> Unit, buttonText: String, modifier: Modifier = Modifier, trailingIcon: androidx.compose.ui.graphics.painter.Painter? = null) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp) // Example rounded shape
+    ) {
+        Text(buttonText)
+        if (trailingIcon != null) {
+            Spacer(Modifier.width(8.dp))
+            Icon(painter = trailingIcon, contentDescription = null)
+        }
+    }
+}
+
+// Mock R.string and R.drawable for preview
+object R {
+    object string {
+        const val refresh_webview = "Refresh"
+        const val switch_browser_type = "Switch Type"
+        const val continuee = "Continue"
+        const val back_webview = "Back" // Added for back button content description
+        const val enter_url = "Enter URL" // Added for TextField placeholder/label
+    }
+    object drawable {
+        val arrow_forward_ios_24px = 0 // Mock drawable ID
+    }
+}
+
+// --- End Placeholder/Mock Classes ---
+
+
+@OptIn(ExperimentalMaterial3Api::class) // Required for OutlinedTextFieldDefaults
 @Composable
 private fun WebViewInteractionContent(
     config: WebViewContentConfig,
@@ -222,13 +388,26 @@ private fun WebViewInteractionContent(
         if (BuildConfig.DEBUG_USE_TESTING_WEBVIEW) WebViewType.TestingWebView else config.webViewType
     val isPreview = LocalInspectionMode.current // Check if in preview mode
 
-    // State to hold the current URL displayed in the address bar
+    // State to hold the current URL displayed in the address bar and reflected in TextField
     var currentUrl by remember { mutableStateOf(config.portalUrl ?: "about:blank") }
 
+    // State for the text field's content, which the user can edit
+    var addressBarText by remember { mutableStateOf(currentUrl) }
+
+    // Sync the address bar text with the actual loaded URL whenever it changes
+    LaunchedEffect(currentUrl) {
+        addressBarText = currentUrl
+    }
+
     // Callback to update the URL state when the page finishes loading
+    // This is crucial to sync the UI state with the WebView's actual URL
     val onUrlChanged: (String) -> Unit = { newUrl ->
         currentUrl = newUrl
+        // addressBarText will be updated by the LaunchedEffect
     }
+
+    // Get the keyboard controller to hide the keyboard on navigation
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Column(modifier = Modifier.fillMaxSize().padding(config.contentPadding)) { // Apply padding here
 
@@ -244,6 +423,27 @@ private fun WebViewInteractionContent(
                 .padding(horizontal = 4.dp), // Inner padding
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // --- Back Button ---
+            IconButton(
+                onClick = {
+                    if (!isPreview) {
+                        webView.goBack()
+                    }
+                },
+                // Enable only if WebView can go back (and not in preview)
+                // Note: webView.canGoBack() might not be immediately accurate
+                // depending on WebView state lifecycle, but is the standard way to check.
+                // For more robust control, you might need to update a state based on
+                // WebViewClient's onPageStarted/Finished or onHistoryItemChanged.
+                enabled = !isPreview && webView.canGoBack()
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back_webview),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
             // --- WebView Type Chip ---
             val webViewLabel = when (effectiveWebViewType) {
                 WebViewType.NormalWebView -> "Basic" // Shorter labels
@@ -252,27 +452,65 @@ private fun WebViewInteractionContent(
             }
             CustomChip(
                 label = webViewLabel,
-                onClick = { /* Chip click action if needed */ },
+                onClick = {
+                    // Only allow switching if not in preview
+                    if (!isPreview) {
+                        webViewActions.switchWebViewType(analysisCallbacks.showToast)
+                    }
+                },
                 isSelected = true, // Assuming it visually represents the current type
                 modifier = Modifier.padding(end = 4.dp) // Space between chip and URL
             )
 
-            // --- URL Display ---
-            Text(
-                text = currentUrl,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // --- Modifiable URL Text Field ---
+            OutlinedTextField(
+                value = addressBarText,
+                onValueChange = { addressBarText = it },
                 modifier = Modifier
                     .weight(1f) // Takes available space
-                    .padding(horizontal = 8.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                    .padding(horizontal = 4.dp), // Inner padding around the text field itself
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                keyboardActions = KeyboardActions(
+                    onGo = {
+                        // Only load URL if not in preview
+                        if (!isPreview) {
+                            val url = addressBarText.trim()
+                            if (url.isNotEmpty()) {
+                                // Basic URL scheme handling
+                                val validatedUrl = if (url.startsWith("http://") || url.startsWith("https://")) {
+                                    url
+                                } else {
+                                    "https://$url" // Default to https
+                                }
+                                webView.loadUrl(validatedUrl)
+                                keyboardController?.hide() // Hide keyboard after navigating
+                            }
+                        }
+                    }
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    errorContainerColor = Color.Transparent,
+                    focusedBorderColor = Color.Transparent, // Hide default border
+                    unfocusedBorderColor = Color.Transparent, // Hide default border
+                    disabledBorderColor = Color.Transparent,
+                    errorBorderColor = Color.Transparent,
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                // Optional: Add a placeholder
+                // placeholder = { Text(stringResource(R.string.enter_url)) }
             )
 
             // --- Refresh Icon Button ---
             IconButton(
                 onClick = {
-                    // Only reload if not in preview and webview exists
+                    // Only reload if not in preview
                     if (!isPreview) {
                         webView.reload()
                     }
@@ -281,7 +519,7 @@ private fun WebViewInteractionContent(
                 Icon(
                     imageVector = Icons.Filled.Refresh,
                     contentDescription = stringResource(R.string.refresh_webview),
-                    tint = MaterialTheme.colorScheme.primary // Or onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         } // End of Address Bar Row
@@ -323,7 +561,7 @@ private fun WebViewInteractionContent(
                             }
                         },
                         takeScreenshot = webViewActions::takeScreenshot,
-                        onUrlChanged = onUrlChanged
+                        onUrlChanged = onUrlChanged // Pass the callback
                     )
 
                     WebViewType.CustomWebView -> CustomWebView(
@@ -343,13 +581,12 @@ private fun WebViewInteractionContent(
                         },
                         showedHint = config.showedHint,
                         updateShowedHint = webViewActions::updateShowedHint,
-                        onUrlChanged = onUrlChanged
+                        onUrlChanged = onUrlChanged // Pass the callback
                     )
 
-                    WebViewType.TestingWebView -> TestingWebView()
+                    WebViewType.TestingWebView -> TestingWebView() // No URL changes in testing mock?
                 }
             }
-            // Removed the old Row with Chip and Refresh Icon from here
         } // End of WebView Box wrapper
 
         // --- Bottom Buttons ---
@@ -361,14 +598,22 @@ private fun WebViewInteractionContent(
         ) {
             GhostButton(
                 modifier = Modifier.weight(1f),
-                onClick = { webViewActions.switchWebViewType(analysisCallbacks.showToast) },
+                onClick = {
+                    // Only allow switching if not in preview
+                    if (!isPreview) {
+                        webViewActions.switchWebViewType(analysisCallbacks.showToast)
+                    }
+                },
                 buttonText = stringResource(R.string.switch_browser_type)
             )
 
             RoundCornerButton(
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    setSelectTabIndex(1)  // Switch to Packet Capture tab
+                    // Only allow action if not in preview
+                    if (!isPreview) {
+                        setSelectTabIndex(1)  // Switch to Packet Capture tab
+                    }
                 },
                 buttonText = stringResource(R.string.continuee),
                 trailingIcon = painterResource(id = R.drawable.arrow_forward_ios_24px)
@@ -445,6 +690,16 @@ private fun NormalWebView(
                             takeScreenshot(view, url)
                             captureAndSaveContent(view, url)
                         }
+
+                        // Handle SSL errors - add this method
+                        @SuppressLint("WebViewClientOnReceivedSslError")
+                        override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
+                            // For captive portal analyzer, we want to proceed despite SSL errors
+                            handler.proceed()
+                            // Optionally log the error
+                            Log.d("WebViewSSL", "Proceeding despite SSL error: ${error.primaryError}")
+                        }
+
                     }
                 }
                 webView
@@ -506,6 +761,16 @@ private fun WebViewWithCustomClient(
                             saveWebRequest(webViewRequest)
                             return null // Let WebView handle the request normally
                         }
+
+
+                        // Handle SSL errors
+                        override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
+                            // For captive portal analyzer, we want to proceed despite SSL errors
+                            handler.proceed()
+                            // Optionally log the error
+                            Log.d("WebViewSSL", "Proceeding despite SSL error: ${error.primaryError}")
+                        }
+
                     }
                 }
                 webView

@@ -76,7 +76,6 @@ Column(
     )
     HintTextWithIcon(
         hint = stringResource(R.string.translations_are_automatically_generated),
-        iconResId = R.drawable.info
     )
 
     Spacer(modifier = Modifier.height(24.dp))

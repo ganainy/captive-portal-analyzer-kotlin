@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.captive_portal_analyzer_kotlin.R
@@ -79,11 +78,17 @@ fun CollapsibleAnalysisHints(
             // --- Animated Content for Hints ---
             AnimatedVisibility(visible = isExpanded) {
                 Column(modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)) { // Padding when expanded
-                    HintTextWithIcon(hint = stringResource(R.string.ai_hint_1), textAlign = TextAlign.Start)
+                    HintTextWithIcon(
+                        hint = stringResource(R.string.ai_hint_1),
+                    )
                     Spacer(modifier = Modifier.height(2.dp))
-                    HintTextWithIcon(hint = stringResource(R.string.ai_hint_2), textAlign = TextAlign.Start)
+                    HintTextWithIcon(
+                        hint = stringResource(R.string.ai_hint_2),
+                    )
                     Spacer(modifier = Modifier.height(2.dp))
-                    HintTextWithIcon(hint = stringResource(R.string.hint_network), textAlign = TextAlign.Start)
+                    HintTextWithIcon(
+                        hint = stringResource(R.string.hint_network),
+                    )
                 }
             } // End Animated Content
         } // End Main Column for Hints

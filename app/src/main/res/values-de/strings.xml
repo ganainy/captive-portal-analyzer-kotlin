@@ -419,4 +419,19 @@
 <string name="no_sessions_detected_explanation">Wir konnten keine gespeicherten Interaktionen mit Captive Portals aus der App finden. Versuchen Sie, sich mit einem Netzwerk mit Captive Portal zu verbinden.</string>
     <string name="checking_network_status">Checking network status</string>
 
+
+   <string name="normal_webview_chip_label">Normales WebView (Backup)</string>
+   <string name="custom_webview_chip_label">Benutzerdefiniertes WebView (Empfohlen)</string>
+   <string name="testing_webview_chip_label">Test-WebView</string>
+   <string name="error_no_captive_portal_url_found">Keine Captive-Portal-URL gefunden</string>
+   <string name="refresh_webview">WebView aktualisieren</string>
+   <string name="pcap_json_truncated_warning">Hinweis: Die enthaltene PCAP-Datenzusammenfassung wurde aufgrund ihrer Größe gekürzt.</string>
+   <string name="back_webview">Zur vorherigen Seite gehen</string>
+   <string name="pcap_status_uploading">PCAP wird hochgeladen...</string>
+   <string name="pcap_status_processing_server">Wird auf dem Server verarbeitet...</string>
+   <string name="pcap_status_checking_attempt">Status wird überprüft (Versuch %1$d)...</string>
+   <string name="pcap_status_downloading">Wird heruntergeladen...</string>
+   <string name="pcap_status_success_ready">PCAP bereit</string>
+   <string name="error_prefix">Fehler: %1$s</string>
+
 </resources>

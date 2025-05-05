@@ -713,7 +713,7 @@ private fun RequestListItem(
         Spacer(Modifier.height(8.dp))
         HintTextWithIcon(
             hint = stringResource(R.string.hint_click_to_view_request_content),
-            iconResId = R.drawable.tap
+            iconResId = R.drawable.tap,
         )
     }
 }
@@ -876,7 +876,7 @@ private fun ContentItem(
 
         HintTextWithIcon(
             hint = stringResource(R.string.hint_click_to_view_content),
-            iconResId = R.drawable.tap
+            iconResId = R.drawable.tap,
         )
     }
 }

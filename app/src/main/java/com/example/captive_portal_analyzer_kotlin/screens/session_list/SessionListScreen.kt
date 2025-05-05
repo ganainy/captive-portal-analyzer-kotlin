@@ -3,30 +3,28 @@ package com.example.captive_portal_analyzer_kotlin.screens.session_list
 import NetworkSessionRepository
 import android.app.Application
 import android.content.res.Configuration
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row // Import Row
-import androidx.compose.foundation.layout.Spacer // Import Spacer
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size // Import Size
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.icons.Icons // Import Icons
-import androidx.compose.material.icons.filled.Delete // Import Delete icon
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon // Import Icon
-import androidx.compose.material3.IconButton // Import IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -34,9 +32,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -44,8 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.captive_portal_analyzer_kotlin.IMainViewModel // Import IMainViewModel
-import com.example.captive_portal_analyzer_kotlin.MainViewModel // Import MainViewModel
+import com.example.captive_portal_analyzer_kotlin.IMainViewModel
 import com.example.captive_portal_analyzer_kotlin.R
 import com.example.captive_portal_analyzer_kotlin.components.ErrorComponent
 import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
@@ -54,11 +53,8 @@ import com.example.captive_portal_analyzer_kotlin.dataclasses.NetworkSessionEnti
 import com.example.captive_portal_analyzer_kotlin.dataclasses.SessionData
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.github.marlonlom.utilities.timeago.TimeAgo
-import com.github.marlonlom.utilities.timeago.TimeAgoMessages
-import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-
 
 /**
  * Composable screen to show a list of network sessions.
@@ -77,7 +73,6 @@ fun SessionListScreen(
     navigateToSessionScreen: () -> Unit,
     mainViewModel: IMainViewModel
 ) {
-    // Create the view model for the session list screen
     val sessionListViewModel: SessionListViewModel = viewModel(
         factory = SessionListViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
@@ -85,41 +80,77 @@ fun SessionListScreen(
         )
     )
 
-    // Collect the ui state and session data list from the view model as state
     val uiState by sessionListViewModel.uiState.collectAsState()
     val sessionDataList by sessionListViewModel.sessionDataList.collectAsState()
 
-    // Handle back button press to navigate to the welcome screen instead of the last screen
+    // State for filtering
+    val (filter, setFilter) = remember { mutableStateOf("All") }
+
     BackHandler {
         navigateToWelcome()
     }
 
-    val deleteDialogTitle = stringResource(R.string.delete_session_confirmation_title)
-       val deleteDialogMessage = stringResource(R.string.delete_session_confirmation_message)
-       val deleteConfirmText = stringResource(R.string.delete)
-
     Scaffold { paddingValues ->
-        SessionsContent(
-            uiState = uiState,
-            sessionDataList = sessionDataList,
-            navigateToSessionScreen = navigateToSessionScreen,
-            updateClickedSessionId = { updateClickedSessionId(it) },
-            onDeleteClick = { networkId -> // <-- Handle delete request
-                // Show confirmation dialog using MainViewModel
-                mainViewModel.showDialog(
-                    title = deleteDialogTitle,
-                    message = deleteDialogMessage,
-                    confirmText = deleteConfirmText,
-                    onConfirm = {
-                        sessionListViewModel.deleteSession(networkId)
-                        mainViewModel.hideDialog() // Dismiss dialog after confirmation
-                    },
-                    onDismiss = { mainViewModel.hideDialog() }
-                )
+        Column(modifier = Modifier.padding(paddingValues)) {
+            // Filter Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                FilterButton("All", filter, setFilter)
+                FilterButton("Captive", filter, setFilter)
+                FilterButton("Normal", filter, setFilter)
             }
-        )
-    }
 
+            // Filtered content
+            val filteredList = when (filter) {
+                "Captive" -> sessionDataList?.filter { it.requestsCount > 0 || it.webpageContentCount > 0 || it.screenshotsCount > 0 }
+                "Normal" -> sessionDataList?.filter { it.requestsCount == 0 && it.webpageContentCount == 0 && it.screenshotsCount == 0 }
+                else -> sessionDataList
+            }
+
+            val title = stringResource(R.string.delete_session_confirmation_title)
+            val message = stringResource(R.string.delete_session_confirmation_message)
+            val confirmText = stringResource(R.string.delete)
+
+            SessionsContent(
+                uiState = uiState,
+                sessionDataList = filteredList,
+                navigateToSessionScreen = navigateToSessionScreen,
+                updateClickedSessionId = updateClickedSessionId,
+                onDeleteClick = { networkId ->
+                    mainViewModel.showDialog(
+                        title = title,
+                        message = message,
+                        confirmText = confirmText,
+                        onConfirm = {
+                            sessionListViewModel.deleteSession(networkId)
+                            mainViewModel.hideDialog()
+                        },
+                        onDismiss = { mainViewModel.hideDialog() }
+                    )
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun FilterButton(
+    label: String,
+    currentFilter: String,
+    onFilterChange: (String) -> Unit
+) {
+    Text(
+        text = label,
+        modifier = Modifier
+            .clickable { onFilterChange(label) }
+            .padding(8.dp),
+        style = if (currentFilter == label) MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.primary)
+        else MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+    )
 }
 
 /**
@@ -189,7 +220,7 @@ private fun SessionsContent(
                 sessionDataList = sessionDataList,
                 navigateToSessionScreen = navigateToSessionScreen,
                 updateClickedSessionId = updateClickedSessionId,
-                onDeleteClick = onDeleteClick // <-- Pass delete callback down
+                onDeleteClick = onDeleteClick
             )
         }
     }
@@ -208,7 +239,7 @@ private fun SessionsSuccessContent(
     sessionDataList: List<SessionData>?,
     navigateToSessionScreen: () -> Unit,
     updateClickedSessionId: (String) -> Unit,
-    onDeleteClick: (networkId: String) -> Unit // <-- Pass delete callback down
+    onDeleteClick: (networkId: String) -> Unit
 ) {
     sessionDataList?.let { dataList ->
         Box(
@@ -293,112 +324,127 @@ fun NetworkSessionItem(
     onDeleteClick: (networkId: String) -> Unit,
     navigateToSessionScreen: (() -> Unit)? = null
 ) {
-    val isRecent = remember(sessionData.session.timestamp) {
-        (System.currentTimeMillis() - sessionData.session.timestamp) < TimeUnit.MINUTES.toMillis(30)
-    }
-    val isRecentDuration = 30
 
-    val currentLocale = LocalContext.current.resources.configuration.locales.get(0) ?: Locale.getDefault()
-    val timeAgoMessages = remember(currentLocale) {
-        TimeAgoMessages.Builder().withLocale(currentLocale).build()
-    }
+   // Determine the text color for the main title (greyed out if not clickable)
+   val titleTextColor = if (isCaptivePortal) {
+       MaterialTheme.colorScheme.onSurface // Standard color for clickable
+   } else {
+       Color.Gray // Greyed-out color for non-clickable
+   }
 
-    // Determine if clickable based on captive status and callbacks
-    val itemModifier = Modifier
-        .fillMaxWidth()
-        .then(
-            if (isCaptivePortal && onClick != null && navigateToSessionScreen != null) {
-                Modifier.clickable {
-                    onClick(sessionData)
-                    navigateToSessionScreen()
-                }
-            } else Modifier
-        )
-        // Add padding directly to the item's layout container (Row)
-        .padding(vertical = 16.dp, horizontal = 8.dp)
+    // Determine the text color for secondary info (stats, time)
+    // Stats only show for captive portals, time shows for both.
+    // Using onSurfaceVariant for secondary info in both states works well:
+    // - For captive portal: It's a standard subdued color for secondary details.
+    // - For non-captive portal: It's the greyed-out color, consistent with the title.
+    val secondaryTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
 
+    // Use a Row to place the highlight bar next to the content
     Row(
-        modifier = itemModifier,
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top
+        modifier = Modifier
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.Top // Align content to the top
     ) {
-        Column(
-            modifier = Modifier.weight(1f).padding(end = 8.dp), // Takes space, padding before icon
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        // Subtle Highlight Bar (only visible for captive portal)
+        Box(
+            modifier = Modifier
+                .width(2.dp) // Thin bar
+                .fillMaxHeight() // Takes height of the item content
+        )
+
+        // Main content area (clickable for captive portals, padded, and weighted)
+        val contentModifier = Modifier
+            .weight(1f) // Takes remaining space
+            .then( // Apply clickable *before* padding usually works well
+                // Only make the item clickable if it's a captive portal AND click handlers are provided
+                // Non-captive portal items are not clickable in this view.
+                if (isCaptivePortal && onClick != null && navigateToSessionScreen != null) {
+                    Modifier.clickable {
+                        onClick(sessionData)
+                        navigateToSessionScreen()
+                    }
+                } else Modifier
+            )
+            .padding(vertical = 16.dp, horizontal = 8.dp) // Apply padding to the content
+
+        // Inner Row for arranging text content and delete button
+        Row(
+            modifier = contentModifier,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top // Align content inside to top
         ) {
-            // Network name
-            Text(
-                text = stringResource(
-                    R.string.network_name,
-                    sessionData.session.ssid ?: stringResource(R.string.unknown_network)
-                ),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            // Only show counts for captive portal sessions
-            if (isCaptivePortal) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.requests, sessionData.requestsCount), style = MaterialTheme.typography.bodySmall)
-                    Text(stringResource(R.string.webpages, sessionData.webpageContentCount), style = MaterialTheme.typography.bodySmall)
-                    Text(stringResource(R.string.screenshots, sessionData.screenshotsCount), style = MaterialTheme.typography.bodySmall)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Timestamp
-            HintTextWithIcon(
-                hint = stringResource(
-                    R.string.created,
-                    TimeAgo.using(sessionData.session.timestamp, timeAgoMessages)
-                ),
-                iconResId = R.drawable.clock,
-            )
-
-            // Status indicators
-            if (isCaptivePortal) {
-                HintTextWithIcon(
-                    hint = if (sessionData.session.isUploadedToRemoteServer)
-                        stringResource(R.string.status_uploaded)
-                    else
-                        stringResource(R.string.status_local_only),
-                    iconResId = if (sessionData.session.isUploadedToRemoteServer)
-                        R.drawable.cloud else R.drawable.local,
-                )
-            } else {
-                HintTextWithIcon(
-                    hint = stringResource(R.string.not_a_captive_portal_network),
-                )
-            }
-
-            if (isRecent) {
-                HintTextWithIcon(
-                    hint = stringResource(R.string.this_is_new_session, isRecentDuration),
-                    iconResId = R.drawable.resource_new,
-                )
-            }
-        } // End Content Column
-
-        // Delete Icon Button (only if captive)
-        if (isCaptivePortal) {
-            IconButton(
-                onClick = { onDeleteClick(sessionData.session.networkId) },
-                modifier = Modifier.size(40.dp).align(Alignment.CenterVertically)
+            Column(
+                modifier = Modifier
+                    .weight(1f) // Column takes priority space
+                    .padding(end = 8.dp), // Add padding before the delete button
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.delete_session),
-                    tint = MaterialTheme.colorScheme.error
+                // Network Name (SSID) - Color is conditional
+                Text(
+                    text = stringResource(
+                        R.string.network_name,
+                        sessionData.session.ssid ?: stringResource(R.string.unknown_network)
+                    ),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = titleTextColor, // Apply the conditional color
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+
+                // Captive Portal specific stats (Requests, Webpages, Screenshots) - Only shown for captive portals
+                if (isCaptivePortal) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            stringResource(R.string.requests, sessionData.requestsCount),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = secondaryTextColor // Use the secondary color
+                        )
+                        Text(
+                            stringResource(R.string.webpages, sessionData.webpageContentCount),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = secondaryTextColor // Use the secondary color
+                        )
+                        Text(
+                            stringResource(R.string.screenshots, sessionData.screenshotsCount),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = secondaryTextColor // Use the secondary color
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Creation Time - Text and icon color use the secondary color
+               HintTextWithIcon(
+                   hint = stringResource(
+                       R.string.created,
+                       TimeAgo.using(sessionData.session.timestamp)
+                   ),
+                   iconResId = R.drawable.clock, // Ensure this drawable exists
+                   tint = if (isCaptivePortal) secondaryTextColor else Color.Gray
+               )
+            }
+
+            // Delete Button (only for Captive Portal sessions)
+            if (isCaptivePortal) {
+                IconButton(
+                    onClick = { onDeleteClick(sessionData.session.networkId) },
+                    modifier = Modifier
+                        .size(40.dp) // Standard icon button size
+                        .align(Alignment.CenterVertically) // Vertically center the button
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = stringResource(R.string.delete_session),
+                        tint = MaterialTheme.colorScheme.error // Use error color for delete icon
+                    )
+                }
             }
         }
-        // No need for Spacer if non-captive, weight handles alignment
-    } // End Row
+    }
 }
+
 
 // --- Previews ---
 

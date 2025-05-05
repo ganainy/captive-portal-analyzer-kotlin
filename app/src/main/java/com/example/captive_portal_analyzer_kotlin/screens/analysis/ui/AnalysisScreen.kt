@@ -371,8 +371,9 @@ fun PreferenceSetupContent(
     }
 
     Column(
-        modifier = modifier,
+        modifier = modifier.padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
+
     ) {
         // Header Section
         Text(
@@ -427,7 +428,9 @@ fun PreferenceSetupContent(
         )
 
         if (!isPCAPDroidInstalled()){
-            HintTextWithIcon(hint = stringResource(R.string.please_install_setup_pcapdroid_from_the_link_above_to_use_the_advanced_mode))
+            HintTextWithIcon(
+                hint = stringResource(R.string.please_install_setup_pcapdroid_from_the_link_above_to_use_the_advanced_mode),
+            )
         }
 
         // Buttons Section
@@ -444,8 +447,8 @@ fun PreferenceSetupContent(
                     ) {
                         HintTextWithIcon(
                             hint = stringResource(R.string.please_stop_running_pcap_droid_capture_before_continuing),
+                            modifier = Modifier.weight(1f),
                             color = Color.Red,
-                            modifier = Modifier.weight(1f)
                         )
                         Icon(
                             painter = painterResource(id = R.drawable.refresh_24px),
@@ -567,7 +570,10 @@ internal fun AnalysisError(
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(8.dp))
-            HintTextWithIcon(hint = hint, rowAllignment = Alignment.Center)
+            HintTextWithIcon(
+                hint = hint,
+                rowAllignment = Alignment.Center,
+            )
             Spacer(Modifier.height(8.dp))
             Row(
                 modifier = Modifier
