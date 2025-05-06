@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Captive Portal Analyzer</string>
     <string name="error_connecting_to_wifi">Bitte stellen Sie sicher, dass die WLAN- und GPS-Dienste des Geräts aktiviert sind</string>
     <string name="end_analysis">Analyse beenden</string>
@@ -405,33 +405,60 @@
     <string name="you_can_check_the_prompt_that_will_be_sent_to_the_model_by_clicking">"Sie können die vollständige Eingabeaufforderung überprüfen, die an das Modell gesendet wird, indem Sie klicken "</string>
     <string name="please_press_open_file_and_select_this_file"> "Bitte drücken Sie 'Datei öffnen', navigieren Sie zum Downloads-Ordner (oder überprüfen Sie 'Zuletzt verwendet'), suchen Sie den PCAPdroid-Unterordner, falls vorhanden, und wählen Sie die Datei mit dem Namen %1$s aus</string>
 
-   <string name="error_invalid_pcap_uri">Fehler: Ungültiger Speicherort der PCAP-Datei.</string>
-  <string name="error_saving_pcap_to_session_no_id">Fehler: Sitzungs-ID nicht gefunden, PCAP-Datei konnte nicht gespeichert werden.</string>
-  <string name="prompt_preview_empty_or_error">Eingabeaufforderungsvorschau ist leer oder ein Fehler ist aufgetreten</string>
-  <string name="generating_prompt_preview">Eingabeaufforderungsvorschau wird generiert</string>
+    <string name="error_invalid_pcap_uri">Fehler: Ungültiger Speicherort der PCAP-Datei.</string>
+    <string name="error_saving_pcap_to_session_no_id">Fehler: Sitzungs-ID nicht gefunden, PCAP-Datei konnte nicht gespeichert werden.</string>
+    <string name="prompt_preview_empty_or_error">Eingabeaufforderungsvorschau ist leer oder ein Fehler ist aufgetreten</string>
+    <string name="generating_prompt_preview">Eingabeaufforderungsvorschau wird generiert</string>
 
-<string name="delete_session">Sitzung löschen</string>
-<string name="delete_session_confirmation_title">Sitzung löschen?</string>
-<string name="delete_session_confirmation_message">Möchten Sie diese Sitzung und alle ihre Daten wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</string>
-<string name="unknown_network">Unbekanntes Netzwerk</string>
-<string name="status_uploaded">Status: Hochgeladen</string>
-<string name="status_local_only">Status: Nur lokal</string>
-<string name="no_sessions_detected_explanation">Wir konnten keine gespeicherten Interaktionen mit Captive Portals aus der App finden. Versuchen Sie, sich mit einem Netzwerk mit Captive Portal zu verbinden.</string>
+    <string name="delete_session">Sitzung löschen</string>
+    <string name="delete_session_confirmation_title">Sitzung löschen?</string>
+    <string name="delete_session_confirmation_message">Möchten Sie diese Sitzung und alle ihre Daten wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="unknown_network">Unbekanntes Netzwerk</string>
+    <string name="status_uploaded">Status: Hochgeladen</string>
+    <string name="status_local_only">Status: Nur lokal</string>
+    <string name="no_sessions_detected_explanation">Wir konnten keine gespeicherten Interaktionen mit Captive Portals aus der App finden. Versuchen Sie, sich mit einem Netzwerk mit Captive Portal zu verbinden.</string>
     <string name="checking_network_status">Checking network status</string>
 
 
-   <string name="normal_webview_chip_label">Normales WebView (Backup)</string>
-   <string name="custom_webview_chip_label">Benutzerdefiniertes WebView (Empfohlen)</string>
-   <string name="testing_webview_chip_label">Test-WebView</string>
-   <string name="error_no_captive_portal_url_found">Keine Captive-Portal-URL gefunden</string>
-   <string name="refresh_webview">WebView aktualisieren</string>
-   <string name="pcap_json_truncated_warning">Hinweis: Die enthaltene PCAP-Datenzusammenfassung wurde aufgrund ihrer Größe gekürzt.</string>
-   <string name="back_webview">Zur vorherigen Seite gehen</string>
-   <string name="pcap_status_uploading">PCAP wird hochgeladen...</string>
-   <string name="pcap_status_processing_server">Wird auf dem Server verarbeitet...</string>
-   <string name="pcap_status_checking_attempt">Status wird überprüft (Versuch %1$d)...</string>
-   <string name="pcap_status_downloading">Wird heruntergeladen...</string>
-   <string name="pcap_status_success_ready">PCAP bereit</string>
-   <string name="error_prefix">Fehler: %1$s</string>
+    <string name="normal_webview_chip_label">Normales WebView (Backup)</string>
+    <string name="custom_webview_chip_label">Benutzerdefiniertes WebView (Empfohlen)</string>
+    <string name="testing_webview_chip_label">Test-WebView</string>
+    <string name="error_no_captive_portal_url_found">Keine Captive-Portal-URL gefunden</string>
+    <string name="refresh_webview">WebView aktualisieren</string>
+    <string name="pcap_json_truncated_warning">Hinweis: Die enthaltene PCAP-Datenzusammenfassung wurde aufgrund ihrer Größe gekürzt.</string>
+    <string name="back_webview">Zur vorherigen Seite gehen</string>
+    <string name="pcap_status_uploading">PCAP wird hochgeladen...</string>
+    <string name="pcap_status_processing_server">Wird auf dem Server verarbeitet...</string>
+    <string name="pcap_status_checking_attempt">Status wird überprüft (Versuch %1$d)...</string>
+    <string name="pcap_status_downloading">Wird heruntergeladen...</string>
+    <string name="pcap_status_success_ready">PCAP bereit</string>
+    <string name="error_prefix">Fehler: %1$s</string>
+
+    <string name="error_updating_local_session_after_upload">Fehler beim Aktualisieren der lokalen Sitzung nach dem Hochladen</string>
+    <string name="network_requests_label">Netzwerkanfragen</string>
+    <string name="screenshots_label">Screenshots</string>
+    <string name="webpage_content_label">Webinhalt</string>
+    <string name="pcap_network_summary_label">PCAP-Datei</string>
+    <string name="included_count">Eingeschlossen (%d)</string>
+    <string name="not_included">Nicht ausgewählt</string>
+    <string name="pcap_converting">Ausgewählt (Wird konvertiert…)</string>
+    <string name="included_ready">Eingeschlossen (Bereit)</string>
+    <string name="pcap_truncated_note">, gekürzt</string>
+    <string name="pcap_conversion_failed">Ausgewählt (Fehlgeschlagen)</string>
+    <string name="selected_not_converted">Ausgewählt (Nicht konvertiert)</string>
+    <string name="pcap_unknown_status">Ausgewählt (Unbekannter Status)</string>
+    <string name="not_selected" tools:ignore="PrivateResource">Keine PCAP-Datei ausgewählt</string>
+    <string name="scroll_to_top">Nach oben scrollen</string>
+
+    <string name="screenshot_flagging_screen_title">Screenshots überprüfen</string>
+    <string name="loading_screenshots">Screenshot werden geladen…</string>
+    <string name="finish_flagging">Überprüfung abschließen</string>
+    <string name="no_screenshots_captured_yet">Noch keine Screenshots erfasst.</string>
+    <string name="ignore_and_move_on">Ignorieren und fortfahren</string>
+
+    <string name="close">Schließen</string>
+    <string name="proceed">Fortfahren</string>
+    <string name="save_pcap_file">PCAP-Datei speichern</string>
+    <string name="hint_click_image_to_zoom">Klicken Sie auf ein Bild, um es in voller Größe anzuzeigen</string>
 
 </resources>

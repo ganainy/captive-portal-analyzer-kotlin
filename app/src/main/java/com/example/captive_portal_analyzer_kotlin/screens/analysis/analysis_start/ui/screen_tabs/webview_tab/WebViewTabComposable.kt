@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.screen_tabs.webview_tab
+package com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.screen_tabs.webview_tab
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -38,7 +38,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,8 +53,6 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.acsbendi.requestinspectorwebview.RequestInspectorWebViewClient
@@ -71,42 +68,31 @@ import com.example.captive_portal_analyzer_kotlin.components.LoadingIndicator
 import com.example.captive_portal_analyzer_kotlin.components.MockWebView
 import com.example.captive_portal_analyzer_kotlin.components.NeverSeeAgainAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisUiData
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisUiState
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.WebViewType
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.AnalysisCallbacks
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.AnalysisError
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.PreferenceSetupContent
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.TestingWebView
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.WebViewActions
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.WebViewContentConfig
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.AnalysisUiData
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.AnalysisUiState
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.WebViewType
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.AnalysisCallbacks
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.AnalysisError
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.PreferenceSetupContent
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.TestingWebView
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.WebViewActions
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.WebViewContentConfig
 import kotlinx.coroutines.launch
 import android.graphics.Bitmap
-import android.net.Uri
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 
 @Composable
 internal fun WebViewTabComposable(
     uiState: AnalysisUiState,
     uiData: AnalysisUiData,
-    captureState: MainViewModel.CaptureState,
+    captureState: MainViewModel.PcapDroidCaptureState,
     statusMessage: String,
     targetPcapName: String?,
     analysisCallbacks: AnalysisCallbacks,
@@ -190,7 +176,7 @@ internal fun CaptivePortalWebsiteContent(
     // Remember the WebView instance
     val webView = remember {
         // Avoid creating WebView in preview
-        if (context is androidx.activity.ComponentActivity) {
+        if (context is ComponentActivity) {
             WebView(context).apply {
                 // Apply common settings once here if desired
                 settings.apply {
@@ -343,7 +329,7 @@ object BuildConfig {
     }
 }
 
-@Composable fun RoundCornerButton(onClick: () -> Unit, buttonText: String, modifier: Modifier = Modifier, trailingIcon: androidx.compose.ui.graphics.painter.Painter? = null) {
+@Composable fun RoundCornerButton(onClick: () -> Unit, buttonText: String, modifier: Modifier = Modifier, trailingIcon: Painter? = null) {
     Button(
         onClick = onClick,
         modifier = modifier,

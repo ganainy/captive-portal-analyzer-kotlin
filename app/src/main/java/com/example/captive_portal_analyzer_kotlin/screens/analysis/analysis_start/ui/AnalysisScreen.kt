@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.screens.analysis.ui
+package com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui
 
 
 import NetworkSessionRepository
@@ -65,14 +65,8 @@ import com.example.captive_portal_analyzer_kotlin.components.HintTextWithIcon
 import com.example.captive_portal_analyzer_kotlin.components.OnStartEffect
 import com.example.captive_portal_analyzer_kotlin.components.RoundCornerButton
 import com.example.captive_portal_analyzer_kotlin.components.ToastStyle
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisInternetStatus
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisUiData
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisUiState
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisViewModel
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.AnalysisViewModelFactory
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.TestingWebViewClient
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.WebViewType
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.screen_tabs.webview_tab.WebViewTabComposable
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.screen_tabs.webview_tab.WebViewTabComposable
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.testing.TestingWebViewClient
 import com.example.captive_portal_analyzer_kotlin.theme.AppTheme
 import com.example.captive_portal_analyzer_kotlin.utils.NetworkSessionManager
 
@@ -86,7 +80,8 @@ data class AnalysisScreenConfig(
 data class NavigationConfig(
     val onNavigateToSessionList: () -> Unit,
     val onNavigateToManualConnect: () -> Unit,
-    val onNavigateToSetupPCAPDroidScreen: () -> Unit
+    val onNavigateToSetupPCAPDroid: () -> Unit,
+    val onNavigateToScreenshotFlagging: () -> Unit
 )
 
 data class IntentLaunchConfig(
@@ -101,7 +96,7 @@ data class WebViewContentConfig(
     val portalUrl: String?,
     val showedHint: Boolean,
     val contentPadding: PaddingValues,
-    val captureState: MainViewModel.CaptureState,
+    val captureState: MainViewModel.PcapDroidCaptureState,
     val statusMessage: String,
     val targetPcapName: String?
 )
@@ -109,7 +104,6 @@ data class WebViewContentConfig(
 // Callback interfaces remain unchanged
 interface AnalysisCallbacks {
     val showToast: (String, ToastStyle) -> Unit
-    val navigateToSessionList: () -> Unit
 }
 
 interface WebViewActions {
@@ -175,7 +169,6 @@ fun AnalysisScreen(
 
     val analysisCallbacks = object : AnalysisCallbacks {
         override val showToast = screenConfig.mainViewModel::showToast
-        override val navigateToSessionList = navigationConfig.onNavigateToSessionList
     }
 
     val webViewActions = object : WebViewActions {
@@ -199,10 +192,10 @@ fun AnalysisScreen(
             analysisViewModel.updateShowedHint(showed)
 
         override fun stopAnalysis() =
-            analysisViewModel.stopAnalysis()
+            analysisViewModel.stopAnalysis(navigationConfig.onNavigateToScreenshotFlagging)
 
         override fun forceStopAnalysis() =
-            analysisViewModel.forceStopAnalysis()
+            analysisViewModel.forceStopAnalysis(navigationConfig.onNavigateToScreenshotFlagging)
 
         override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) =
             analysisViewModel.switchWebViewType(showToast)
@@ -220,7 +213,7 @@ fun AnalysisScreen(
         onOpenFile = intentLaunchConfig.onOpenFile,
         copiedPcapFileUri = copiedPcapFileUri,
         onNavigateToManualConnect = navigationConfig.onNavigateToManualConnect,
-        onNavigateToSetupPCAPDroid = navigationConfig.onNavigateToSetupPCAPDroidScreen,
+        onNavigateToSetupPCAPDroid = navigationConfig.onNavigateToSetupPCAPDroid,
         getCaptivePortalAddress = { analysisViewModel.getCaptivePortalAddress(analysisCallbacks.showToast) },
         onStartCapture = {
             screenConfig.mainViewModel.requestStartCapture()
@@ -246,7 +239,7 @@ fun AnalysisScreen(
             analysisViewModel::storePcapFilePathInTheSession,
         isPCAPDroidInstalled = analysisViewModel::isPcapDroidAppInstalled,
         resetViewModelState = analysisViewModel::resetViewModelState,
-        markAnalysisAsComplete = analysisViewModel::markAnalysisAsComplete
+        markAnalysisAsComplete = analysisViewModel::markAnalysisAsComplete,
     )
 
     // Handle navigation to the next screen when analysis is complete
@@ -254,7 +247,7 @@ fun AnalysisScreen(
         if (uiState == AnalysisUiState.AnalysisCompleteNavigateToNextScreen) {
             analysisViewModel.resetViewModelState()
             screenConfig.mainViewModel.resetPacketCaptureState()
-            analysisCallbacks.navigateToSessionList()
+            navigationConfig.onNavigateToScreenshotFlagging()
         }
     }
 
@@ -262,7 +255,7 @@ fun AnalysisScreen(
 
 @Composable
 private fun AnalysisScreenContent(
-    captureState: MainViewModel.CaptureState,
+    captureState: MainViewModel.PcapDroidCaptureState,
     statusMessage: String,
     targetPcapName: String?,
     uiState: AnalysisUiState,
@@ -285,7 +278,7 @@ private fun AnalysisScreenContent(
     storePcapFileToSession:  () -> Unit,
     isPCAPDroidInstalled : () -> Boolean,
     resetViewModelState: () -> Unit,
-    markAnalysisAsComplete : () -> Unit
+    markAnalysisAsComplete : () -> Unit,
 ) {
 
     val tabTitles = listOf("WebView", "Packet Capture")
@@ -354,7 +347,7 @@ private fun AnalysisScreenContent(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PreferenceSetupContent(
-    captureState: MainViewModel.CaptureState,
+    captureState: MainViewModel.PcapDroidCaptureState,
     isPCAPDroidInstalled: () -> Boolean,
     onStartCapture: () -> Unit,
     onStatusCheck: () -> Unit,
@@ -440,7 +433,7 @@ fun PreferenceSetupContent(
         ) {
 
             // show warning to user if a capture is already running
-            if (captureState == MainViewModel.CaptureState.RUNNING) {
+            if (captureState == MainViewModel.PcapDroidCaptureState.RUNNING) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
@@ -472,7 +465,7 @@ fun PreferenceSetupContent(
                 buttonText = stringResource(R.string.continue_with_packet_capture),
                 trailingIcon = painterResource(id = R.drawable.arrow_forward_ios_24px),
                 modifier = Modifier.fillMaxWidth(),
-                enabled = captureState != MainViewModel.CaptureState.RUNNING && isPCAPDroidInstalled()
+                enabled = captureState != MainViewModel.PcapDroidCaptureState.RUNNING && isPCAPDroidInstalled()
             )
 
             // Continue without Packet Capture Button
@@ -619,13 +612,12 @@ internal fun AnalysisError(
 )
 private fun AnalysisScreenContentPreview_Success() {
     AppTheme {
-        val captureState = MainViewModel.CaptureState.RUNNING
+        val captureState = MainViewModel.PcapDroidCaptureState.RUNNING
         val statusMessage = "Capturing to file..."
         val targetPcapName = "captive_portal_capture.pcap"
 
         val analysisCallbacks = object : AnalysisCallbacks {
             override val showToast = { _: String, _: ToastStyle -> }
-            override val navigateToSessionList = {}
         }
 
         val webViewActions = object : WebViewActions {
@@ -698,13 +690,12 @@ private fun AnalysisScreenContentPreview_Success() {
 )
 private fun AnalysisScreenContentPreview_Error() {
     AppTheme {
-        val captureState = MainViewModel.CaptureState.STOPPED
+        val captureState = MainViewModel.PcapDroidCaptureState.STOPPED
         val statusMessage = "Capture stopped"
         val targetPcapName = null
 
         val analysisCallbacks = object : AnalysisCallbacks {
             override val showToast = { _: String, _: ToastStyle -> }
-            override val navigateToSessionList = {}
         }
 
         val webViewActions = object : WebViewActions {
@@ -778,7 +769,7 @@ private fun AnalysisScreenContentPreview_Error() {
 private fun PreferenceSetupContentPreview_CaptureIdle() {
     AppTheme {
         PreferenceSetupContent(
-            captureState = MainViewModel.CaptureState.IDLE,
+            captureState = MainViewModel.PcapDroidCaptureState.IDLE,
             onStartCapture = {},
             getCaptivePortalAddress = {},
             onNavigateToSetupPCAPDroid = {},
@@ -800,7 +791,7 @@ private fun PreferenceSetupContentPreview_CaptureIdle() {
 private fun PreferenceSetupContentPreview_CaptureRunning() {
     AppTheme {
         PreferenceSetupContent(
-            captureState = MainViewModel.CaptureState.RUNNING,
+            captureState = MainViewModel.PcapDroidCaptureState.RUNNING,
             onStartCapture = {},
             getCaptivePortalAddress = {},
             onNavigateToSetupPCAPDroid = {},

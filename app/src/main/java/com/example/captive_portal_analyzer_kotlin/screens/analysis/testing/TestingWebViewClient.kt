@@ -1,4 +1,4 @@
-package com.example.captive_portal_analyzer_kotlin.screens.analysis
+package com.example.captive_portal_analyzer_kotlin.screens.analysis.testing
 
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -6,7 +6,6 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-
 
 class TestingWebViewClient : WebViewClient() {
     override fun onReceivedError(

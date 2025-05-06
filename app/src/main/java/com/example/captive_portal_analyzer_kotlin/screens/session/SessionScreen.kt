@@ -5,7 +5,6 @@ import android.app.Application
 import android.content.Context
 import android.content.res.Configuration
 import androidx.annotation.StringRes
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -148,7 +147,6 @@ fun SessionScreen(
         navigateToRequestDetailsScreen = navigateToRequestDetailsScreen,
         isConnected = isConnected,
         uploadSession = sessionViewModel::uploadSession,
-        toggleScreenshotPrivacyOrToSrelated = sessionViewModel::toggleScreenshotPrivacyOrToSrelated,
         toggleShowBottomSheet = sessionViewModel::toggleShowBottomSheet,
         toggleIsBodyEmpty = sessionViewModel::toggleIsBodyEmpty,
         modifySelectedMethods = sessionViewModel::modifySelectedMethods,
@@ -170,7 +168,6 @@ private fun SessionScreenContent(
     navigateToWebpageContentScreen: () -> Unit,
     navigateToRequestDetailsScreen: () -> Unit,
     uploadSession: (SessionData, (String, ToastStyle) -> Unit) -> Unit,
-    toggleScreenshotPrivacyOrToSrelated: (ScreenshotEntity) -> Unit,
     toggleShowBottomSheet: () -> Unit,
     toggleIsBodyEmpty: () -> Unit,
     modifySelectedMethods: (RequestMethod) -> Unit,
@@ -224,7 +221,6 @@ private fun SessionScreenContent(
                                         showToast,
                                     )
                                 },
-                                switchScreenshotPrivacyOrToSrealted = toggleScreenshotPrivacyOrToSrelated,
                                 navigateToAutomaticAnalysis = navigateToAutomaticAnalysis,
                                 uploadState = sessionState,
                                 onContentItemClick = {
@@ -273,12 +269,25 @@ fun SessionUploadHistoryLog(
         type: MessageType,
         isLastEntry: Boolean
     ): Pair<ImageVector, Color> {
-     return when (type) {
-         MessageType.INFO -> Pair(Icons.Default.Info, MaterialTheme.colorScheme.onSurface.copy(alpha = if (isLastEntry) 1f else 0.6f))
-         MessageType.SUCCESS -> Pair(Icons.Default.CheckCircle, Color(0xFF4CAF50).copy(alpha = if (isLastEntry) 1f else 0.6f)) // Green
-         MessageType.WARNING -> Pair(Icons.Default.Warning, MaterialTheme.colorScheme.tertiary.copy(alpha = if (isLastEntry) 1f else 0.6f)) // Warning color
-         MessageType.ERROR -> Pair(Icons.Default.Warning, MaterialTheme.colorScheme.error.copy(alpha = if (isLastEntry) 1f else 0.6f)) // Error color
-     }
+        return when (type) {
+            MessageType.INFO -> Pair(
+                Icons.Default.Info,
+                MaterialTheme.colorScheme.onSurface.copy(alpha = if (isLastEntry) 1f else 0.6f)
+            )
+
+            MessageType.SUCCESS -> Pair(
+                Icons.Default.CheckCircle,
+                Color(0xFF4CAF50).copy(alpha = if (isLastEntry) 1f else 0.6f)
+            ) // Green
+            MessageType.WARNING -> Pair(
+                Icons.Default.Warning,
+                MaterialTheme.colorScheme.tertiary.copy(alpha = if (isLastEntry) 1f else 0.6f)
+            ) // Warning color
+            MessageType.ERROR -> Pair(
+                Icons.Default.Warning,
+                MaterialTheme.colorScheme.error.copy(alpha = if (isLastEntry) 1f else 0.6f)
+            ) // Error color
+        }
     }
 
     Card(
@@ -296,18 +305,21 @@ fun SessionUploadHistoryLog(
             verticalArrangement = Arrangement.spacedBy(12.dp) // Spacing between sections
         ) {
 
-         Row(verticalAlignment = Alignment.CenterVertically) {
-             CircularProgressIndicator(Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary)
-             Spacer(modifier = Modifier.width(8.dp))
-             Text(
-                 text = "Uploading...",
-                 style = MaterialTheme.typography.bodyMedium,
-                 color = MaterialTheme.colorScheme.onSurface
-             )
-         }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(
+                    Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Uploading...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
 
             // The log messages list or placeholder/loading
-            if (uploadHistory.isEmpty() ) {
+            if (uploadHistory.isEmpty()) {
                 // Show a placeholder message when the log is empty and not loading
                 Text(
                     text = "Waiting to start upload...",
@@ -326,7 +338,8 @@ fun SessionUploadHistoryLog(
                     itemsIndexed(uploadHistory) { index, (message, type) ->
                         val isLastEntry = index == uploadHistory.size - 1
                         val (icon, color) = getIconAndColorForType(type, isLastEntry)
-                        val alpha = if (isLastEntry ) 1f else 0.6f // Fade out previous items slightly, keep last one prominent if loading
+                        val alpha =
+                            if (isLastEntry) 1f else 0.6f // Fade out previous items slightly, keep last one prominent if loading
 
                         Row(
                             modifier = Modifier
@@ -352,7 +365,7 @@ fun SessionUploadHistoryLog(
 
 
                     // Also show spinner if history is empty but isLoading is true
-                    if ( uploadHistory.isEmpty()) {
+                    if (uploadHistory.isEmpty()) {
                         item {
                             Row(
                                 modifier = Modifier
@@ -385,7 +398,6 @@ fun SessionDetail(
     sessionUiData: SessionUiData,
     uploadSession: () -> Unit,
     uploadState: SessionState,
-    switchScreenshotPrivacyOrToSrealted: (ScreenshotEntity) -> Unit,
     navigateToAutomaticAnalysis: () -> Unit,
     onContentItemClick: (WebpageContentEntity) -> Unit,
     onRequestItemClick: (CustomWebViewRequestEntity) -> Unit,
@@ -546,7 +558,6 @@ fun SessionDetail(
                     item { // Place the entire ScreenshotsList composable within a single item
                         ScreenshotsList(
                             screenshots = screenshots,
-                            toggleScreenshotPrivacyOrToSrelated = switchScreenshotPrivacyOrToSrealted,
                         )
                     }
                 }
@@ -1041,66 +1052,43 @@ private fun ContentItem(
 @Composable
 private fun ScreenshotsList(
     screenshots: List<ScreenshotEntity>?,
-    toggleScreenshotPrivacyOrToSrelated: (ScreenshotEntity) -> Unit,
 ) {
     if (screenshots.isNullOrEmpty()) {
         EmptyListUi(R.string.no_screenshots_found)
         return
     }
-
-    // Column needed to place the hint text *above* the grid within the single item scope
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.hint_select_privacy_images),
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            // Adjusted padding as it's inside the parent LazyColumn's item padding
-            modifier = Modifier.padding(vertical = 12.dp)
-        )
-
-        // LazyVerticalGrid scrolls internally within the LazyColumn item
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 150.dp),
-            modifier = Modifier
-                .fillMaxWidth() // Grid takes full width within the item
-                .heightIn(max = 600.dp),
-            contentPadding = PaddingValues(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(
-                items = screenshots,
-                key = { it.screenshotId }
-            ) { screenshot ->
-                ImageItem(
-                    imagePath = screenshot.path,
-                    isSelected = screenshot.isPrivacyOrTosRelated,
-                    onImageClick = {
-                        toggleScreenshotPrivacyOrToSrelated(screenshot)
-                    }
-                )
-            }
+    // LazyVerticalGrid scrolls internally within the LazyColumn item
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 150.dp),
+        modifier = Modifier
+            .fillMaxWidth() // Grid takes full width within the item
+            .heightIn(max = 600.dp), // Set max height to allow scrolling within the grid
+        contentPadding = PaddingValues(bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(
+            items = screenshots,
+            key = { it.screenshotId }
+        ) { screenshot ->
+            // Use the non-selectable display card
+            ScreenshotDisplayCard(
+                imagePath = screenshot.path,
+            )
         }
     }
 }
 
-
 @Composable
-fun ImageItem(
+fun ScreenshotDisplayCard(
     imagePath: String,
-    isSelected: Boolean,
-    onImageClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
-            .aspectRatio(1f)
-            .clickable(onClick = onImageClick),
+            .aspectRatio(1f), // Keep aspect ratio
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(
-            width = if (isSelected) 3.dp else 0.dp,
-            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
-        )
+        // Removed border and clickable
     ) {
         Box(contentAlignment = Alignment.Center) {
             Image(
@@ -1115,27 +1103,25 @@ fun ImageItem(
                 contentScale = ContentScale.Crop
             )
 
-            if (isSelected) {
+            // Optional: Maybe show an indicator if it *was* marked during analysis?
+            // Keeping this simple for now, just displaying the image.
+            if (/* Check if screenshot.isPrivacyOrTosRelated */ false) { // Dummy check, actual data needed
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
-                            color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), // Subtle overlay
                         )
-                        .padding(8.dp),
-                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = stringResource(R.string.tos_privacy_related_label),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.bodySmall,
-                        textAlign = TextAlign.Center
-                    )
+                    // Could add an icon or label here if needed
                 }
             }
         }
     }
 }
+
+
+
 
 // endregion
 
@@ -1223,12 +1209,12 @@ fun PreviewSessionUploadHistoryLog() {
     MaterialTheme {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Text("Uploading State", style = MaterialTheme.typography.titleLarge)
-            SessionUploadHistoryLog(uploadHistory = history,)
+            SessionUploadHistoryLog(uploadHistory = history)
 
             Divider()
 
             Text("Completed State", style = MaterialTheme.typography.titleLarge)
-            SessionUploadHistoryLog(uploadHistory = historyCompleted, ) // isLoading false when finished
+            SessionUploadHistoryLog(uploadHistory = historyCompleted) // isLoading false when finished
 
             Divider()
 
@@ -1238,12 +1224,12 @@ fun PreviewSessionUploadHistoryLog() {
             Divider()
 
             Text("Empty/Waiting State (not loading)", style = MaterialTheme.typography.titleLarge)
-            SessionUploadHistoryLog(uploadHistory = emptyList(),)
+            SessionUploadHistoryLog(uploadHistory = emptyList())
 
             Divider()
 
             Text("Loading with Empty History", style = MaterialTheme.typography.titleLarge)
-            SessionUploadHistoryLog(uploadHistory = emptyList(),) // Example: waiting for first log entry
+            SessionUploadHistoryLog(uploadHistory = emptyList()) // Example: waiting for first log entry
         }
     }
 }
@@ -1401,7 +1387,6 @@ fun SessionScreenContentPreview_Requests() {
                 navigateToWebpageContentScreen = {},
                 navigateToRequestDetailsScreen = {},
                 uploadSession = { _, _ -> },
-                toggleScreenshotPrivacyOrToSrelated = {},
                 toggleShowBottomSheet = {},
                 toggleIsBodyEmpty = {},
                 modifySelectedMethods = {},
@@ -1447,7 +1432,6 @@ fun SessionScreenContentPreview_NoRequests() {
                 navigateToWebpageContentScreen = {},
                 navigateToRequestDetailsScreen = {},
                 uploadSession = { _, _ -> },
-                toggleScreenshotPrivacyOrToSrelated = {},
                 toggleShowBottomSheet = {},
                 toggleIsBodyEmpty = {},
                 modifySelectedMethods = {},
@@ -1499,29 +1483,7 @@ fun RequestListItemPreview() {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun ImageItemPreview() {
-    AppTheme {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier
-                .padding(16.dp)
-                .height(150.dp) // Added height for preview
-        ) {
-            ImageItem(
-                imagePath = "mock",
-                isSelected = true,
-                onImageClick = {}
-            )
-            ImageItem(
-                imagePath = "mock",
-                isSelected = false,
-                onImageClick = {}
-            )
-        }
-    }
-}
+
 
 @Preview(showBackground = true, widthDp = 360)
 @Composable

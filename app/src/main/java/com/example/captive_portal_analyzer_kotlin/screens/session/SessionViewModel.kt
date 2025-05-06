@@ -238,21 +238,6 @@ class SessionViewModel(
     }
 
     /**
-     * This function toggles the privacy or tos related state of a given [ScreenshotEntity]
-     * in the repository to interact with the user clicking the image.
-     *
-     * @param screenshot the [ScreenshotEntity] to be updated
-     */
-    fun toggleScreenshotPrivacyOrToSrelated(screenshot: ScreenshotEntity) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.updateScreenshot(
-                screenshot.copy(isPrivacyOrTosRelated = !screenshot.isPrivacyOrTosRelated)
-            )
-        }
-    }
-
-
-    /**
      * This function uploads the session data to the remote server.
      * It takes a [SessionData] and a function to show a toast as parameters.
      * It updates the [_sessionState] with the result of the upload.

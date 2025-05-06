@@ -1,6 +1,5 @@
 package com.example.captive_portal_analyzer_kotlin.navigation
 
-// Import NEW Screens and ViewModel Factory
 import NetworkSessionRepository
 import android.app.Application
 import android.content.Intent
@@ -22,10 +21,15 @@ import com.example.captive_portal_analyzer_kotlin.components.ActionAlertDialog
 import com.example.captive_portal_analyzer_kotlin.components.AppToast
 import com.example.captive_portal_analyzer_kotlin.components.DialogState
 import com.example.captive_portal_analyzer_kotlin.screens.about.AboutScreen
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.AnalysisScreen
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.AnalysisScreenConfig
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.IntentLaunchConfig
-import com.example.captive_portal_analyzer_kotlin.screens.analysis.ui.NavigationConfig
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.AnalysisScreen
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.AnalysisScreenConfig
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.AnalysisViewModel
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.AnalysisViewModelFactory
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.IntentLaunchConfig
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.analysis_start.ui.NavigationConfig
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.screenshots_flagging.ScreenshotFlaggingScreen
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.screenshots_flagging.ScreenshotFlaggingViewModel
+import com.example.captive_portal_analyzer_kotlin.screens.analysis.screenshots_flagging.ScreenshotFlaggingViewModelFactory
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisInputScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisOutputScreen
 import com.example.captive_portal_analyzer_kotlin.screens.automatic_analysis.AutomaticAnalysisViewModel
@@ -46,7 +50,8 @@ import java.util.Locale
 sealed class Screen(val route: String, @StringRes val titleStringResource: Int) {
     object Welcome : Screen("welcome", R.string.welcome_screen_title)
     object ManualConnect : Screen("manual_connect", R.string.manual_connect_screen_title)
-    object Analysis : Screen("analysis", R.string.analysis_screen_title)
+    object Analysis : Screen("analysis_start", R.string.analysis_screen_title)
+    object ScreenshotFlagging : Screen("screenshot_flagging", R.string.screenshot_flagging_screen_title)
     object SessionList : Screen("session_list", R.string.session_list_screen_title)
     object Session : Screen("session", R.string.session_screen_title)
     object About : Screen("about", R.string.about_screen_title)
@@ -55,6 +60,9 @@ sealed class Screen(val route: String, @StringRes val titleStringResource: Int) 
     object RequestDetails : Screen("request_details", R.string.request_details)
     object PCAPDroidSetup : Screen("pcapdroid_setup", R.string.pcap_setup_screen_title)
 }
+
+//  a new route for the primary analysis flow graph
+val PrimaryAnalysisGraphRoute = "primary_analysis_graph"
 
 // Routes related to Automatic Analysis
 val AutomaticAnalysisInputRoute = "automatic_analysis_input"
@@ -107,26 +115,87 @@ fun AppNavGraph(
                 navigateToAnalysis = actions.navigateToAnalysisScreen,
             )
         }
-        composable(route = Screen.Analysis.route) {
-            AnalysisScreen(
-                screenConfig = AnalysisScreenConfig(
-                    repository = repository,
-                    sessionManager = sessionManager,
-                    mainViewModel = mainViewModel,
-                ),
-                navigationConfig = NavigationConfig(
-                    onNavigateToSessionList = actions.navigateToSessionListScreen,
-                    onNavigateToManualConnect = actions.navigateToManualConnectScreen,
-                    onNavigateToSetupPCAPDroidScreen = actions.navigateToSetupPCAPDroidScreen,
-                ),
-                intentLaunchConfig = IntentLaunchConfig(
-                    onStartIntent = onStartIntentLaunchRequested,
-                    onStopIntent = onStopIntentLaunchRequested,
-                    onStatusIntent = onStatusIntentLaunchRequested,
-                    onOpenFile = onOpenFileRequested
+
+
+        // --- Nested Navigation Graph for Primary Analysis Flow (Analysis -> Flagging) ---
+        navigation(
+            startDestination = Screen.Analysis.route, // Start with the Analysis screen
+            route = PrimaryAnalysisGraphRoute // Define the route for this graph
+        ) {
+            // Analysis Screen Composable (inside the primary analysis graph)
+            composable(route = Screen.Analysis.route) { backStackEntry ->
+                // Get ViewModel scoped to the primary analysis graph
+                val graphEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(PrimaryAnalysisGraphRoute)
+                }
+                val application = LocalContext.current.applicationContext as Application
+
+                val analysisViewModel: AnalysisViewModel = viewModel(
+                    viewModelStoreOwner = graphEntry, // Scope ViewModel to the graph
+                    factory = AnalysisViewModelFactory(
+                        application = application,
+                        repository = repository,
+                        sessionManager = sessionManager,
+                        showToast = mainViewModel::showToast,
+                        mainViewModel = mainViewModel
+                    )
                 )
-            )
+
+                AnalysisScreen(
+                    screenConfig = AnalysisScreenConfig(
+                        repository = repository,
+                        sessionManager = sessionManager,
+                        mainViewModel = mainViewModel,
+                    ),
+                    navigationConfig = NavigationConfig(
+                        // navigateToSessionList is NOT called from here anymore
+                        onNavigateToSessionList = {}, // Dummy lambda or remove if not needed by AnalysisScreen internal logic
+                        onNavigateToManualConnect = actions.navigateToManualConnectScreen, // Still navigates outside graph if needed
+                        onNavigateToSetupPCAPDroid = actions.navigateToSetupPCAPDroidScreen, // Still navigates outside graph
+                        // Pass action to navigate to the next screen *within* this graph
+                        onNavigateToScreenshotFlagging = actions.navigateToScreenshotFlaggingScreen
+                    ),
+                    intentLaunchConfig = IntentLaunchConfig(
+                        onStartIntent = onStartIntentLaunchRequested,
+                        onStopIntent = onStopIntentLaunchRequested,
+                        onStatusIntent = onStatusIntentLaunchRequested,
+                        onOpenFile = onOpenFileRequested
+                    )
+                    // Pass the ViewModel explicitly if needed by nested composables
+                    // analysisViewModel = analysisViewModel // Pass ViewModel down
+                )
+            }
+
+            // Screenshot Flagging Screen Composable (inside the primary analysis graph)
+            composable(route = Screen.ScreenshotFlagging.route) { backStackEntry ->
+                // Get the SAME ViewModel instance scoped to the graph
+                val graphEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(PrimaryAnalysisGraphRoute)
+                }
+
+                // *** Create and get the ScreenshotFlaggingViewModel scoped to the graph ***
+                val application = LocalContext.current.applicationContext as Application
+                val screenshotFlaggingViewModel: ScreenshotFlaggingViewModel = viewModel(
+                    viewModelStoreOwner = graphEntry, // Scope to the *graph* NavBackStackEntry
+                    factory = ScreenshotFlaggingViewModelFactory( // Use the correct factory
+                        application = application,
+                        repository = repository, // Pass dependencies the factory needs
+                        sessionManager = sessionManager,
+                        showToast = mainViewModel::showToast // Pass dependency
+                    )
+                )
+
+                ScreenshotFlaggingScreen(
+                    viewModel = screenshotFlaggingViewModel, // Pass the shared ViewModel
+                    // Pass action to navigate *outside* the graph to the Session List
+                    onFinishFlagging = actions.navigateToSessionListScreen,
+                    // Optionally pass a back navigation action if needed
+                    // onNavigateBack = actions.popBackStack
+                )
+            }
         }
+        // --- END Primary Analysis Graph ---
+
         composable(route = Screen.SessionList.route) {
             SessionListScreen(
                 repository = repository,
@@ -285,7 +354,24 @@ class NavigationActions(private val navController: NavHostController) {
         navController.navigate(Screen.Session.route)
     }
 
-    // Updated action: Navigate to the START of the nested graph
+    //  action to navigate to the start of the Primary Analysis Graph
+    val navigateToPrimaryAnalysisGraph: () -> Unit = {
+        navController.navigate(PrimaryAnalysisGraphRoute) {
+            // Clear backstack up to Welcome to simplify flow after connecting
+            popUpTo(navController.graph.startDestinationId) { saveState = true }
+            launchSingleTop = true
+        }
+    }
+
+    // Action to navigate *within* the Primary Analysis Graph to the Screenshot Flagging screen
+    val navigateToScreenshotFlaggingScreen: () -> Unit = {
+        navController.navigate(Screen.ScreenshotFlagging.route) {
+            // Optional: Clear Analysis screen from backstack once navigating to Flagging
+            popUpTo(Screen.Analysis.route) { inclusive = true }
+        }
+    }
+
+    //  action: Navigate to the START of the nested graph
     val navigateToAutomaticAnalysisGraph: () -> Unit = {
         navController.navigate(AutomaticAnalysisGraphRoute)
     }
