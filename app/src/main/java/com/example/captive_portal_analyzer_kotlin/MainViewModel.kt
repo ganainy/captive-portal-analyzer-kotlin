@@ -4,6 +4,8 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.util.Log
 import androidx.activity.result.ActivityResult
@@ -35,6 +37,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.Locale
 
 
@@ -44,8 +48,8 @@ enum class ThemeMode {
 
 enum class PcapDroidPacketCaptureStatus {
     INITIAL,   // user still didnt choose to go with packet capture enabled or not
-    ENABLED,
-    DISABLED
+    PCAPDROID_CAPTURE_ENABLED,
+    PCAPDROID_CAPTURE_DISABLED
 }
 
 interface IMainViewModel {
@@ -622,6 +626,53 @@ class MainViewModel(
     fun updateCaptureState(captureState: PcapDroidCaptureState) {
         _captureState.value = captureState
     }
+
+
+    /**
+     * Checks if the device has a full internet connection.
+     * This method checks if the device is connected to a network and if that network has internet access.
+     * This is done by checking if the device can ping a reliable website (Google).
+     * If the device can ping the website successfully, it is considered to have a full internet connection.
+     *
+     * @return true if the device has a full internet connection, false otherwise
+     */
+    internal suspend fun hasFullInternetAccess(context: Context): Boolean {
+        // Check network connectivity first
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetwork = connectivityManager.activeNetwork
+        val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+
+        val isNetworkConnected = networkCapabilities?.run {
+            hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    (hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || hasTransport(
+                        NetworkCapabilities.TRANSPORT_CELLULAR
+                    ))
+        } == true
+
+        // If not connected, return false
+        if (!isNetworkConnected) {
+            return false
+        }
+
+        // Try to ping a website to check if internet is accessible
+        return try {
+            val url = URL("https://www.google.com") // Use any reliable website
+            val connection = url.openConnection() as HttpURLConnection
+            connection.apply {
+                connectTimeout = 2000 // Set timeout to 2 seconds
+                readTimeout = 2000
+            }
+
+            val responseCode = connection.responseCode
+            connection.disconnect()
+
+            responseCode == HttpURLConnection.HTTP_OK // Check if we received a successful response
+        } catch (e: Exception) {
+            false // If any error occurs (no internet, timeout, etc.), return false
+        }
+    }
+
 
 }
 

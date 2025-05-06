@@ -461,4 +461,7 @@
     <string name="save_pcap_file">PCAP-Datei speichern</string>
     <string name="hint_click_image_to_zoom">Klicken Sie auf ein Bild, um es in voller Größe anzuzeigen</string>
 
+    <string name="header_privacy_related_screenshots">AGB- oder Datenschutz-Screenshots:</string>
+    <string name="header_other_screenshots">Andere Screenshots:</string>
+
 </resources>

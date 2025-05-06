@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -52,6 +53,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -118,7 +120,6 @@ fun SessionScreen(
     navigateToRequestDetailsScreen: () -> Unit
 ) {
     val clickedSessionId by mainViewModel.clickedSessionId.collectAsState()
-
     val sessionViewModel: SessionViewModel = viewModel(
         factory = SessionViewModelFactory(
             application = LocalContext.current.applicationContext as Application,
@@ -155,7 +156,6 @@ fun SessionScreen(
         updateClickedRequest = mainViewModel::updateClickedRequest,
         uploadHistory = uploadHistory,
     )
-
 }
 
 @Composable
@@ -253,11 +253,9 @@ private fun SessionScreenContent(
     }
 }
 
-
 /**
- * A composable to display the historical log of upload steps.
- *
- * @param uploadHistory The list of pairs containing messages and their corresponding MessageType.
+A composable to display the historical log of upload steps.
+@param uploadHistory The list of pairs containing messages and their corresponding MessageType.
  */
 @Composable
 fun SessionUploadHistoryLog(
@@ -289,7 +287,6 @@ fun SessionUploadHistoryLog(
             ) // Error color
         }
     }
-
     Card(
         modifier = Modifier
             .fillMaxWidth(0.95f) // Take most of the width
@@ -304,7 +301,6 @@ fun SessionUploadHistoryLog(
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp) // Spacing between sections
         ) {
-
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(
                     Modifier.size(24.dp),
@@ -388,11 +384,9 @@ fun SessionUploadHistoryLog(
     }
 }
 
-
 // endregion
-
 // region Session Detail Structure
-@OptIn(ExperimentalFoundationApi::class) // Needed for stickyHeader
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class) // Needed for stickyHeader
 @Composable
 fun SessionDetail(
     sessionUiData: SessionUiData,
@@ -410,18 +404,17 @@ fun SessionDetail(
     val requests = sessionUiData.sessionData?.requests ?: emptyList()
     val content = sessionUiData.sessionData?.webpageContent ?: emptyList()
     val screenshots = sessionUiData.sessionData?.screenshots ?: emptyList()
-
-    // Main Column for layout distribution
+// Main Column for layout distribution
     Column(modifier = Modifier.fillMaxSize()) {
 
         // Scrollable content area using LazyColumn
         LazyColumn(
             modifier = Modifier.weight(1f), // Takes available space, pushing button area down
             contentPadding = PaddingValues(
-                horizontal = 4.dp,
-                vertical = 4.dp
+                horizontal = 8.dp,
+                vertical = 8.dp
             ), // Keep content padding
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // 1. General Details - This will scroll off screen
             item {
@@ -554,11 +547,72 @@ fun SessionDetail(
                     }
                 }
 
-                2 -> { // Screenshots Tab
-                    item { // Place the entire ScreenshotsList composable within a single item
-                        ScreenshotsList(
-                            screenshots = screenshots,
-                        )
+                2 -> { // Content for the Screenshots Tab
+                    // Handle overall empty state for screenshots specific to THIS tab
+                    if (screenshots.isNullOrEmpty()) {
+                        item {
+                            EmptyListUi(R.string.no_screenshots_found)
+                        }
+                    } else {
+                        // Separate screenshots into two lists
+                        val privacyRelatedScreenshots =
+                            screenshots.filter { it.isPrivacyOrTosRelated }
+                        val otherScreenshots = screenshots.filter { !it.isPrivacyOrTosRelated }
+
+                        // Add Privacy-Related section header and items if there are any
+                        if (privacyRelatedScreenshots.isNotEmpty()) {
+                            item {
+                                val colors = MaterialTheme.colorScheme
+                                Text(
+                                    text = stringResource(R.string.header_privacy_related_screenshots),
+                                    style = typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                    color = colors.primary,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+                            }
+                            item {
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    privacyRelatedScreenshots.forEach { screenshot ->
+                                        ScreenshotDisplayCard(imagePath = screenshot.path, isPrivacyOrTosRelated = screenshot.isPrivacyOrTosRelated)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Add Other Screenshots section header and items if there are any
+                        if (otherScreenshots.isNotEmpty()) {
+                            if (privacyRelatedScreenshots.isNotEmpty()) {
+                                item {
+                                    Spacer(modifier = Modifier.height(16.dp)) // Extra space between groups
+                                }
+                            }
+                            item {
+                                val colors = MaterialTheme.colorScheme
+                                Text(
+                                    text = stringResource(R.string.header_other_screenshots),
+                                    style = typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                    color = colors.primary,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+                            }
+                            item {
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    otherScreenshots.forEach { screenshot ->
+                                        ScreenshotDisplayCard(imagePath = screenshot.path, isPrivacyOrTosRelated = screenshot.isPrivacyOrTosRelated)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -582,7 +636,7 @@ fun SessionDetail(
 
     } // End Main Column
 
-    // Bottom Sheet remains outside the main layout Column
+// Bottom Sheet remains outside the main layout Column
     if (sessionUiData.showFilteringBottomSheet) {
         FilterBottomSheet(
             onDismiss = onToggleShowBottomSheet,
@@ -595,12 +649,10 @@ fun SessionDetail(
     }
 }
 
-
 @Composable
 private fun SessionGeneralDetails(clickedSessionData: SessionData?, modifier: Modifier = Modifier) {
     var isExpanded by remember { mutableStateOf(false) }
     val maxHeight = 85.dp
-
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -700,7 +752,6 @@ private fun DetailItem(label: String, value: String) {
     }
 }
 
-
 @Composable
 private fun SessionActionButtons(
     uploadState: SessionState,
@@ -718,7 +769,6 @@ private fun SessionActionButtons(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             when (uploadState) {
                 SessionState.AlreadyUploaded -> {
                     RoundCornerButton(
@@ -771,8 +821,8 @@ private fun SessionActionButtons(
         }
     }
 }
-// endregion
 
+// endregion
 // region Requests Tab Content
 @Composable
 private fun FiltersHeader(onToggleShowBottomSheet: () -> Unit, modifier: Modifier = Modifier) {
@@ -795,7 +845,6 @@ private fun FiltersHeader(onToggleShowBottomSheet: () -> Unit, modifier: Modifie
     }
 }
 
-
 @Composable
 private fun ListSectionHeader(text: String) {
     Surface(
@@ -814,7 +863,6 @@ private fun ListSectionHeader(text: String) {
         )
     }
 }
-
 
 @Composable
 private fun RequestListItem(
@@ -862,7 +910,6 @@ private fun RequestListItem(
             Spacer(Modifier.height(4.dp))
         }
         RequestMethodView(request.method)
-
         Spacer(Modifier.height(4.dp))
 
         Row(
@@ -884,7 +931,6 @@ private fun RequestListItem(
     }
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun FilterBottomSheet(
@@ -896,7 +942,6 @@ fun FilterBottomSheet(
     onResetFilters: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -960,10 +1005,9 @@ fun FilterBottomSheet(
         }
     }
 }
+
 // endregion
-
 // region Content Tab Content
-
 @Composable
 private fun ContentItem(
     item: WebpageContentEntity,
@@ -973,7 +1017,7 @@ private fun ContentItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onContentItemClick(item) }
-            // Padding applied within the item
+// Padding applied within the item
             .padding(vertical = 12.dp)
     ) {
         item.url?.let { urlValue ->
@@ -993,7 +1037,6 @@ private fun ContentItem(
             }
             Spacer(Modifier.height(4.dp))
         }
-
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(R.string.html_path_label),
@@ -1046,49 +1089,106 @@ private fun ContentItem(
         )
     }
 }
-// endregion
 
+// endregion
 // region Screenshots Tab Content
+// --- Helper Composable: Section Header ---
 @Composable
-private fun ScreenshotsList(
+private fun SectionHeader(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleLarge, // Or adjust style as needed
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp) // Add some padding around headers
+    )
+}
+
+// --- Main Composable (Refactored) ---
+@Composable
+fun ScreenshotsList(
     screenshots: List<ScreenshotEntity>?,
+    modifier: Modifier = Modifier // Added modifier parameter
 ) {
+// Handle overall empty state first
     if (screenshots.isNullOrEmpty()) {
         EmptyListUi(R.string.no_screenshots_found)
         return
     }
-    // LazyVerticalGrid scrolls internally within the LazyColumn item
+// Separate screenshots into two lists
+    val privacyRelatedScreenshots = screenshots.filter { it.isPrivacyOrTosRelated }
+    val otherScreenshots = screenshots.filter { !it.isPrivacyOrTosRelated }
+
+// Use a single LazyVerticalGrid for everything
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 150.dp),
-        modifier = Modifier
-            .fillMaxWidth() // Grid takes full width within the item
-            .heightIn(max = 600.dp), // Set max height to allow scrolling within the grid
-        contentPadding = PaddingValues(bottom = 16.dp),
+        modifier = modifier.fillMaxSize(), // Use the provided modifier, fill parent size
+        contentPadding = PaddingValues(16.dp), // Apply padding to the grid content
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(
-            items = screenshots,
-            key = { it.screenshotId }
-        ) { screenshot ->
-            // Use the non-selectable display card
-            ScreenshotDisplayCard(
-                imagePath = screenshot.path,
-            )
+        // Add Privacy-Related section header and items if there are any
+        if (privacyRelatedScreenshots.isNotEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) { // Header spans all columns
+                Text(
+                    text = stringResource(R.string.header_privacy_related_screenshots),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp) // Add space below the header
+                )
+            }
+            items(
+                items = privacyRelatedScreenshots,
+                key = { it.screenshotId }
+            ) { screenshot ->
+                ScreenshotDisplayCard(imagePath = screenshot.path, isPrivacyOrTosRelated = screenshot.isPrivacyOrTosRelated)
+            }
         }
+
+        // Add Other Screenshots section header and items if there are any
+        if (otherScreenshots.isNotEmpty()) {
+            // Add spacing between sections if both exist
+            if (privacyRelatedScreenshots.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) { // Spacer spans all columns
+                    Spacer(modifier = Modifier.height(16.dp)) // Extra space between grids
+                }
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) { // Header spans all columns
+                Text(
+                    text = stringResource(R.string.header_other_screenshots),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp) // Add space below the header
+                )
+            }
+            items(
+                items = otherScreenshots,
+                key = { it.screenshotId }
+            ) { screenshot ->
+                ScreenshotDisplayCard(imagePath = screenshot.path, isPrivacyOrTosRelated = screenshot.isPrivacyOrTosRelated)
+            }
+        }
+
+        // If the list was not null/empty, but both filtered lists are empty,
+        // nothing will be displayed inside the grid. This is correct behavior
+        // as the initial empty/null check handles the "no screenshots found" case.
     }
 }
 
 @Composable
 fun ScreenshotDisplayCard(
     imagePath: String,
+    isPrivacyOrTosRelated : Boolean,
 ) {
     Card(
         modifier = Modifier
+            .fillMaxWidth(0.32f) // Use 30% of the device width
             .aspectRatio(1f), // Keep aspect ratio
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        // Removed border and clickable
+// Removed border and clickable
     ) {
         Box(contentAlignment = Alignment.Center) {
             Image(
@@ -1102,29 +1202,21 @@ fun ScreenshotDisplayCard(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-
-            // Optional: Maybe show an indicator if it *was* marked during analysis?
-            // Keeping this simple for now, just displaying the image.
-            if (/* Check if screenshot.isPrivacyOrTosRelated */ false) { // Dummy check, actual data needed
+            if (isPrivacyOrTosRelated) { // Dummy check, actual data needed
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), // Subtle overlay
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), // Subtle overlay
                         )
                 ) {
-                    // Could add an icon or label here if needed
                 }
             }
         }
     }
 }
 
-
-
-
 // endregion
-
 // region Utility Composables (Hint, Empty List, etc.)
 @Composable
 private fun HintInfoBox(
@@ -1132,7 +1224,6 @@ private fun HintInfoBox(
     modifier: Modifier,
 ) {
     var showInfoBox2 by remember { mutableStateOf(false) }
-
     LaunchedEffect(Unit) {
         AlertDialogState.getNeverSeeAgainState(context, "info_box_2")
             .collect { neverSeeAgain ->
@@ -1169,12 +1260,10 @@ private fun EmptyListUi(@StringRes stringRes: Int) {
     }
 }
 // endregion
-
 // region Preview Functions
-
 // --- Preview Composable ---
 /**
- * Preview for SessionUploadHistoryLog composable with mock data.
+Preview for SessionUploadHistoryLog composable with mock data.
  */
 @Composable
 @Preview(
@@ -1191,26 +1280,22 @@ fun PreviewSessionUploadHistoryLog() {
         "Server received chunk 2..." to MessageType.SUCCESS,
         "Uploading file chunk 3/10..." to MessageType.INFO // This will be the last one shown with spinner if isLoading is true
     )
-
     val historyCompleted = listOf(
         "Initializing upload..." to MessageType.INFO,
         "Connecting to server..." to MessageType.INFO,
         "Uploading file chunk 10/10..." to MessageType.INFO,
         "Upload finished successfully." to MessageType.SUCCESS
     )
-
     val historyError = listOf(
         "Initializing upload..." to MessageType.INFO,
         "Connecting to server..." to MessageType.INFO,
         "Uploading file chunk 1/10..." to MessageType.INFO,
         "Connection lost." to MessageType.ERROR
     )
-
     MaterialTheme {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Text("Uploading State", style = MaterialTheme.typography.titleLarge)
             SessionUploadHistoryLog(uploadHistory = history)
-
             Divider()
 
             Text("Completed State", style = MaterialTheme.typography.titleLarge)
@@ -1305,7 +1390,6 @@ private fun createMockRequests(): List<CustomWebViewRequestEntity> {
             type = "XHR",
             url = "https://analytics.example.com/track",
             method = RequestMethod.POST,
-            body = "{\"event\":\"page_load\"}",
             headers = "Content-Type: application/json",
             timestamp = System.currentTimeMillis() - 85000,
             hasFullInternetAccess = false
@@ -1339,13 +1423,12 @@ private fun createMockRequests(): List<CustomWebViewRequestEntity> {
             url = "https://cdn.example.com/library.js",
             method = RequestMethod.GET,
             body = null,
-            headers = "Accept: */*",
+            headers = "Accept: /",
             timestamp = System.currentTimeMillis() - 25000,
             hasFullInternetAccess = true // After hypothetical auth
         )
     )
 }
-
 
 @Composable
 @Preview(
@@ -1368,7 +1451,6 @@ fun SessionScreenContentPreview_Requests() {
     val mockRequests = createMockRequests()
     val mockSessionData = createMockSessionData(mockRequests)
     val mockSessionState = SessionState.NeverUploaded
-
     val mockSessionUiData = SessionUiData(
         sessionData = mockSessionData,
         showFilteringBottomSheet = false,
@@ -1403,7 +1485,6 @@ fun SessionScreenContentPreview_Requests() {
     }
 }
 
-
 @Composable
 @Preview(
     showBackground = true,
@@ -1413,7 +1494,6 @@ fun SessionScreenContentPreview_Requests() {
 fun SessionScreenContentPreview_NoRequests() {
     val mockSessionData = createMockSessionData(emptyList()) // No requests
     val mockSessionState = SessionState.NeverUploaded
-
     val mockSessionUiData = SessionUiData(
         sessionData = mockSessionData,
         showFilteringBottomSheet = false,
@@ -1457,14 +1537,13 @@ fun RequestListItemPreview() {
         type = "XHR Long Type Name Here To Test Wrapping",
         url = "https://really.long.url.that.might.need.to.be.ellipsized.com/api/v1/data?param1=value1¶m2=value2",
         method = RequestMethod.POST,
-        body = "{\"key\":\"value\"}",
         headers = "Content-Type: application/json\nAuthorization: Bearer token",
         timestamp = System.currentTimeMillis() - 5000,
         hasFullInternetAccess = false
     )
     AppTheme {
         Surface {
-            // Wrap in LazyColumn for realistic context if needed, or just Column
+// Wrap in LazyColumn for realistic context if needed, or just Column
             LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp)) {
                 item { RequestListItem(onRequestItemClick = {}, request = request) }
                 item { Divider() }
@@ -1482,8 +1561,6 @@ fun RequestListItemPreview() {
         }
     }
 }
-
-
 
 @Preview(showBackground = true, widthDp = 360)
 @Composable

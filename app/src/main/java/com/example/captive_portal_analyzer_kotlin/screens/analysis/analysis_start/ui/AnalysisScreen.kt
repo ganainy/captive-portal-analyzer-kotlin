@@ -119,7 +119,6 @@ interface WebViewActions {
     fun updateShowedHint(showed: Boolean)
     fun stopAnalysis()
     fun switchWebViewType(showToast: (String, ToastStyle) -> Unit)
-    fun forceStopAnalysis()
 }
 
 interface CaptureActions {
@@ -162,7 +161,6 @@ fun AnalysisScreen(
     )
 
     val uiData by analysisViewModel.uiData.collectAsState()
-    val analysisInternetStatus: AnalysisInternetStatus =  uiData.analysisInternetStatus
 
 
     val uiState by analysisViewModel.uiState.collectAsState()
@@ -194,8 +192,6 @@ fun AnalysisScreen(
         override fun stopAnalysis() =
             analysisViewModel.stopAnalysis(navigationConfig.onNavigateToScreenshotFlagging)
 
-        override fun forceStopAnalysis() =
-            analysisViewModel.forceStopAnalysis(navigationConfig.onNavigateToScreenshotFlagging)
 
         override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) =
             analysisViewModel.switchWebViewType(showToast)
@@ -234,11 +230,9 @@ fun AnalysisScreen(
             )
         },
         pcapDroidPacketCaptureStatus = pcapDroidPacketCaptureStatus,
-        analysisInternetStatus = analysisInternetStatus,
         storePcapFileToSession =
             analysisViewModel::storePcapFilePathInTheSession,
         isPCAPDroidInstalled = analysisViewModel::isPcapDroidAppInstalled,
-        resetViewModelState = analysisViewModel::resetViewModelState,
         markAnalysisAsComplete = analysisViewModel::markAnalysisAsComplete,
     )
 
@@ -274,10 +268,8 @@ private fun AnalysisScreenContent(
     updateSelectedTabIndex: (Int) -> Unit,
     onNavigateToSetupPCAPDroid: () -> Unit,
     updatePcapDroidPacketCaptureStatus: (PcapDroidPacketCaptureStatus) -> Unit,
-    analysisInternetStatus: AnalysisInternetStatus,
     storePcapFileToSession:  () -> Unit,
     isPCAPDroidInstalled : () -> Boolean,
-    resetViewModelState: () -> Unit,
     markAnalysisAsComplete : () -> Unit,
 ) {
 
@@ -326,15 +318,11 @@ private fun AnalysisScreenContent(
                     statusMessage = statusMessage,
                     onOpenFile = onOpenFile,
                     webViewActions = webViewActions,
-                    analysisCallbacks = analysisCallbacks,
                     copiedPcapFileUri = copiedPcapFileUri,
                     targetPcapName = targetPcapName,
                     pcapDroidPacketCaptureStatus = pcapDroidPacketCaptureStatus,
-                    analysisInternetStatus = analysisInternetStatus,
                     updateSelectedTabIndex = updateSelectedTabIndex,
                     storePcapFileToSession = storePcapFileToSession,
-                    resetViewModelState = resetViewModelState,
-                    uiState = uiState,
                     markAnalysisAsComplete = markAnalysisAsComplete,
                 )
             }
@@ -459,7 +447,7 @@ fun PreferenceSetupContent(
             RoundCornerButton(
                 onClick = {
                         onStartCapture()
-                        updatePcapDroidPacketCaptureStatus(PcapDroidPacketCaptureStatus.ENABLED)
+                        updatePcapDroidPacketCaptureStatus(PcapDroidPacketCaptureStatus.PCAPDROID_CAPTURE_ENABLED)
                         getCaptivePortalAddress()
                 },
                 buttonText = stringResource(R.string.continue_with_packet_capture),
@@ -471,7 +459,7 @@ fun PreferenceSetupContent(
             // Continue without Packet Capture Button
             GhostButton(
                 onClick = { getCaptivePortalAddress()
-                    updatePcapDroidPacketCaptureStatus(PcapDroidPacketCaptureStatus.DISABLED)
+                    updatePcapDroidPacketCaptureStatus(PcapDroidPacketCaptureStatus.PCAPDROID_CAPTURE_DISABLED)
 
                           },
                 buttonText = stringResource(R.string.continue_without_packet_capture),
@@ -634,9 +622,6 @@ private fun AnalysisScreenContentPreview_Success() {
             override fun updateShowedHint(showed: Boolean) {}
             override fun stopAnalysis() {}
             override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
-            override fun forceStopAnalysis() {
-
-            }
         }
 
         val captureActions = object : CaptureActions {
@@ -662,7 +647,7 @@ private fun AnalysisScreenContentPreview_Success() {
             onOpenFile = {},
             copiedPcapFileUri = null,
             selectedTabIndex = 0,
-            pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.ENABLED,
+            pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.PCAPDROID_CAPTURE_ENABLED,
             onNavigateToManualConnect = {},
             getCaptivePortalAddress = {},
             onStartCapture = {},
@@ -671,10 +656,8 @@ private fun AnalysisScreenContentPreview_Success() {
             updateSelectedTabIndex = {},
             onNavigateToSetupPCAPDroid = {},
             updatePcapDroidPacketCaptureStatus = {},
-            analysisInternetStatus = AnalysisInternetStatus.NO_INTERNET_ACCESS,
             storePcapFileToSession = {},
             isPCAPDroidInstalled = { true },
-            resetViewModelState = {},
             markAnalysisAsComplete =  {},
         )
     }
@@ -712,9 +695,6 @@ private fun AnalysisScreenContentPreview_Error() {
             override fun updateShowedHint(showed: Boolean) {}
             override fun stopAnalysis() {}
             override fun switchWebViewType(showToast: (String, ToastStyle) -> Unit) {}
-            override fun forceStopAnalysis() {
-
-            }
         }
 
         val captureActions = object : CaptureActions {
@@ -740,7 +720,7 @@ private fun AnalysisScreenContentPreview_Error() {
             onOpenFile = {},
             copiedPcapFileUri = null,
             selectedTabIndex = 0,
-            pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.ENABLED,
+            pcapDroidPacketCaptureStatus = PcapDroidPacketCaptureStatus.PCAPDROID_CAPTURE_ENABLED,
             onNavigateToManualConnect = {},
             getCaptivePortalAddress = {},
             onStartCapture = {},
@@ -749,10 +729,8 @@ private fun AnalysisScreenContentPreview_Error() {
             updateSelectedTabIndex = {},
             onNavigateToSetupPCAPDroid = {},
             updatePcapDroidPacketCaptureStatus = {},
-            analysisInternetStatus = AnalysisInternetStatus.NO_INTERNET_ACCESS,
             storePcapFileToSession = {},
             isPCAPDroidInstalled = {true},
-            resetViewModelState = {},
             markAnalysisAsComplete =  {},
         )
     }

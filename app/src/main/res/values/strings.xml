@@ -423,5 +423,7 @@
     <string name="proceed">Proceed</string>
     <string name="save_pcap_file">Save PCAP file</string>
     <string name="hint_click_image_to_zoom">Click an image to show in full screen</string>
+    <string name="header_privacy_related_screenshots">Privacy or ToS screenshots:</string>
+    <string name="header_other_screenshots">Other screenshots:</string>
 
 </resources>
