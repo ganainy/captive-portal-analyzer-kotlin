@@ -56,16 +56,18 @@ For detailed information about the project files structure and architecture, see
 [Download video for better quality](preview/videos/mark-analyze-with-ai_blurred.mp4)
 
 ### Screenshots:
-| Feature                                                                              | Screenshot                          |
-|--------------------------------------------------------------------------------------|-------------------------------------|
-| **Interacting with captive portal from the app**                                     | ![2.png](preview/screenshots/2.png) |
-| **Detailed View of collected data**                                                  | ![3.png](preview/screenshots/3.png) |
-| **Filter collected requests**                                                        | ![8.png](preview/screenshots/8.png) |
-| **Show each collected request in details**                                           | ![9.png](preview/screenshots/9.png) |
-| **AI Insights about the captive portal**                                             | ![4.png](preview/screenshots/4.png) |
-| **Control language & theme**                                                         | ![5.png](preview/screenshots/5.png) |
-| **Fetched request bodies saved to backend**                                          | ![6.png](preview/screenshots/6.png) |
-| **Screenshots related to Privacy policy/ToS<br/> uploaded to back end for analysis** | ![7.png](preview/screenshots/7.png) |
+| Feature                                                                                    | Screenshot                                                      |
+|--------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
+| **Interacting with captive portal from the app**                                           | ![2.png](preview/screenshots/2.png)                             |
+| **Detailed View of collected data**                                                        | ![3.png](preview/screenshots/3.png)                             |
+| **Filter collected requests**                                                              | ![8.png](preview/screenshots/8.png)                             |
+| **Show each collected request in details**                                                 | ![9.png](preview/screenshots/9.png)                             |
+| **AI Insights about the captive portal**                                                   | ![4.png](preview/screenshots/4.png)                             |
+| **Control language & theme**                                                               | ![5.png](preview/screenshots/5.png)                             |
+| **Fetched request bodies saved to backend**                                                | ![6.png](preview/screenshots/6.png)                             |
+| **Screenshots collected are uploaded to firebase storage under their session**             | ![images.png](preview/screenshots/images.png)                   |
+| **HTML & JavaScript files collected are uploaded to firebase storage under their session** | ![webpage-html-js.png](preview/screenshots/webpage-html-js.png) |
+| **Packet capture file is uploaded to firebase storage under their session**                | ![pcap.png](preview/screenshots/pcap.png)                     |
 ---
 
 ### Integration with [PCAPDroid](https://github.com/emanuele-f/PCAPdroid) (See branch `android-pcap-api`)
@@ -84,14 +86,13 @@ Here's a clearer and well-formatted version of your Markdown:
 
 You now have access to more Gemini AI models and detailed control over which files are included in the analysis. The `.pcap` file can also be converted to JSON and added to the AI prompt for better results.
 
-| Feature | Screenshot |
-|--------|------------|
-| **Choose between different Gemini models** | ![13.png](preview/screenshots/13.png) |
-| **Manually select which Requests / Screenshots / HTML / JavaScript files to include in analysis** | ![14.png](preview/screenshots/14.png) |
-| **Convert `.pcap` files to JSON using a remote server**  
-[More info here](https://github.com/ganainy/aws-server-for-pcap-to-json-conversion/tree/main) | ![15.png](preview/screenshots/15.png) |
-| **Include the converted `.pcap` JSON in the AI prompt for improved accuracy** | ![16.png](preview/screenshots/16.png) |
-| **Preview the full prompt before sending it to the AI model** | ![17.png](preview/screenshots/17.png) |
+| Feature                                                                                                                                                                | Screenshot |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------|
+| **Choose between different Gemini models**                                                                                                                             | ![13.png](preview/screenshots/13.png) |
+| **Manually select which Requests / Screenshots / HTML / JavaScript files to include in analysis**                                                                      | ![14.png](preview/screenshots/14.png) |
+| **Convert `.pcap` files to JSON using a remote server** [More info on backend setup here](https://github.com/ganainy/aws-server-for-pcap-to-json-conversion/tree/main) | ![15.png](preview/screenshots/15.png) |
+| **Include the converted `.pcap` JSON in the AI prompt for improved accuracy**                                                                                          | ![16.png](preview/screenshots/16.png) |
+| **Preview the full prompt before sending it to the AI model**                                                                                                          | ![17.png](preview/screenshots/17.png) |
 
 ## How to Run the App
 
