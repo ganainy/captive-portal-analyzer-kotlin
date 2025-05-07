@@ -46,14 +46,12 @@ For detailed information about the project files structure and architecture, see
 ### Video Demonstrations:
 
 #### Collecting information about a captive portal network:
-![Create Session](preview/gifs/create_session.gif)
+[![Create Session](https://img.youtube.com/vi/PmHeJZrM6Co/hqdefault.jpg)](https://youtu.be/PmHeJZrM6Co)
 <br>
-[Download video for better quality](preview/videos/create-session.mp4)
 
-#### Analyze collected data with AI:
-![Mark and Analyze with AI](preview/gifs/analyze_with_ai.gif)
+#### Upload collected data to remote Server & Analyze it with AI:
+[![Mark and Analyze with AI](https://img.youtube.com/vi/NX1KBVDysGk/hqdefault.jpg)](https://youtu.be/NX1KBVDysGk)
 <br>
-[Download video for better quality](preview/videos/mark-analyze-with-ai_blurred.mp4)
 
 ### Screenshots:
 | Feature                                                                                    | Screenshot                                                      |
