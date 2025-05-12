@@ -1,3 +1,4 @@
+// FILE: SessionListScreen.kt
 package com.example.captive_portal_analyzer_kotlin.screens.session_list
 
 import NetworkSessionRepository
@@ -15,9 +16,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
@@ -32,13 +33,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -57,13 +58,13 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /**
- * Composable screen to show a list of network sessions.
+ * Composable screen to show a list of network sessions, filtered by Captive or Normal.
  *
- * @param navigateToWelcome a callback that is called when the user clicks the back button
- * @param updateClickedSessionId a callback that is called when the user clicks on a session
- * @param repository the repository that provides the data for the sessions
- * @param navigateToSessionScreen a callback that is called when the user clicks on a session
- * @param mainViewModel ViewModel to handle global state like dialogs
+ * @param navigateToWelcome Callback invoked when back navigation is triggered.
+ * @param updateClickedSessionId Callback to update the ID of the session clicked (for detail view).
+ * @param repository Repository instance for data access.
+ * @param navigateToSessionScreen Callback to navigate to the session detail screen.
+ * @param mainViewModel ViewModel for global state management (like dialogs).
  */
 @Composable
 fun SessionListScreen(
@@ -80,51 +81,59 @@ fun SessionListScreen(
         )
     )
 
+    // Observe ViewModel states
     val uiState by sessionListViewModel.uiState.collectAsState()
-    val sessionDataList by sessionListViewModel.sessionDataList.collectAsState()
+    val filteredSessionDataList by sessionListViewModel.filteredSessionDataList.collectAsState()
+    val selectedFilter by sessionListViewModel.selectedFilter.collectAsState()
 
-    // State for filtering
-    val (filter, setFilter) = remember { mutableStateOf("All") }
-
+    // Handle back press
     BackHandler {
         navigateToWelcome()
     }
 
     Scaffold { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-            // Filter Row
+            // Filter Tabs Row - Only Captive and Normal
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .height(48.dp), // Consistent height for tabs
+                horizontalArrangement = Arrangement.SpaceAround, // Evenly space the two tabs
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                FilterButton("All", filter, setFilter)
-                FilterButton("Captive", filter, setFilter)
-                FilterButton("Normal", filter, setFilter)
+                FilterTab(
+                    filterType = SessionFilterType.CAPTIVE,
+                    currentFilter = selectedFilter,
+                    onFilterChange = sessionListViewModel::selectFilter // Pass ViewModel function directly
+                )
+                FilterTab(
+                    filterType = SessionFilterType.NORMAL,
+                    currentFilter = selectedFilter,
+                    onFilterChange = sessionListViewModel::selectFilter
+                )
             }
 
-            // Filtered content
-            val filteredList = when (filter) {
-                "Captive" -> sessionDataList?.filter { it.requestsCount > 0 || it.webpageContentCount > 0 || it.screenshotsCount > 0 }
-                "Normal" -> sessionDataList?.filter { it.requestsCount == 0 && it.webpageContentCount == 0 && it.screenshotsCount == 0 }
-                else -> sessionDataList
-            }
+            Divider() // Separator below tabs
 
-            val title = stringResource(R.string.delete_session_confirmation_title)
-            val message = stringResource(R.string.delete_session_confirmation_message)
-            val confirmText = stringResource(R.string.delete)
+            // Prepare confirmation dialog strings
+            val deleteTitle = stringResource(R.string.delete_session_confirmation_title)
+            val deleteMessage = stringResource(R.string.delete_session_confirmation_message)
+            val deleteConfirmText = stringResource(R.string.delete)
 
+            // Display content based on UI state and filtered list
             SessionsContent(
                 uiState = uiState,
-                sessionDataList = filteredList,
+                sessionDataList = filteredSessionDataList, // Pass the already filtered list
+                currentFilter = selectedFilter, // Pass current filter for context
                 navigateToSessionScreen = navigateToSessionScreen,
                 updateClickedSessionId = updateClickedSessionId,
                 onDeleteClick = { networkId ->
+                    // Show confirmation dialog via MainViewModel
                     mainViewModel.showDialog(
-                        title = title,
-                        message = message,
-                        confirmText = confirmText,
+                        title = deleteTitle,
+                        message = deleteMessage,
+                        confirmText = deleteConfirmText,
                         onConfirm = {
                             sessionListViewModel.deleteSession(networkId)
                             mainViewModel.hideDialog()
@@ -137,87 +146,70 @@ fun SessionListScreen(
     }
 }
 
+/**
+ * Composable representing a single filter tab (Captive or Normal).
+ *
+ * @param filterType The type this tab represents (CAPTIVE or NORMAL).
+ * @param currentFilter The currently selected filter in the ViewModel.
+ * @param onFilterChange Callback invoked when this tab is clicked.
+ */
 @Composable
-fun FilterButton(
-    label: String,
-    currentFilter: String,
-    onFilterChange: (String) -> Unit
+fun FilterTab(
+    filterType: SessionFilterType,
+    currentFilter: SessionFilterType,
+    onFilterChange: (SessionFilterType) -> Unit
 ) {
-    Text(
-        text = label,
+    val isSelected = currentFilter == filterType
+    val label = when (filterType) {
+        SessionFilterType.CAPTIVE -> stringResource(R.string.filter_captive)
+        SessionFilterType.NORMAL -> stringResource(R.string.filter_normal)
+    }
+    val textColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val textStyle = if (isSelected) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge
+
+    Box( // Use Box for better click area and alignment
         modifier = Modifier
-            .clickable { onFilterChange(label) }
-            .padding(8.dp),
-        style = if (currentFilter == label) MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.primary)
-        else MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
-    )
+            .fillMaxHeight() // Fill height of the parent Row
+            .clickable { onFilterChange(filterType) }
+            .padding(horizontal = 16.dp), // Padding inside the clickable area
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = textStyle,
+            color = textColor
+        )
+    }
 }
 
 /**
- * A composable function that displays a list of sessions based on the [uiState].
+ * Displays the main content area based on the overall UI state and the filtered list.
  *
- * @param uiState the ui state that determines what to display
- * @param sessionDataList the list of session data to display
- * @param navigateToSessionScreen a callback that is called when the user clicks on a session
- * @param updateClickedSessionId a callback that is called when the user clicks on a session
- * @param onDeleteClick Callback when delete icon is clicked for a session
+ * @param uiState Overall loading/error/success state from the ViewModel.
+ * @param sessionDataList The list of sessions *already filtered* by the ViewModel.
+ * @param currentFilter The currently selected filter (for displaying context-specific empty messages).
+ * @param navigateToSessionScreen Callback to navigate to session details.
+ * @param updateClickedSessionId Callback to update the clicked session ID.
+ * @param onDeleteClick Callback invoked when the delete icon on an item is clicked.
  */
 @Composable
 private fun SessionsContent(
     uiState: SessionListUiState,
     sessionDataList: List<SessionData>?,
+    currentFilter: SessionFilterType,
     navigateToSessionScreen: () -> Unit,
     updateClickedSessionId: (String) -> Unit,
-    onDeleteClick: (networkId: String) -> Unit // <-- Pass delete callback down
+    onDeleteClick: (networkId: String) -> Unit
 ) {
-    // Handle different ui states
     when (uiState) {
-        // show loading indicator when loading sessions
-        SessionListUiState.Loading -> {
-            LoadingIndicator()
-        }
-
-        // show error message if there is an error
-        is SessionListUiState.Error -> {
-            // show error text from the ui state
-            ErrorComponent(stringResource((uiState as SessionListUiState.Error).messageStringResource))
-        }
-
-        // show empty list text if there are no sessions
-        // ---  Empty State ---
-        SessionListUiState.Empty -> {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 32.dp, vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // Large ASCII Art / Emoji
-                Text(
-                    text = "\\(o_o)/",
-                    style = MaterialTheme.typography.displayMedium,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp)) // Space between emoji and text
-
-                // Explanatory Text
-                Text(
-                    text = stringResource(R.string.no_sessions_detected_explanation),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        // --- End  Empty State ---
-
-        // show the list of sessions if there are sessions
+        SessionListUiState.Loading -> LoadingIndicator()
+        is SessionListUiState.Error -> ErrorComponent(stringResource(uiState.messageStringResource))
+        SessionListUiState.Empty -> EmptyStateIndicator() // Show general empty state if NO sessions exist at all
         SessionListUiState.Success -> {
-            // show the list of sessions
+            // Data loading succeeded, now display the filtered list or an empty message for the *current filter*
             SessionsSuccessContent(
                 sessionDataList = sessionDataList,
+                currentFilter = currentFilter,
                 navigateToSessionScreen = navigateToSessionScreen,
                 updateClickedSessionId = updateClickedSessionId,
                 onDeleteClick = onDeleteClick
@@ -227,235 +219,296 @@ private fun SessionsContent(
 }
 
 /**
- * A composable function that displays a list of sessions when the data is successfully loaded.
+ * Displays the list of sessions when data loading was successful.
+ * Handles the case where the *filtered* list might be empty.
  *
- * @param sessionDataList The list of session data to display.
- * @param navigateToSessionScreen A lambda function to navigate to the session screen.
- * @param updateClickedSessionId A lambda function to update the clicked session ID.
- * @param onDeleteClick Callback when delete icon is clicked for a session
+ * @param sessionDataList The list of sessions *already filtered* by the ViewModel. Can be null initially or empty.
+ * @param currentFilter The currently selected filter (for displaying context-specific empty messages).
+ * @param navigateToSessionScreen Callback to navigate to session details.
+ * @param updateClickedSessionId Callback to update the clicked session ID.
+ * @param onDeleteClick Callback invoked when the delete icon on an item is clicked.
  */
 @Composable
 private fun SessionsSuccessContent(
     sessionDataList: List<SessionData>?,
+    currentFilter: SessionFilterType,
     navigateToSessionScreen: () -> Unit,
     updateClickedSessionId: (String) -> Unit,
     onDeleteClick: (networkId: String) -> Unit
 ) {
-    sessionDataList?.let { dataList ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
+    // Check if the filtered list is empty for the *current* filter
+    if (sessionDataList.isNullOrEmpty()) {
+        EmptyFilteredListIndicator(filterType = currentFilter)
+    } else {
+        // Filtered list has items, display the list
+        Box(modifier = Modifier.fillMaxSize()) {
             SessionsList(
-                sessionDataList = dataList,
+                sessionDataList = sessionDataList, // Pass the non-empty, filtered list
                 onSessionClick = { clickedSession ->
-                    updateClickedSessionId(clickedSession.session.networkId)
+                    // Only captive portals are clickable to navigate
+                    if(clickedSession.isCaptivePortal()){
+                        updateClickedSessionId(clickedSession.session.networkId)
+                        navigateToSessionScreen()
+                    }
                 },
-                onDeleteClick = onDeleteClick, // <-- Pass delete callback down
-                navigateToSessionScreen = navigateToSessionScreen
+                onDeleteClick = onDeleteClick
             )
         }
     }
 }
 
 /**
- * A composable function that displays a list of sessions. The list is sorted in descending order by session timestamp.
+ * Displays an indicator when the overall session list is completely empty.
+ */
+@Composable
+fun EmptyStateIndicator() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 32.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "\\(o_o)/",
+            style = MaterialTheme.typography.displayMedium,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.no_sessions_detected_explanation),
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * Displays an indicator when the list is empty *for the currently selected filter*.
+ * @param filterType The filter type for which no sessions were found.
+ */
+@Composable
+fun EmptyFilteredListIndicator(filterType: SessionFilterType) {
+    val messageResId = when (filterType) {
+        SessionFilterType.CAPTIVE -> R.string.no_captive_sessions_found
+        SessionFilterType.NORMAL -> R.string.no_normal_sessions_found
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "(·_·)", // Simple indicator
+            style = MaterialTheme.typography.displaySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(messageResId),
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+
+/**
+ * Displays the actual list of sessions using LazyColumn.
+ * Assumes `sessionDataList` is not empty.
  *
- * @param sessionDataList The list of session data to display.
- * @param onSessionClick A lambda function to call when a session is clicked.
- * @param navigateToSessionScreen A lambda function to navigate to the session screen.
- * @param onDeleteClick Callback when delete icon is clicked for a session
+ * @param sessionDataList The non-empty, filtered list of session data.
+ * @param onSessionClick Lambda called when a session item is clicked.
+ * @param onDeleteClick Lambda called when the delete icon for a session is clicked.
  */
 @Composable
 fun SessionsList(
     sessionDataList: List<SessionData>,
     onSessionClick: (SessionData) -> Unit,
-    navigateToSessionScreen: () -> Unit,
     onDeleteClick: (networkId: String) -> Unit
 ) {
-    val sortedSessionDataList = sessionDataList.sortedByDescending { it.session.timestamp }
+    // Sort by timestamp descending before displaying
+    val sortedSessionDataList = remember(sessionDataList) {
+        sessionDataList.sortedByDescending { it.session.timestamp }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp)
+        contentPadding = PaddingValues(vertical = 8.dp) // Add vertical padding for the list
     ) {
         itemsIndexed(
             items = sortedSessionDataList,
-            key = { _, item -> item.session.networkId }
+            key = { _, item -> item.session.networkId } // Stable keys for performance
         ) { index, sessionData ->
 
-            // Determine if captive for logic within the item
-            val isCaptive = sessionData.requestsCount > 0 || sessionData.webpageContentCount > 0 || sessionData.screenshotsCount > 0
+            val isCaptive = sessionData.isCaptivePortal()
 
-            // Use the new NetworkSessionItem
             NetworkSessionItem(
                 sessionData = sessionData,
                 isCaptivePortal = isCaptive,
-                onClick = if (isCaptive) { { onSessionClick(sessionData) } } else null,
-                navigateToSessionScreen = if (isCaptive) navigateToSessionScreen else null,
-                onDeleteClick = onDeleteClick
+                // Click action passed down, triggers navigation only if captive
+                onClick = { onSessionClick(sessionData) },
+                onDeleteClick = onDeleteClick // Pass delete callback
             )
 
-            // Add Divider after each item except the last one
+            // Add Divider between items
             if (index < sortedSessionDataList.lastIndex) {
                 Divider(
-                    modifier = Modifier.padding(top = 8.dp),
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                    thickness = 1.dp
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), // Indent divider slightly
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                 )
+            } else {
+                Spacer(modifier = Modifier.height(8.dp)) // Add space after last item
             }
         }
     }
 }
 
 /**
- * A composable function that displays a card for a network session.
+ * Composable for displaying a single network session item in the list.
+ * Handles distinct styling for captive vs. normal sessions.
  *
- * @param sessionData The session data to display.
- * @param isCaptivePortal Whether the session is from a captive portal network (determines clickability and delete icon).
- * @param onClick Optional callback for when the card is clicked (only enabled if captive).
- * @param onDeleteClick Callback for when the delete icon is clicked.
- * @param navigateToSessionScreen Optional callback to navigate to session screen (called via onClick if captive).
+ * @param sessionData The data for the session item.
+ * @param isCaptivePortal Boolean indicating if this session is classified as captive.
+ * @param onClick Lambda called when the item is clicked (primarily for captive portals).
+ * @param onDeleteClick Lambda called when the delete icon is clicked.
  */
 @Composable
 fun NetworkSessionItem(
     sessionData: SessionData,
     isCaptivePortal: Boolean,
-    onClick: ((SessionData) -> Unit)? = null,
-    onDeleteClick: (networkId: String) -> Unit,
-    navigateToSessionScreen: (() -> Unit)? = null
+    onClick: (SessionData) -> Unit,
+    onDeleteClick: (networkId: String) -> Unit
 ) {
+    // Determine colors based on captive status
+    val titleTextColor = if (isCaptivePortal) {
+        MaterialTheme.colorScheme.primary // More prominent for captive
+    } else {
+        MaterialTheme.colorScheme.onSurface // Standard for normal
+    }
+    val secondaryTextColor = MaterialTheme.colorScheme.onSurfaceVariant // Consistent secondary color
 
-   // Determine the text color for the main title (greyed out if not clickable)
-   val titleTextColor = if (isCaptivePortal) {
-       MaterialTheme.colorScheme.onSurface // Standard color for clickable
-   } else {
-       Color.Gray // Greyed-out color for non-clickable
-   }
-
-    // Determine the text color for secondary info (stats, time)
-    // Stats only show for captive portals, time shows for both.
-    // Using onSurfaceVariant for secondary info in both states works well:
-    // - For captive portal: It's a standard subdued color for secondary details.
-    // - For non-captive portal: It's the greyed-out color, consistent with the title.
-    val secondaryTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-
-
-    // Use a Row to place the highlight bar next to the content
-    Row(
-        modifier = Modifier
-            .fillMaxWidth(),
-        verticalAlignment = Alignment.Top // Align content to the top
-    ) {
-        // Subtle Highlight Bar (only visible for captive portal)
-        Box(
-            modifier = Modifier
-                .width(2.dp) // Thin bar
-                .fillMaxHeight() // Takes height of the item content
-        )
-
-        // Main content area (clickable for captive portals, padded, and weighted)
-        val contentModifier = Modifier
-            .weight(1f) // Takes remaining space
-            .then( // Apply clickable *before* padding usually works well
-                // Only make the item clickable if it's a captive portal AND click handlers are provided
-                // Non-captive portal items are not clickable in this view.
-                if (isCaptivePortal && onClick != null && navigateToSessionScreen != null) {
-                    Modifier.clickable {
-                        onClick(sessionData)
-                        navigateToSessionScreen()
-                    }
-                } else Modifier
-            )
-            .padding(vertical = 16.dp, horizontal = 8.dp) // Apply padding to the content
-
-        // Inner Row for arranging text content and delete button
-        Row(
-            modifier = contentModifier,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top // Align content inside to top
-        ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f) // Column takes priority space
-                    .padding(end = 8.dp), // Add padding before the delete button
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                // Network Name (SSID) - Color is conditional
-                Text(
-                    text = stringResource(
-                        R.string.network_name,
-                        sessionData.session.ssid ?: stringResource(R.string.unknown_network)
-                    ),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = titleTextColor, // Apply the conditional color
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                // Captive Portal specific stats (Requests, Webpages, Screenshots) - Only shown for captive portals
-                if (isCaptivePortal) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            stringResource(R.string.requests, sessionData.requestsCount),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = secondaryTextColor // Use the secondary color
-                        )
-                        Text(
-                            stringResource(R.string.webpages, sessionData.webpageContentCount),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = secondaryTextColor // Use the secondary color
-                        )
-                        Text(
-                            stringResource(R.string.screenshots, sessionData.screenshotsCount),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = secondaryTextColor // Use the secondary color
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Creation Time - Text and icon color use the secondary color
-               HintTextWithIcon(
-                   hint = stringResource(
-                       R.string.created,
-                       TimeAgo.using(sessionData.session.timestamp)
-                   ),
-                   iconResId = R.drawable.clock, // Ensure this drawable exists
-                   tint = if (isCaptivePortal) secondaryTextColor else Color.Gray
-               )
-            }
-
-            // Delete Button (only for Captive Portal sessions)
+    // Base modifier, applying padding and click handling
+    val itemModifier = Modifier
+        .fillMaxWidth()
+        .then(
+            // Only truly clickable (for navigation) if captive portal
             if (isCaptivePortal) {
-                IconButton(
-                    onClick = { onDeleteClick(sessionData.session.networkId) },
-                    modifier = Modifier
-                        .size(40.dp) // Standard icon button size
-                        .align(Alignment.CenterVertically) // Vertically center the button
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Delete,
-                        contentDescription = stringResource(R.string.delete_session),
-                        tint = MaterialTheme.colorScheme.error // Use error color for delete icon
-                    )
-                }
+                Modifier.clickable { onClick(sessionData) }
+            } else Modifier // Not clickable for navigation if normal
+        )
+        .padding(horizontal = 16.dp, vertical = 12.dp) // Consistent padding within the item
+
+    Row(
+        modifier = itemModifier,
+        verticalAlignment = Alignment.Top, // Align content to top, delete button aligns itself
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Main content column (takes available space)
+        Column(
+            modifier = Modifier
+                .weight(1f) // Occupy remaining space before delete icon
+                .padding(end = 8.dp), // Space before delete icon
+            verticalArrangement = Arrangement.spacedBy(6.dp) // Space between elements in column
+        ) {
+            // Network Name (SSID)
+            Text(
+                text = sessionData.session.ssid ?: stringResource(R.string.unknown_network),
+                style = MaterialTheme.typography.titleMedium,
+                color = titleTextColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            // IP and Gateway Addresses
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                NetworkDetailRow(
+                    text = stringResource(
+                        R.string.ip_address_format,
+                        sessionData.session.ipAddress ?: stringResource(R.string.unknown)
+                    ),
+                    color = secondaryTextColor
+                )
+                NetworkDetailRow(
+                    text = stringResource(
+                        R.string.gateway_address_format,
+                        sessionData.session.gatewayAddress ?: stringResource(R.string.unknown)
+                    ),
+                    color = secondaryTextColor
+                )
             }
+
+            // Captive Portal specific stats (only show if captive)
+            if (isCaptivePortal) {
+                NetworkDetailRow(
+                    text = buildAnnotatedString {
+                        append(stringResource(R.string.requests, sessionData.requestsCount))
+                        append(" • ")
+                        append(stringResource(R.string.webpages, sessionData.webpageContentCount))
+                        append(" • ")
+                        append(stringResource(R.string.screenshots, sessionData.screenshotsCount))
+                    }.toString(),
+                    color = secondaryTextColor.copy(alpha = 0.8f) // Slightly lighter/dimmed
+                )
+            }
+
+            // Creation Time (Time Ago)
+            HintTextWithIcon(
+                hint = TimeAgo.using(sessionData.session.timestamp), // Just the time ago string
+                iconResId = R.drawable.clock,
+                tint = secondaryTextColor
+            )
+        }
+
+        // Delete Button (always present)
+        // Use IconButton for proper accessibility and touch target size
+        IconButton(
+            onClick = { onDeleteClick(sessionData.session.networkId) },
+            modifier = Modifier
+                .size(40.dp) // Standard touch target size
+                .offset(y = (-4).dp) // Slightly adjust vertical position if needed
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = stringResource(R.string.delete_session_content_desc, sessionData.session.ssid ?: ""),
+                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f) // Less intense error color
+            )
         }
     }
+}
+
+/** Helper composable for consistent display of detail rows (IP, Gateway, Stats). */
+@Composable
+fun NetworkDetailRow(text: String, color: Color) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = color,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+/** Helper extension function (can be moved to dataclasses if preferred) */
+fun SessionData.isCaptivePortal(): Boolean {
+    return this.requestsCount > 0 || this.webpageContentCount > 0 || this.screenshotsCount > 0
 }
 
 
 // --- Previews ---
 
-// Helper function to create mock session data for previews
+// Helper function remains the same
 private fun createMockSessionData(
     isCaptive: Boolean,
     isUploaded: Boolean = false,
     isRecent: Boolean = false,
-    reqCount: Int = if(isCaptive) 5 else 0,
-    webCount: Int = if(isCaptive) 2 else 0,
-    scrCount: Int = if(isCaptive) 3 else 0,
+    reqCount: Int = if (isCaptive) 5 else 0,
+    webCount: Int = if (isCaptive) 2 else 0,
+    scrCount: Int = if (isCaptive) 3 else 0,
     ssid: String = "Mock WiFi ${if (isCaptive) "(Captive)" else ""}"
 ): SessionData {
     val timestamp = if (isRecent) System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(10)
@@ -470,80 +523,108 @@ private fun createMockSessionData(
             captivePortalUrl = if (isCaptive) "http://portal.example.com" else null,
             ipAddress = "192.168.1.100",
             gatewayAddress = "192.168.1.1",
-            isCaptiveLocal = false // Example value
+            isCaptiveLocal = false
         ),
         requestsCount = reqCount,
         webpageContentCount = webCount,
         screenshotsCount = scrCount,
-        requests = emptyList(), // Not needed for card preview
-        webpageContent = emptyList(),
-        screenshots = emptyList()
+        requests = emptyList(), webpageContent = emptyList(), screenshots = emptyList()
     )
 }
 
-
-@Preview(name="Captive Card - Recent, Not Uploaded", showBackground = true, widthDp = 380)
+// Preview Captive Item
+@Preview(name = "Captive Item - Light", showBackground = true, widthDp = 380)
 @Composable
-fun PreviewCaptiveSessionCard_RecentNotUploaded() {
+fun PreviewCaptiveSessionItem_Light() {
     AppTheme {
-        Surface(modifier = Modifier.padding(8.dp)) {
+        Surface {
             NetworkSessionItem(
-                sessionData = createMockSessionData(isCaptive = true, isUploaded = false, isRecent = true),
+                sessionData = createMockSessionData(isCaptive = true, isRecent = true),
                 isCaptivePortal = true,
                 onClick = {},
-                navigateToSessionScreen = {},
                 onDeleteClick = {}
             )
         }
     }
 }
 
-@Preview(name="Captive Card - Old, Uploaded", showBackground = true, widthDp = 380)
+// Preview Normal Item
+@Preview(name = "Normal Item - Light", showBackground = true, widthDp = 380)
 @Composable
-fun PreviewCaptiveSessionCard_OldUploaded() {
+fun PreviewNormalSessionItem_Light() {
     AppTheme {
-        Surface(modifier = Modifier.padding(8.dp)) {
-            NetworkSessionItem(
-                sessionData = createMockSessionData(isCaptive = true, isUploaded = true, isRecent = false),
-                isCaptivePortal = true,
-                onClick = {},
-                navigateToSessionScreen = {},
-                onDeleteClick = {}
-            )
-        }
-    }
-}
-
-
-@Preview(name="Non-Captive Card", showBackground = true, widthDp = 380)
-@Composable
-fun PreviewNonCaptiveSessionCard() {
-    AppTheme {
-        Surface(modifier = Modifier.padding(8.dp)) {
+        Surface {
             NetworkSessionItem(
                 sessionData = createMockSessionData(isCaptive = false),
                 isCaptivePortal = false,
-                onClick = {}, // Should be null in real usage
-                navigateToSessionScreen =  {}, // Should be null in real usage
-                onDeleteClick = {} // Delete likely disabled or hidden here
-            )
-        }
-    }
-}
-
-@Preview(name="Captive Card (Dark)", showBackground = true, widthDp = 380, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun PreviewCaptiveSessionCard_Dark() {
-    AppTheme(darkTheme = true) {
-        Surface(modifier = Modifier.padding(8.dp)) {
-            NetworkSessionItem(
-                sessionData = createMockSessionData(isCaptive = true, isUploaded = false, isRecent = true),
-                isCaptivePortal = true,
-                onClick = {},
-                navigateToSessionScreen = {},
+                onClick = {}, // Click does nothing for normal items visually
                 onDeleteClick = {}
             )
         }
     }
 }
 
+// Preview Captive Item (Dark)
+@Preview(name = "Captive Item - Dark", showBackground = true, widthDp = 380, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun PreviewCaptiveSessionItem_Dark() {
+    AppTheme(darkTheme = true) {
+        Surface {
+            NetworkSessionItem(
+                sessionData = createMockSessionData(isCaptive = true, isRecent = false, isUploaded = true),
+                isCaptivePortal = true,
+                onClick = {},
+                onDeleteClick = {}
+            )
+        }
+    }
+}
+
+// Preview Normal Item (Dark)
+@Preview(name = "Normal Item - Dark", showBackground = true, widthDp = 380, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun PreviewNormalSessionItem_Dark() {
+    AppTheme(darkTheme = true) {
+        Surface {
+            NetworkSessionItem(
+                sessionData = createMockSessionData(isCaptive = false, isRecent = true),
+                isCaptivePortal = false,
+                onClick = {},
+                onDeleteClick = {}
+            )
+        }
+    }
+}
+
+// Preview Empty Filtered State
+@Preview(name = "Empty Filtered (Captive) - Light", showBackground = true, heightDp = 200)
+@Composable
+fun PreviewEmptyFilteredCaptive() {
+    AppTheme {
+        Surface(Modifier.fillMaxSize()) {
+            EmptyFilteredListIndicator(filterType = SessionFilterType.CAPTIVE)
+        }
+    }
+}
+
+// Preview Empty Filtered State (Dark)
+@Preview(name = "Empty Filtered (Normal) - Dark", showBackground = true, heightDp = 200, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun PreviewEmptyFilteredNormal_Dark() {
+    AppTheme(darkTheme=true) {
+        Surface(Modifier.fillMaxSize()) {
+            EmptyFilteredListIndicator(filterType = SessionFilterType.NORMAL)
+        }
+    }
+}
+
+// Preview Overall Empty State
+@Preview(name = "Empty State (No Sessions) - Light", showBackground = true, heightDp = 300)
+@Composable
+fun PreviewEmptyStateOverall() {
+    AppTheme {
+        Surface(Modifier.fillMaxSize()) {
+            EmptyStateIndicator()
+        }
+    }
+}

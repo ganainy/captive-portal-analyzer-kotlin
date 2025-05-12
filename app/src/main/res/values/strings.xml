@@ -424,6 +424,27 @@
     <string name="save_pcap_file">Save PCAP file</string>
     <string name="hint_click_image_to_zoom">Click an image to show in full screen</string>
     <string name="header_privacy_related_screenshots">Privacy or ToS screenshots:</string>
-    <string name="header_other_screenshots">Other screenshots:</string>
+    <string name="header_other_screenshots">General Screenshots:</string>
 
+    <!-- Network details -->
+    <string name="ip_address_format">IP: %1$s</string>
+    <string name="gateway_address_format">Gateway: %1$s</string>
+    <string name="created_format">Created %1$s</string>
+
+    <!-- Captive portal stats -->
+    <string name="session_stats_format">%1$d Requests • %2$d Webpages • %3$d Screenshots</string>
+
+    <!-- Upload status -->
+    <string name="uploaded">Uploaded</string>
+    <string name="not_uploaded">Not Uploaded</string>
+
+    <!-- Actions -->
+    <string name="unknown">Unknown</string>
+    <string name="error_deleting_session">Error deleting session</string>
+
+    <string name="filter_captive">Captive</string>
+    <string name="filter_normal">Normal</string>
+    <string name="no_captive_sessions_found">No captive portal sessions found.</string>
+    <string name="no_normal_sessions_found">No normal network sessions found.</string>
+    <string name="delete_session_content_desc">Delete session for %s</string>
 </resources>

@@ -462,6 +462,29 @@
     <string name="hint_click_image_to_zoom">Klicken Sie auf ein Bild, um es in voller Größe anzuzeigen</string>
 
     <string name="header_privacy_related_screenshots">AGB- oder Datenschutz-Screenshots:</string>
-    <string name="header_other_screenshots">Andere Screenshots:</string>
+    <string name="header_other_screenshots">Allgemeine Screenshots:</string>
+
+    <!-- Network details -->
+    <string name="ip_address_format">IP: %1$s</string>
+    <string name="gateway_address_format">Gateway: %1$s</string>
+    <string name="created_format">Erstellt %1$s</string>
+
+    <!-- Captive portal stats -->
+    <string name="session_stats_format">%1$d Anfragen • %2$d Webseiten • %3$d Screenshots</string>
+
+    <!-- Upload status -->
+    <string name="uploaded">Hochgeladen</string>
+    <string name="not_uploaded">Nicht hochgeladen</string>
+
+    <!-- Actions -->
+    <string name="unknown">Unbekannt</string>
+    <string name="error_deleting_session">Fehler beim Löschen der Sitzung</string>
+
+    <string name="filter_captive">Captive</string>
+    <string name="filter_normal">Normal</string>
+    <string name="no_captive_sessions_found">Keine Captive Portal-Sitzungen gefunden.</string>
+    <string name="no_normal_sessions_found">Keine normalen Netzwerksitzungen gefunden.</string>
+    <string name="delete_session_content_desc">Sitzung für %s löschen</string>
+
 
 </resources>

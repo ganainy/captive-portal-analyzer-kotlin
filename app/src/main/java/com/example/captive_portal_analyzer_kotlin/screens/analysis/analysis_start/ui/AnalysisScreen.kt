@@ -429,7 +429,7 @@ fun PreferenceSetupContent(
                         HintTextWithIcon(
                             hint = stringResource(R.string.please_stop_running_pcap_droid_capture_before_continuing),
                             modifier = Modifier.weight(1f),
-                            color = Color.Red,
+                            tint = Color.Red,
                         )
                         Icon(
                             painter = painterResource(id = R.drawable.refresh_24px),
@@ -553,7 +553,6 @@ internal fun AnalysisError(
             Spacer(Modifier.height(8.dp))
             HintTextWithIcon(
                 hint = hint,
-                rowAllignment = Alignment.Center,
             )
             Spacer(Modifier.height(8.dp))
             Row(

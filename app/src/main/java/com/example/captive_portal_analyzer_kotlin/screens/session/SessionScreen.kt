@@ -31,10 +31,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1092,90 +1088,7 @@ private fun ContentItem(
 
 // endregion
 // region Screenshots Tab Content
-// --- Helper Composable: Section Header ---
-@Composable
-private fun SectionHeader(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleLarge, // Or adjust style as needed
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp) // Add some padding around headers
-    )
-}
 
-// --- Main Composable (Refactored) ---
-@Composable
-fun ScreenshotsList(
-    screenshots: List<ScreenshotEntity>?,
-    modifier: Modifier = Modifier // Added modifier parameter
-) {
-// Handle overall empty state first
-    if (screenshots.isNullOrEmpty()) {
-        EmptyListUi(R.string.no_screenshots_found)
-        return
-    }
-// Separate screenshots into two lists
-    val privacyRelatedScreenshots = screenshots.filter { it.isPrivacyOrTosRelated }
-    val otherScreenshots = screenshots.filter { !it.isPrivacyOrTosRelated }
-
-// Use a single LazyVerticalGrid for everything
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 150.dp),
-        modifier = modifier.fillMaxSize(), // Use the provided modifier, fill parent size
-        contentPadding = PaddingValues(16.dp), // Apply padding to the grid content
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // Add Privacy-Related section header and items if there are any
-        if (privacyRelatedScreenshots.isNotEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) { // Header spans all columns
-                Text(
-                    text = stringResource(R.string.header_privacy_related_screenshots),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp) // Add space below the header
-                )
-            }
-            items(
-                items = privacyRelatedScreenshots,
-                key = { it.screenshotId }
-            ) { screenshot ->
-                ScreenshotDisplayCard(imagePath = screenshot.path, isPrivacyOrTosRelated = screenshot.isPrivacyOrTosRelated)
-            }
-        }
-
-        // Add Other Screenshots section header and items if there are any
-        if (otherScreenshots.isNotEmpty()) {
-            // Add spacing between sections if both exist
-            if (privacyRelatedScreenshots.isNotEmpty()) {
-                item(span = { GridItemSpan(maxLineSpan) }) { // Spacer spans all columns
-                    Spacer(modifier = Modifier.height(16.dp)) // Extra space between grids
-                }
-            }
-            item(span = { GridItemSpan(maxLineSpan) }) { // Header spans all columns
-                Text(
-                    text = stringResource(R.string.header_other_screenshots),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp) // Add space below the header
-                )
-            }
-            items(
-                items = otherScreenshots,
-                key = { it.screenshotId }
-            ) { screenshot ->
-                ScreenshotDisplayCard(imagePath = screenshot.path, isPrivacyOrTosRelated = screenshot.isPrivacyOrTosRelated)
-            }
-        }
-
-        // If the list was not null/empty, but both filtered lists are empty,
-        // nothing will be displayed inside the grid. This is correct behavior
-        // as the initial empty/null check handles the "no screenshots found" case.
-    }
-}
 
 @Composable
 fun ScreenshotDisplayCard(
@@ -1184,7 +1097,7 @@ fun ScreenshotDisplayCard(
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth(0.32f) // Use 30% of the device width
+            .fillMaxWidth(0.30f) // Use 30% of the device width
             .aspectRatio(1f), // Keep aspect ratio
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),

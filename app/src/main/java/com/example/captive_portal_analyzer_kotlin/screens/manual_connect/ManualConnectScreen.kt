@@ -377,7 +377,6 @@ private fun ManualConnectContent(
         HintTextWithIcon(
             stringResource(R.string.hint1),
             modifier = Modifier.padding(horizontal = 16.dp),
-            rowAllignment = Alignment.Center,
         )
         Spacer(modifier = Modifier.height(16.dp))
 
