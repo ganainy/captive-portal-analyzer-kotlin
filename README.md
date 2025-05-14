@@ -9,6 +9,14 @@ This app focuses on analyzing captive portals. It provides an interface for inte
 ## Project Structure
 For detailed information about the project files structure and architecture, see [Project Structure](APP_STRUCTURE.md).
 
+## Documentation
+
+The following documentation is available:
+- [Project Documentation (PDF)](preview/pdfs/captive_portal_analyzer_app_documentation.pdf) - Detailed technical documentation about the project
+- [Research Paper (PDF)](preview/pdfs/Captive_Portal_Analyzer_App.pdf) - Academic paper based on this application
+
+---
+
 ## Features
 
 - Interact with captive portals seamlessly.
@@ -131,3 +139,5 @@ You now have access to more Gemini AI models and detailed control over which fil
 Contributions are welcome! Feel free to submit a pull request or report issues to enhance the app.
 
 ---
+
+`
